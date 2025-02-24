@@ -3,6 +3,7 @@ Authors: Kevin J. Hwang
          Jun Wang
          Tyler Shepherd
 """
+
 import io
 import math
 import time
@@ -17,6 +18,8 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from queue import PriorityQueue
 
+from gurobipy import Model, GRB, quicksum
+from collections import deque
 
 class Mechanism():
     """
@@ -60,7 +63,7 @@ class Mechanism():
         :ivar Profile profile: A Profile object that represents an election profile.
         """
 
-        # We generate a map that associates each score with the candidates that have that acore.
+        # We generate a map that associates each score with the candidates that have that score.
         candScoresMap = self.getCandScoresMap(profile)
         reverseCandScoresMap = dict()
         for key, value in candScoresMap.items():
@@ -1881,83 +1884,6 @@ class MechanismBordaMean():
         return winners
 
 
-import numpy as np
-class MechanismRoundRobinAllocation: 
-
-    # this function is to mock the data of round robin allocation
-    def getPreferences(self):
-        preferences = np.array([["Cake", "Cookies", "Chocolate", "Honey", "Sweets"],
-                    ["Cake","Chocolate","Sweets","Cookies","Honey"],
-                    ["Sweets","Honey","Chocolate","Cookies","Cake"],])
-        return preferences
-
-    # this function is to mock the data of round robin allocation
-    def getItems(self):
-        items = np.array(["Cake", "Cookies", "Chocolate", "Honey", "Sweets"])
-        return items
-
-    '''
-    The function takes in preferences of various items for different candidates.
-    Implements the round robin algorithm to allocate the items to candidates. 
-    The candidates are selected based on their user_id
-    Sorting candidates based on user_id is done before passing it as input to this function
-    The function returns the allocation_matrix
-
-    input:
-        items: np arrays of items
-        preferences: list of preferences 
-        N: number of preferences (one preference per candidate)
-
-    output:
-        allocated_items: list of allocated items
-        allocation_matrix: N x num_items matrix, where Aij says whether ith candidate allocated item j
-    
-    '''
-    def roundRobin(self, items, preferences, N):
-        candidate = 0
-        allocated_items=[[] for i in range(N)]
-        count = 1
-        items_copied = items
-
-        # if preferences is [] or preferences is None:
-        #     print("*****Error in capturing the data******")
-        #     return 
-
-        while(items.size != 0):
-
-            # get the most preferred item for the current candidate
-            item = preferences[candidate][0]
-
-            # allocate the item to the candidate
-            allocated_items[candidate].append(item)
-
-            # Remove the allocated item from remaing items
-            items = np.delete(items, np.where(items == item))
-
-            # print("Shape: ",np.shape(items))
-            new_pref = np.empty((N, np.shape(items)[0]), dtype=object)
-
-            for i in range(N):
-                new_pref[i] = np.delete(preferences[i], np.where(preferences[i] == item))
-
-            preferences = new_pref
-
-            candidate=(candidate+1)%N
-            count+=1
-
-        # Allocation matrix
-        n_items = len(items_copied)
-        allocation_matrix = [[0 for j in range(n_items)] for i in range(N)]
-        for i in range(len(allocated_items)):
-            for j in range(len(allocated_items[i])):
-                index = np.where(items_copied == allocated_items[i][j])[0][0]
-                allocation_matrix[i][index] = 1
-
-        # allocation_matrix.insert(0, items_copied.tolist())
-        # print(*allocation_matrix)
-            
-        return allocated_items, allocation_matrix
-
 class Node:
     def __init__(self, value=None):
         self.value = value
@@ -1968,3 +1894,128 @@ class Node:
     def getvalue(self):
         return self.value
 
+# *----------------------------------------- Allocation Algorithms -----------------------------------------*
+
+
+'''
+author: Mert Can Vural
+
+this part defines the allocation algorithms
+'''
+
+import math
+import numpy as np
+import networkx as nx
+from copy import deepcopy
+from gurobipy import Model, GRB, quicksum
+
+import numpy as np
+
+class MechanismAllocation:
+    """
+    the parent class for all resource-allocation mechanisms in opra.
+    this class should not be instantiated directly. all child classes
+    are expected to implement the method `allocate(...)`.
+
+    :ivar bool something: (if needed) add any shared attributes here.
+    """
+
+    def allocate(self, valuations, **kwargs):
+        """
+        returns an allocation (e.g. an n x m binary matrix) of items to agents,
+        given a matrix of valuations or preferences.
+
+        :param valuations: a 2d array-like of shape (n, m), where valuations[j][i]
+                           is agent j's value or rank for item i.
+        :param kwargs: additional optional parameters for certain algorithms.
+        :return: (allocated_items, allocation_matrix) or similar structure.
+        """
+        raise NotImplementedError("Subclasses must override allocate().")
+
+
+class MechanismRoundRobinAllocation(MechanismAllocation):
+    
+    """
+    this class implements a round-robin mechanism by overriding allocate(...).
+    each agent picks its top remaining item in a cyclic order until none remain.
+    """
+
+    def allocate(self, valuations, **kwargs):
+        """
+        performs round-robin allocation given a preference or valuation matrix.
+
+        :param valuations: an n x m array-like, where valuations[j] is
+                           agent j's row, sorted in descending order if
+                           we want to interpret them as 'preferred first'.
+                           for ordinal usage, each row might be a list
+                           of item labels from most to least preferred.
+        :param kwargs: optional extra arguments (e.g. 'items' if needed).
+        :return: a tuple (allocated_items, allocation_matrix) where
+                 allocated_items is a list of length n (each entry is
+                 the list of items allocated to that agent),
+                 and allocation_matrix is an n x m binary matrix.
+        """
+
+        # convert valuations to a numpy array of objects
+        valuations = np.array(valuations, dtype=object)
+        n, m = valuations.shape
+
+        # if user provided 'items', use them; otherwise assume the first row is item labels
+        reference_items = kwargs.get('items', valuations[0])
+
+        # track which items remain
+        remaining_items = np.array(reference_items, dtype=object)
+
+        # allocated_items[j] will store the items agent j receives
+        allocated_items = [[] for _ in range(n)]
+
+        # agent_index goes 0..n-1 repeatedly
+        agent_index = 0
+
+        # keep picking until no items remain
+        while remaining_items.size > 0:
+            # agent's topmost choice is valuations[agent_index][0]
+            top_item = valuations[agent_index][0]
+            # allocate that item
+            allocated_items[agent_index].append(top_item)
+
+            # remove it from the global pool
+            remaining_items = np.delete(
+                remaining_items,
+                np.where(remaining_items == top_item)
+            )
+
+            # remove it from each agent's row
+            new_valuations = np.empty((n, remaining_items.size), dtype=object)
+            for j in range(n):
+                new_valuations[j] = np.delete(
+                    valuations[j],
+                    np.where(valuations[j] == top_item)
+                )
+            valuations = new_valuations
+
+            # next agent
+            agent_index = (agent_index + 1) % n
+
+        # build n x m binary matrix
+        allocation_matrix = [[0 for _ in range(m)] for _ in range(n)]
+        for j in range(n):
+            for item in allocated_items[j]:
+                col_idx = np.where(reference_items == item)[0][0]
+                allocation_matrix[j][col_idx] = 1
+
+        return allocated_items, allocation_matrix
+
+class MechanismMaximumNashWelfare(MechanismAllocation):
+    """
+    this class implements a maximum nash welfare mechanism by overriding allocate(...).
+    each agent picks its top remaining item in a cyclic order until none remain.
+    """
+    
+    def allocate(self, valuations, **kwargs):
+        """
+        performs maximum nash welfare allocation given a preference or valuation matrix.
+        
+        """
+    
+    

@@ -1330,7 +1330,7 @@ class AllocateResultsView(views.generic.DetailView):
         N,M = len(preferences),len(preferences[0])
         
         # call roundRobin mechanism
-        allocated_items, allocation_matrix = round_robin.roundRobin(np.array(items), np.array(preferences), N)
+        allocated_items, allocation_matrix = round_robin.allocate(valuations=np.array(preferences), items=np.array(items), n=N)
 
         # tansform the allocated_items
         allocated_items_transformed = self.transformAllocatedItems(allocated_items)
