@@ -18,6 +18,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from queue import PriorityQueue
 
+from .allocation_utils import *
 from gurobipy import Model, GRB, quicksum
 from collections import deque
 
@@ -1895,14 +1896,6 @@ class Node:
         return self.value
 
 # *----------------------------------------- Allocation Algorithms -----------------------------------------*
-
-
-'''
-author: Mert Can Vural
-
-this part defines the allocation algorithms
-'''
-
 import math
 import numpy as np
 import networkx as nx
@@ -1910,112 +1903,64 @@ from copy import deepcopy
 from gurobipy import Model, GRB, quicksum
 
 import numpy as np
-
 class MechanismAllocation:
     """
-    the parent class for all resource-allocation mechanisms in opra.
-    this class should not be instantiated directly. all child classes
-    are expected to implement the method `allocate(...)`.
-
-    :ivar bool something: (if needed) add any shared attributes here.
+    parent class for all resource-allocation mechanisms in opra.
     """
 
     def allocate(self, valuations, **kwargs):
         """
-        returns an allocation (e.g. an n x m binary matrix) of items to agents,
-        given a matrix of valuations or preferences.
-
-        :param valuations: a 2d array-like of shape (n, m), where valuations[j][i]
-                           is agent j's value or rank for item i.
-        :param kwargs: additional optional parameters for certain algorithms.
-        :return: (allocated_items, allocation_matrix) or similar structure.
+        returns an allocation for the given valuations.
+        must be overridden by child classes.
         """
-        raise NotImplementedError("Subclasses must override allocate().")
+        raise NotImplementedError("subclasses must override allocate().")
 
 
 class MechanismRoundRobinAllocation(MechanismAllocation):
-    
     """
-    this class implements a round-robin mechanism by overriding allocate(...).
-    each agent picks its top remaining item in a cyclic order until none remain.
+    implements round-robin by overriding allocate(...).
+    each agent picks its top remaining item in a cyclic order.
     """
 
     def allocate(self, valuations, **kwargs):
         """
-        performs round-robin allocation given a preference or valuation matrix.
-
-        :param valuations: an n x m array-like, where valuations[j] is
-                           agent j's row, sorted in descending order if
-                           we want to interpret them as 'preferred first'.
-                           for ordinal usage, each row might be a list
-                           of item labels from most to least preferred.
-        :param kwargs: optional extra arguments (e.g. 'items' if needed).
-        :return: a tuple (allocated_items, allocation_matrix) where
-                 allocated_items is a list of length n (each entry is
-                 the list of items allocated to that agent),
-                 and allocation_matrix is an n x m binary matrix.
+        performs round-robin and returns (status, w, U, A, allocated_items).
+        status: always True here (no solver).
+        w, U: None (not computed).
+        A: n x m binary matrix.
+        allocated_items: list of each agent’s picks.
         """
-
-        # convert valuations to a numpy array of objects
         valuations = np.array(valuations, dtype=object)
-        n, m = valuations.shape
+        items = kwargs.get('items', None)
 
-        # if user provided 'items', use them; otherwise assume the first row is item labels
-        reference_items = kwargs.get('items', valuations[0])
+        allocated_items, allocation_matrix = round_robin(valuations, items=items)
+        status = True
+        w = None
+        U = None
+        A = allocation_matrix
+        return status, w, U, A, allocated_items
 
-        # track which items remain
-        remaining_items = np.array(reference_items, dtype=object)
-
-        # allocated_items[j] will store the items agent j receives
-        allocated_items = [[] for _ in range(n)]
-
-        # agent_index goes 0..n-1 repeatedly
-        agent_index = 0
-
-        # keep picking until no items remain
-        while remaining_items.size > 0:
-            # agent's topmost choice is valuations[agent_index][0]
-            top_item = valuations[agent_index][0]
-            # allocate that item
-            allocated_items[agent_index].append(top_item)
-
-            # remove it from the global pool
-            remaining_items = np.delete(
-                remaining_items,
-                np.where(remaining_items == top_item)
-            )
-
-            # remove it from each agent's row
-            new_valuations = np.empty((n, remaining_items.size), dtype=object)
-            for j in range(n):
-                new_valuations[j] = np.delete(
-                    valuations[j],
-                    np.where(valuations[j] == top_item)
-                )
-            valuations = new_valuations
-
-            # next agent
-            agent_index = (agent_index + 1) % n
-
-        # build n x m binary matrix
-        allocation_matrix = [[0 for _ in range(m)] for _ in range(n)]
-        for j in range(n):
-            for item in allocated_items[j]:
-                col_idx = np.where(reference_items == item)[0][0]
-                allocation_matrix[j][col_idx] = 1
-
-        return allocated_items, allocation_matrix
 
 class MechanismMaximumNashWelfare(MechanismAllocation):
     """
-    this class implements a maximum nash welfare mechanism by overriding allocate(...).
-    each agent picks its top remaining item in a cyclic order until none remain.
+    implements maximum nash welfare using a solver pipeline.
     """
-    
+
     def allocate(self, valuations, **kwargs):
         """
-        performs maximum nash welfare allocation given a preference or valuation matrix.
-        
+        returns (status, w, U, A).
+        status: True/False from solver.
+        w: nash product.
+        U: utilities list.
+        A: n x m binary matrix.
         """
-    
-    
+        V = np.array(valuations, dtype=float)
+        B = kwargs.get("B", config.B)
+
+        Vval, valued = get_valued_instance(V)
+        Vhalls, matched = get_halls_instance(Vval)
+        status, w, U, A_halls = mnw_solve(Vhalls, B=B)
+
+        A_hat = recover_from_halls(A_halls, Vval, matched)
+        A = recover_from_valued(A_hat, V, valued)
+        return status, w, U, A
