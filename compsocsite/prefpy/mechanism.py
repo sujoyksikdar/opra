@@ -1964,3 +1964,75 @@ class MechanismMaximumNashWelfare(MechanismAllocation):
         A_hat = recover_from_halls(A_halls, Vval, matched)
         A = recover_from_valued(A_hat, V, valued)
         return status, w, U, A
+
+
+class MechanismMarketAllocation(MechanismAllocation):
+    """
+    implements a market-based ef1 + po allocation mechanism.
+    uses a pipeline similar to the fairdivision repository:
+      1) restrict to valued columns,
+      2) further restrict via halls instance,
+      3) solve the reduced problem with market_solve,
+      4) recover full solution.
+    """
+
+    def allocate(self, valuations, **kwargs):
+        """
+        computes an ef1 + po allocation using market-based methods.
+        returns (status, w, U, A, prices).
+
+        status: bool from the solver
+        w, U: None (we do not compute nash welfare or agent utilities here)
+        A: n x m allocation matrix (0/1)
+        prices: length-m array of item prices
+        """
+        # convert valuations to float array
+        V = np.array(valuations, dtype=float)
+
+        # step 1: restrict to valued columns
+        Vval, valued = get_valued_instance(V)
+
+        # step 2: restrict via halls instance
+        Vhalls, matched = get_halls_instance(Vval)
+
+        # step 3: run market_solve on the reduced instance
+        status, X_halls, prices = market_solve(Vhalls)
+
+        # step 4: recover from halls to valued
+        X_hat = recover_from_halls(X_halls, Vval, matched)
+
+        # step 5: recover from valued to the full set of items
+        A = recover_from_valued(X_hat, V, valued)
+
+        # unify return format
+        w = None
+        U = None
+        return status, w, U, A, prices
+
+
+
+class MechanismLeximinAllocation(MechanismAllocation):
+    """
+    implements a leximin allocation using an ilp pipeline.
+    """
+
+    def allocate(self, valuations, **kwargs):
+        # convert to float array
+        V = np.array(valuations, dtype=float)
+
+        # optional B, chores
+        B = kwargs.get("B", 1000)
+        chores = kwargs.get("chores", False)
+
+        # 1) filter out unvalued columns
+        Vval, valued = get_valued_instance(V)
+        # 2) restrict to hall's instance
+        Vhalls, matched = get_halls_instance(Vval)
+        # 3) call the leximin solver
+        status, sw, U, A_halls = leximin_solve(Vhalls, B=B, chores=chores)
+        # 4) recover from halls
+        A_hat = recover_from_halls(A_halls, Vval, matched)
+        # 5) recover from valued
+        A = recover_from_valued(A_hat, V, valued)
+
+        return status, sw, U, A

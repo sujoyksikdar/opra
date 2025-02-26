@@ -282,3 +282,371 @@ def compute_utilities(V, A):
         for k in range(n):
             U[j, k] = np.dot(V[j, :], A[k, :])
     return U
+
+
+
+# ---------------------------------- Market helpers ----------------------------------
+
+import numpy as np
+import networkx as nx
+from copy import deepcopy
+from gurobipy import GRB
+
+def round_instance(V):
+    """
+    rounds valuations for numeric stability.
+    returns (Vprime, eps).
+    """
+    (n, m) = V.shape
+    vmax = np.max(V)
+    eps = 1.0 / (6.0 * (m**3) * vmax)
+    Vprime = np.zeros((n, m))
+    for j in range(n):
+        for i in range(m):
+            if V[j, i] > 0:
+                Vprime[j, i] = (1 + eps) ** np.ceil(np.log(V[j, i]) / np.log(1 + eps))
+    return Vprime, eps
+
+def is3epef1(X, prices, eps):
+    """
+    checks if X is 3*eps-ef1 w.r.t. prices.
+    returns True/False.
+    """
+    (n, m) = X.shape
+    spending = np.array([np.dot(prices, X[j]) for j in range(n)])
+    min_spend = np.min(spending)
+    for j in range(n):
+        # if agent j has <=1 item, no need to remove anything
+        if np.sum(X[j]) <= 1:
+            continue
+        # compute j's spend minus one item
+        possible_spends = [spending[j] - prices[i] for i in range(m) if X[j, i] > 0]
+        # if all those spends remain strictly above (1+3*eps)*min_spend => fail
+        if all(s > (1.0 + 3.0 * eps) * min_spend for s in possible_spends):
+            return False
+    return True
+
+def market_phase1(V, eps):
+    """
+    phase 1: assign each item to the agent with highest value.
+    prices = assigned value. check if 3*eps-ef1 is satisfied.
+    returns (status, X, p).
+    """
+    (n, m) = V.shape
+    X = np.zeros((n, m))
+    p = np.zeros(m)
+    for i in range(m):
+        j_star = np.argmax(V[:, i])
+        X[j_star, i] = 1
+        p[i] = V[j_star, i]
+    # check if the result is already 3*eps-ef1
+    if is3epef1(X, p, eps):
+        return True, X, p
+    return False, X, p
+
+def bpb(V, prices):
+    """
+    computes bang-per-buck for each agent/item.
+    returns a matrix bb[j,i] = V[j,i]/prices[i].
+    """
+    (n, m) = V.shape
+    BB = np.zeros((n, m))
+    for j in range(n):
+        for i in range(m):
+            BB[j, i] = V[j, i] / prices[i]
+    return BB
+
+def build_mbb_graph(V, prices):
+    """
+    builds the MBB (most-bang-per-buck) directed graph.
+    returns (G_MBB, MBB_edges, MBB_lists).
+    """
+    (n, m) = V.shape
+    BB = bpb(V, prices)
+    edges = []
+    MBB_lists = []
+    for j in range(n):
+        row = BB[j, :]
+        best_bpb = np.max(row)
+        # find items i with best bpb
+        best_items = np.where(row == best_bpb)[0]
+        MBB_lists.append(best_items)
+        for i in best_items:
+            edges.append((('a', j), ('g', i)))
+    G = nx.DiGraph()
+    agent_nodes = [('a', j) for j in range(n)]
+    item_nodes = [('g', i) for i in range(m)]
+    G.add_nodes_from(agent_nodes + item_nodes)
+    G.add_edges_from(edges)
+    return G, edges, MBB_lists
+
+def augment_mbb_graph(G_MBB, X):
+    """
+    adds edges item->agent if agent holds that item in X.
+    returns the augmented graph.
+    """
+    (n, m) = X.shape
+    new_edges = []
+    for j in range(n):
+        for i in range(m):
+            if X[j, i] > 0:
+                new_edges.append((('g', i), ('a', j)))
+    G_aug = deepcopy(G_MBB)
+    G_aug.add_edges_from(new_edges)
+    return G_aug
+
+def build_augmented_mbb_graph(V, X, prices):
+    """
+    builds the augmented MBB graph = MBB edges + item->agent from X.
+    """
+    G_MBB, _, _ = build_mbb_graph(V, prices)
+    return augment_mbb_graph(G_MBB, X)
+
+def build_hierarchy(jstar, G, X):
+    """
+    builds BFS-like layers from agent jstar in the augmented graph.
+    returns a dict H[level] = list of agents at that level.
+    """
+    (n, m) = X.shape
+    H = {l: [] for l in range(n)}
+    for k in range(n):
+        try:
+            dist = nx.shortest_path_length(G, source=('a', jstar), target=('a', k))
+            level = dist // 2
+            H[level].append(k)
+        except nx.NetworkXNoPath:
+            pass
+    return H
+
+def market_phase2(V, eps, X, prices):
+    """
+    phase 2: attempt to fix envy by swapping an item from a higher spender to jstar.
+    returns (status, next_phase, X, prices, jstar).
+    """
+    (n, m) = X.shape
+    spending = np.array([np.dot(prices, X[j]) for j in range(n)])
+    jstar = np.argmin(spending)
+    G_aug = build_augmented_mbb_graph(V, X, prices)
+    H = build_hierarchy(jstar, G_aug, X)
+    level = 1
+    while level in H and len(H[level]) > 0 and not is3epef1(X, prices, eps):
+        for k in H[level]:
+            # all shortest paths from jstar->k
+            paths = nx.all_shortest_paths(G_aug, source=('a', jstar), target=('a', k))
+            for path in paths:
+                # path example: a->g->a->g->a
+                # last item is path[-2] if that is a 'g'
+                if len(path) < 3:
+                    continue
+                if path[-2][0] != 'g':
+                    continue
+                i = path[-2][1]   # item index
+                # agent who had it is path[-3]
+                if path[-3][0] != 'a':
+                    continue
+                holder = path[-3][1]
+                # check if giving item i from k to jstar helps
+                if spending[k] - prices[i] > (1 + eps)*spending[jstar]:
+                    # do the reallocation
+                    X[k, i] -= 1
+                    X[holder, i] += 1
+                    return False, 2, X, prices, jstar
+        level += 1
+
+    if is3epef1(X, prices, eps):
+        return True, 0, X, prices, jstar
+    return False, 3, X, prices, jstar
+
+def market_phase3(V, eps, X, prices, jstar):
+    """
+    phase 3: scale prices of certain items in jstar's hierarchy to reduce envy.
+    returns (status, next_phase, X, prices).
+    """
+    (n, m) = X.shape
+    spending = np.array([np.dot(prices, X[j]) for j in range(n)])
+    G_aug = build_augmented_mbb_graph(V, X, prices)
+    H = build_hierarchy(jstar, G_aug, X)
+    # gather agents/items in jstar's 'hierarchy'
+    H_agents = []
+    for lvl in H:
+        H_agents.extend(H[lvl])
+    H_items = []
+    for j in H_agents:
+        for i in range(m):
+            if X[j, i] > 0:
+                H_items.append(i)
+    other_items = [i for i in range(m) if i not in H_items]
+    # compute scale factors a1, a2, a3
+    BB = bpb(V, prices)
+    mbb = [np.max(BB[j]) for j in range(n)]
+    # a1: min ratio of bang-per-buck if agent tries an outside item
+    candidates = []
+    for j in H_agents:
+        for i in other_items:
+            if V[j, i] > 0:
+                ratio = mbb[j] / (V[j, i]/prices[i])
+                candidates.append(ratio)
+    a1 = min(candidates) if candidates else 0
+    # a2: scale so jstar's spending can catch an outside agent
+    a2 = np.inf
+    if spending[jstar] > 0:
+        outsiders = [x for x in range(n) if x not in H_agents]
+        if outsiders:
+            leftover = []
+            for k in outsiders:
+                # best item to remove from k
+                remove_vals = [prices[i] for i in range(m) if X[k, i] > 0]
+                if remove_vals:
+                    leftover.append(spending[k] - max(remove_vals))
+            if leftover:
+                a2 = max(leftover)/spending[jstar]
+    # a3: scale to surpass some outside agent
+    a3 = np.inf
+    if spending[jstar] > 0:
+        outsiders = [x for x in range(n) if x not in H_agents]
+        if outsiders:
+            jhat = outsiders[np.argmin(spending[outs] for outs in outsiders)]
+            ratio = spending[jhat]/spending[jstar]
+            s = 0
+            while (1+eps)**s <= ratio:
+                s += 1
+            a3 = (1+eps)**s
+    # pick a
+    a = min(a1, a2, a3)
+    # scale prices of items in H_items
+    for i in H_items:
+        prices[i] *= a
+    if a == a2:
+        return True, 0, X, prices
+    return False, 2, X, prices
+
+
+
+# ---------------------------------- Leximin helpers ----------------------------------
+
+import numpy as np
+from copy import deepcopy
+from gurobipy import Model, GRB, quicksum
+
+def leximin_solve(V, B=1000, chores=False):
+    """
+    solves a leximin allocation problem on valuations V.
+    V: n x m float array of valuations.
+    B: bounding parameter (e.g. config.B).
+    chores: if True, valuations are for chores (<=0). otherwise, goods.
+
+    returns (status, sw, U, A):
+      status : bool (True if gurobi found an optimal solution)
+      sw     : sum of utilities in the final allocation
+      U      : list of each agent's utility
+      A      : n x m binary allocation matrix
+    """
+    (n, m) = V.shape
+    b_levels = []
+    A = np.zeros((n, m))
+    U = [0]*n
+    status = False
+
+    # we iterate from k=1..n, gradually lifting the minimum utility
+    for k in range(1, n+1):
+        model = Model(f'leximin_{k}')
+        model.setParam('OutputFlag', 0)
+        model.setParam('TimeLimit', 300)
+
+        # if k=1, bvar can range from -B..B for chores or 0..B for goods
+        # otherwise, bvar must be >= the previously found bound
+        if k == 1:
+            lower_bound = -1 * int(chores)*B
+        else:
+            lower_bound = b_levels[k-2]
+
+        bvar = model.addVar(lb=lower_bound,
+                            ub=(1 - int(chores)) * B,
+                            vtype=GRB.CONTINUOUS,
+                            name='b')
+
+        # xvars[j,i] = 1 if item i is allocated to agent j
+        xvars = {}
+        for j in range(n):
+            for i in range(m):
+                xvars[j, i] = model.addVar(lb=0, ub=1, vtype=GRB.BINARY,
+                                           name=f'x_{j}_{i}')
+
+        # uvars[j] = total utility of agent j
+        uvars = {}
+        for j in range(n):
+            if chores:
+                lb_j = -B
+                ub_j = 0
+            else:
+                lb_j = 0
+                ub_j = B
+            uvars[j] = model.addVar(lb=lb_j, ub=ub_j,
+                                    vtype=GRB.CONTINUOUS,
+                                    name=f'u_{j}')
+
+        # yvars[j,l] indicates whether agent j's utility >= bvar at iteration l
+        # zvars[l] counts how many agents have utility >= bvar at iteration l
+        yvars = {}
+        zvars = {}
+        for lvl in range(k):
+            zvars[lvl] = model.addVar(lb=0, ub=n, vtype=GRB.INTEGER,
+                                      name=f'z_{lvl}')
+            for j in range(n):
+                yvars[j, lvl] = model.addVar(lb=0, ub=1, vtype=GRB.BINARY,
+                                             name=f'y_{j}_{lvl}')
+
+        # each item allocated exactly once
+        for i in range(m):
+            model.addConstr(quicksum(xvars[j, i] for j in range(n)) == 1)
+
+        # link uvars[j] to actual valuations
+        for j in range(n):
+            model.addConstr(uvars[j] == quicksum(V[j, i]*xvars[j, i]
+                                                for i in range(m)))
+
+        # ensure at least k-l+1 agents are >= bvar at level l
+        # if l < k-1, we fix bvar to previously found bound b_levels[l]
+        for lvl in range(k-1):
+            bound_l = b_levels[lvl]
+            for j in range(n):
+                # yvars[j,lvl] = 1 if uvars[j] >= bound_l
+                model.addConstr(yvars[j, lvl] >= (1 + uvars[j] - bound_l)/B)
+                model.addConstr(yvars[j, lvl] <= (B + uvars[j] - bound_l)/B)
+            model.addConstr(zvars[lvl] == quicksum(yvars[j, lvl]
+                                                   for j in range(n)))
+            model.addConstr(zvars[lvl] >= n - lvl)
+
+        # for the final level k-1, we compare with bvar
+        for j in range(n):
+            model.addConstr(yvars[j, k-1] >= (1 + uvars[j] - bvar)/B)
+            model.addConstr(yvars[j, k-1] <= (B + uvars[j] - bvar)/B)
+        model.addConstr(zvars[k-1] == quicksum(yvars[j, k-1]
+                                               for j in range(n)))
+        model.addConstr(zvars[k-1] >= n - (k-1))
+
+        # objective: maximize bvar
+        model.setObjective(bvar, GRB.MAXIMIZE)
+        model.optimize()
+
+        if model.Status != GRB.OPTIMAL:
+            return False, None, None, None  # not feasible
+
+        # store the found bound
+        b_levels.append(bvar.X)
+
+        # build final allocation
+        A_tmp = np.zeros((n, m))
+        for j in range(n):
+            for i in range(m):
+                A_tmp[j, i] = round(xvars[j, i].X)
+        A_tmp = A_tmp.astype(int)
+
+        # we keep going until k=n, but store the final
+        A = A_tmp
+        U = [float(np.dot(V[j], A[j])) for j in range(n)]
+
+        status = True
+
+    sw = sum(U)
+    return status, sw, U, A
