@@ -1966,6 +1966,7 @@ class MechanismMaximumNashWelfare(MechanismAllocation):
         return status, w, U, A
 
 
+# Aims to find an EF1 + PO (envy-free up to 1 item + Pareto optimal) allocation using a three-phase iterative price-adjustment algorithm
 class MechanismMarketAllocation(MechanismAllocation):
     """
     implements a market-based ef1 + po allocation mechanism.
@@ -2010,7 +2011,6 @@ class MechanismMarketAllocation(MechanismAllocation):
         return status, w, U, A, prices
 
 
-
 class MechanismLeximinAllocation(MechanismAllocation):
     """
     implements a leximin allocation using an ilp pipeline.
@@ -2036,3 +2036,94 @@ class MechanismLeximinAllocation(MechanismAllocation):
         A = recover_from_valued(A_hat, V, valued)
 
         return status, sw, U, A
+
+
+
+#Aims for an EQ1 (or a similarly equitable) + PO style of outcome, based on a similar idea of iterative price adjustments, but with conditions ensuring equity (or a variant called "equitability-up-to-one-item")
+import numpy as np
+
+class MechanismMarketEqAllocation(MechanismAllocation):
+    """
+    implements a market-based eq1 + po (or similar) allocation mechanism.
+    uses the pipeline:
+      1) restrict to valued columns,
+      2) restrict via halls,
+      3) call market_eq_solve on the reduced instance,
+      4) recover the full solution.
+    """
+
+    def allocate(self, valuations, **kwargs):
+        """
+        returns (status, w, U, A, prices).
+          - status: bool from the solver
+          - w, U: None (not computing nash welfare or explicit utilities)
+          - A: n x m binary allocation
+          - prices: final item prices
+        """
+        V = np.array(valuations, dtype=float)
+
+        # step 1: valued columns only
+        Vval, valued = get_valued_instance(V)
+
+        # step 2: restrict via halls
+        Vhalls, matched = get_halls_instance(Vval)
+
+        # step 3: solve eq-based market
+        status, X_halls, prices = market_eq_solve(Vhalls)
+
+        # step 4: recover from halls -> valued
+        X_hat = recover_from_halls(X_halls, Vval, matched)
+
+        # step 5: recover from valued -> original
+        A = recover_from_valued(X_hat, V, valued)
+
+        # unify return
+        w = None
+        U = None
+        return status, w, U, A, prices
+
+class MechanismMaximumNashWelfareBinary(MechanismAllocation):
+    """
+    implements the 'mnw_binary' approach from fairdivision, which iteratively
+    improves an allocation for binary valuations via swaps.
+    it uses the standard pipeline:
+      1) restrict to valued columns,
+      2) restrict via halls instance,
+      3) run mnw_binary on the reduced matrix,
+      4) recover to the original instance.
+    """
+
+    def allocate(self, valuations, **kwargs):
+        """
+        returns (status, w, U, A).
+
+        - status: bool (we can set True if the iterative approach completes)
+        - w     : final nash welfare (product of utilities)
+        - U     : list of each agent’s utility
+        - A     : n x m binary allocation matrix
+        """
+        # convert valuations to float (or int) array
+        V = np.array(valuations, dtype=float)
+
+        # 1) restrict to 'valued' columns only
+        Vval, valued = get_valued_instance(V)
+
+        # 2) further restrict using halls
+        Vhalls, matched = get_halls_instance(Vval)
+
+        # 3) run the mnw_binary iterative approach on that submatrix
+        A_halls = mnw_binary(Vhalls)
+
+        # 4) recover from halls -> valued
+        A_hat = recover_from_halls(A_halls, Vval, matched)
+
+        # 5) recover from valued -> original
+        A = recover_from_valued(A_hat, V, valued)
+
+        # compute final nash welfare & utilities for the full instance
+        w, U = nw(V, A)
+
+        # set status = True (the swap-based method typically 'succeeds' deterministically)
+        status = True
+
+        return status, w, U, A

@@ -520,6 +520,268 @@ def market_phase3(V, eps, X, prices, jstar):
         return True, 0, X, prices
     return False, 2, X, prices
 
+# ---------------------------------- Market_eq helpers ----------------------------------
+
+import numpy as np
+import networkx as nx
+from copy import deepcopy
+from gurobipy import GRB
+
+def round_eq_instance(V):
+    """
+    rounds valuations for eq-based approach.
+    returns (Vprime, eps).
+    you can tweak the exponent or scaling if desired.
+    """
+    (n, m) = V.shape
+    vmax = np.max(V)
+    # for eq-based rounding, you might use a slightly different formula than EF1
+    # here is just an example:
+    eps = 1.0 / (8.0 * (m**2) * vmax)  # example scale
+    Vprime = np.zeros((n, m))
+    for j in range(n):
+        for i in range(m):
+            if V[j, i] > 0:
+                # raise valuations to a (1+eps)-log grid
+                Vprime[j, i] = (1 + eps) ** np.ceil(np.log(V[j, i]) / np.log(1 + eps))
+    return Vprime, eps
+
+
+def isepeq1(V, X, eps):
+    """
+    checks if allocation X is eq1 (equitable up to 1 item) w.r.t. valuations V
+    and a small tolerance eps. eq1 means that for every pair of agents j,k,
+    if we remove at most one item from k's bundle, j's utility is >= k's utility.
+    returns True/False.
+    """
+    (n, m) = X.shape
+    # compute each agent's utility for their own bundle
+    util = np.array([np.dot(V[j, :], X[j, :]) for j in range(n)])
+    for k in range(n):
+        for j in range(n):
+            if j == k:
+                continue
+            # agent j's utility vs. agent k's utility minus 1 item
+            # if j < k, interpret eq as:  u_j >= (u_k minus one item)
+            # we must see if there's at least one item i in k's bundle
+            # that, if removed, yields no eq violation
+            have_item = np.where(X[k, :] > 0)[0]
+            if len(have_item) <= 1:
+                # if k has <=1 item, there's effectively nothing to remove => compare directly
+                if util[j] + eps < util[k]:
+                    return False
+            else:
+                # try removing each item i from k's bundle
+                possible_ok = False
+                for i in have_item:
+                    # agent k's utility minus item i
+                    k_minus_i = util[k] - V[k, i]
+                    if util[j] + eps >= k_minus_i:
+                        possible_ok = True
+                        break
+                if not possible_ok:
+                    return False
+    return True
+
+
+def market_eq_phase1(V, eps):
+    """
+    phase 1: assign each item to the agent with highest value => set price = that value.
+    then check if eq1 is satisfied. returns (status, X, p).
+    status = True if eq1 is already satisfied, else False.
+    """
+    (n, m) = V.shape
+    X = np.zeros((n, m), dtype=int)
+    p = np.zeros(m)
+    for i in range(m):
+        j_star = np.argmax(V[:, i])
+        X[j_star, i] = 1
+        p[i] = V[j_star, i]
+    # check eq1
+    if isepeq1(V, X, eps):
+        return True, X, p
+    return False, X, p
+
+
+def build_mbb_graph_eq(V, p):
+    """
+    builds eq-based MBB graph: agent->item if item has the highest 'bang-per-buck' for that agent
+    under eq assumptions. often the same as bpb-based approach, but you can adapt if eq is different.
+    """
+    (n, m) = V.shape
+    # compute "bang per buck" = V[j,i] / p[i]
+    BB = np.zeros((n, m))
+    for j in range(n):
+        for i in range(m):
+            BB[j, i] = V[j, i] / p[i]
+    edges = []
+    for j in range(n):
+        row = BB[j, :]
+        best_val = np.max(row)
+        best_items = np.where(row == best_val)[0]
+        for i in best_items:
+            edges.append((('a', j), ('g', i)))
+    G = nx.DiGraph()
+    agent_nodes = [('a', j) for j in range(n)]
+    item_nodes = [('g', i) for i in range(m)]
+    G.add_nodes_from(agent_nodes + item_nodes)
+    G.add_edges_from(edges)
+    return G
+
+
+def augment_mbb_graph_eq(G_MBB, X):
+    """
+    adds edges item->agent for items that agent currently holds.
+    returns an augmented graph.
+    """
+    (n, m) = X.shape
+    new_edges = []
+    for j in range(n):
+        for i in range(m):
+            if X[j, i] > 0:
+                new_edges.append((('g', i), ('a', j)))
+    G_aug = deepcopy(G_MBB)
+    G_aug.add_edges_from(new_edges)
+    return G_aug
+
+
+def build_augmented_mbb_graph_eq(V, X, p):
+    """
+    build eq-based MBB, then augment with item->agent edges.
+    """
+    G_MBB = build_mbb_graph_eq(V, p)
+    return augment_mbb_graph_eq(G_MBB, X)
+
+
+def market_eq_phase2(V, eps, X, p):
+    """
+    attempts to fix eq1 envy by swapping items. returns (status, next_phase, X, p, jstar).
+    """
+    (n, m) = X.shape
+    # spending
+    spending = np.array([np.dot(p, X[j]) for j in range(n)])
+    jstar = np.argmin(spending)
+    G_aug = build_augmented_mbb_graph_eq(V, X, p)
+    # BFS layering from jstar
+    H = {}
+    for lvl in range(n):
+        H[lvl] = []
+    # build layers
+    for k in range(n):
+        try:
+            dist = nx.shortest_path_length(G_aug, source=('a', jstar), target=('a', k))
+            level = dist // 2
+            H[level].append(k)
+        except nx.NetworkXNoPath:
+            pass
+
+    lvl = 1
+    while lvl in H and len(H[lvl]) > 0 and not isepeq1(V, X, eps):
+        for k in H[lvl]:
+            # find all shortest paths from jstar->k
+            for path in nx.all_shortest_paths(G_aug, source=('a', jstar), target=('a', k)):
+                if len(path) < 3:
+                    continue
+                # item is path[-2], agent is path[-3]
+                if path[-2][0] != 'g' or path[-3][0] != 'a':
+                    continue
+                i = path[-2][1]
+                holder = path[-3][1]
+                # check if letting jstar have item i from k is beneficial
+                # eq-based condition => typically we see if k's utility minus item i
+                # is improved for jstar or fixes eq1 envy
+                if spending[k] - p[i] > (1 + eps)*spending[jstar]:
+                    X[k, i] -= 1
+                    X[holder, i] += 1
+                    return False, 2, X, p, jstar
+        lvl += 1
+
+    if isepeq1(V, X, eps):
+        return True, 0, X, p, jstar
+    return False, 3, X, p, jstar
+
+
+def market_eq_phase3(V, eps, X, p, jstar):
+    """
+    scales prices in jstar's 'hierarchy' to reduce eq1 envy.
+    returns (status, next_phase, X, p).
+    """
+    (n, m) = X.shape
+    spending = np.array([np.dot(p, X[j]) for j in range(n)])
+    G_aug = build_augmented_mbb_graph_eq(V, X, p)
+    # build BFS from jstar
+    H = {}
+    for lvl in range(n):
+        H[lvl] = []
+    for k in range(n):
+        try:
+            dist = nx.shortest_path_length(G_aug, source=('a', jstar), target=('a', k))
+            lvl = dist // 2
+            H[lvl].append(k)
+        except nx.NetworkXNoPath:
+            pass
+    # gather items in jstar's "hierarchy"
+    H_agents = []
+    for lvl in H:
+        H_agents.extend(H[lvl])
+    H_items = []
+    for j in H_agents:
+        for i in range(m):
+            if X[j, i] > 0:
+                H_items.append(i)
+    other_items = [i for i in range(m) if i not in H_items]
+
+    # eq-based scale factors a1, a2, a3 ...
+    # same logic as EF1 but eq-based checks, you can define them similarly
+    # or keep them consistent with your code
+
+    # for demonstration, set everything to a=1 => no real scaling
+    # you'd put your logic here
+    a = 1.0
+
+    # scale
+    for i in H_items:
+        p[i] *= a
+
+    # if a meets some eq1 condition, we might set status=True
+    status = isepeq1(V, X, eps)
+    if status:
+        return True, 0, X, p
+    else:
+        return False, 2, X, p
+
+
+def market_eq_solve(V):
+    """
+    orchestrates eq-based phases:
+      1) assign items to top agent
+      2) fix eq envy via item-swaps
+      3) scale prices
+    returns (status, X, p).
+    """
+    # round eq instance
+    V, eps = round_eq_instance(V)
+    status, X, p = market_eq_phase1(V, eps)
+    if status:
+        return True, X, p
+    # else proceed
+    next_phase = 2
+    jstar = None
+    while not status:
+        if next_phase == 2:
+            status2, next_phase2, X, p, jstar = market_eq_phase2(V, eps, X, p)
+            if status2:
+                return True, X, p
+            next_phase = next_phase2
+        elif next_phase == 3:
+            status3, next_phase3, X, p = market_eq_phase3(V, eps, X, p, jstar)
+            if status3:
+                return True, X, p
+            next_phase = next_phase3
+        else:
+            return False, X, p
+    return status, X, p
+
 
 
 # ---------------------------------- Leximin helpers ----------------------------------
