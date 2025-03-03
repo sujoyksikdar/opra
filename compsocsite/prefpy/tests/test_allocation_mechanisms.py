@@ -134,7 +134,7 @@ class TestRoundRobinAllocation(TestAllocationMechanismsBase):
 
 
 # ------------------------------------------------------------------------
-#  maximum nash welfare (mnw) allocation tests (skeleton)
+#  maximum nash welfare (mnw) allocation tests
 # ------------------------------------------------------------------------
 
 class TestMaximumNashWelfare(TestAllocationMechanismsBase):
@@ -148,7 +148,53 @@ class TestMaximumNashWelfare(TestAllocationMechanismsBase):
 
     def test_mnw_basic(self):
         """ test if mnw mechanism runs successfully. """
-        pass
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_alloc.allocate(V)
+            self.assertTrue(result.status)
+
+            A = result.A
+            self.check_allocation_validity(V, A)
+
+            # Compute Nash Welfare
+            computed_nw = np.prod([np.sum(A[j] * V[j]) for j in range(V.shape[0])])
+
+            print("\n" + "=" * 70)
+            print(f"MNW BASIC TEST ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"Nash Welfare: {result.w} (Computed: {computed_nw})")
+            print("Utilities:", result.U, "\n")
+
+            self.assertEqual(result.w, computed_nw, "Incorrect Nash Welfare Calculation!")
+
+    def test_mnw_properties(self):
+        """ check which properties mnw satisfies. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_alloc.allocate(V)
+            self.assertTrue(result.status)
+
+            A = result.A
+
+            # Evaluate properties dynamically
+            ef1_flag = is_ef1(V, A)
+            efx_flag = is_efx(V, A)
+            eq_flag = is_eq(V, A)
+            po_flag = is_po(V, A)
+
+            print("\n" + "=" * 70)
+            print(f"MNW PROPERTY CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EF1: {ef1_flag}")
+            print(f"EFX: {efx_flag}")
+            print(f"EQ: {eq_flag}")
+            print(f"PO: {po_flag} \n")
+
+            # Assert PO should always hold for MNW
+            self.assertTrue(po_flag, "Expected MNW to always satisfy PO")
+
 
 
 # ------------------------------------------------------------------------
