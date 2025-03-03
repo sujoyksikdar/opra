@@ -183,7 +183,7 @@ def mnw_solve(V):
     for j in range(n):
         for k in range(1, B_DEFAULT):
             model.addConstr(wvars[j] <= np.log(k) + (np.log(k+1) - np.log(k)) *
-                            (quicksum(V[j, i] * xvars[j, i] for i in range(m)]) - k))
+                            (quicksum(V[j, i] * xvars[j, i] for i in range(m)) - k))
 
     # maximize Nash welfare
     model.setObjective(quicksum(wvars[j] for j in range(n)), GRB.MAXIMIZE)
