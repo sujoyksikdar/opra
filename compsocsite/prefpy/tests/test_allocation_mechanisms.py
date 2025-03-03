@@ -65,7 +65,7 @@ class TestAllocationMechanismsBase(TestCase):
 
 
 # ------------------------------------------------------------------------
-#  round robin allocation tests (skeleton)
+#  round robin allocation tests
 # ------------------------------------------------------------------------
 
 class TestRoundRobinAllocation(TestAllocationMechanismsBase):
@@ -79,7 +79,58 @@ class TestRoundRobinAllocation(TestAllocationMechanismsBase):
 
     def test_round_robin_basic(self):
         """ test if round robin mechanism runs successfully. """
-        pass
+        for V in [self.V1, self.V2, self.V3]:
+            result = self.rr_alloc.allocate(V)
+            self.assertTrue(result.status, "round robin allocation failed to return a valid result.")
+
+            A = np.array(result.A)
+
+            # check that allocation matrix is valid
+            self.check_allocation_validity(V, A)
+
+            print("\n" + "=" * 70)
+            print("ROUND ROBIN BASIC TEST")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print()
+
+    def test_round_robin_ef1(self):
+        """ check if round robin always satisfies EF1 (envy-freeness up to one item). """
+        for V in [self.V1, self.V2, self.V3]:
+            result = self.rr_alloc.allocate(V)
+            self.assertTrue(result.status, "round robin allocation failed.")
+
+            A = np.array(result.A)
+
+            # round robin is known to always satisfy EF1
+            self.assertTrue(is_ef1(V, A), "round robin should always be EF1 but failed.")
+
+            print("\n" + "=" * 70)
+            print("ROUND ROBIN EF1 CHECK")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EF1: {is_ef1(V, A)}\n")
+
+    def test_round_robin_po(self):
+        """ check if round robin produces a pareto optimal allocation. """
+        for V in [self.V1, self.V2, self.V3]:
+            result = self.rr_alloc.allocate(V)
+            self.assertTrue(result.status, "round robin allocation failed.")
+
+            A = np.array(result.A)
+
+            # round robin is not guaranteed to be PO, but we still check
+            po_flag = is_po(V, A)
+
+            print("\n" + "=" * 70)
+            print("ROUND ROBIN PO CHECK")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"PO: {po_flag}\n")
+
 
 
 # ------------------------------------------------------------------------
