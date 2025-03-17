@@ -656,174 +656,130 @@ def round_eq_instance(V):
     """
     rounds valuations for eq-based approach.
     returns (Vprime, eps).
-    you can tweak the exponent or scaling if desired.
     """
-    (n, m) = V.shape
+    (n, m) = np.shape(V)
     vmax = np.max(V)
-    # for eq-based rounding, you might use a slightly different formula than EF1
-    # here is just an example:
-    eps = 1.0 / (8.0 * (m**2) * vmax)  # example scale
+    
+    # compute small tolerance epsilon for rounding
+    eps = 1 / (16 * m * np.power(np.float64(vmax), 4))  # cast as float64 to ensure 64-bit precision
+    
+    # initialize rounded valuation matrix
     Vprime = np.zeros((n, m))
+
     for j in range(n):
         for i in range(m):
             if V[j, i] > 0:
-                # raise valuations to a (1+eps)-log grid
+                # round valuations to a (1+eps)-logarithmic grid
                 Vprime[j, i] = (1 + eps) ** np.ceil(np.log(V[j, i]) / np.log(1 + eps))
+
     return Vprime, eps
 
 
-def isepeq1(V, X, eps):
+def isepeq1(V, X, eps=1e-6):
     """
-    checks if allocation X is eq1 (equitable up to 1 item) w.r.t. valuations V
-    and a small tolerance eps. eq1 means that for every pair of agents j,k,
-    if we remove at most one item from k's bundle, j's utility is >= k's utility.
-    returns True/False.
+    checks if allocation X is eq1 (equitable up to one item) w.r.t. valuations V
+    and a small tolerance eps.
+    
+    eq1 means that for every pair of agents (j, k), if we remove at most one 
+    item from k's bundle, j's utility must be at least k's adjusted utility.
+    
+    returns true if eq1 holds, false otherwise.
     """
-    (n, m) = X.shape
-    # compute each agent's utility for their own bundle
-    util = np.array([np.dot(V[j, :], X[j, :]) for j in range(n)])
-    for k in range(n):
-        for j in range(n):
-            if j == k:
-                continue
-            # agent j's utility vs. agent k's utility minus 1 item
-            # if j < k, interpret eq as:  u_j >= (u_k minus one item)
-            # we must see if there's at least one item i in k's bundle
-            # that, if removed, yields no eq violation
-            have_item = np.where(X[k, :] > 0)[0]
-            if len(have_item) <= 1:
-                # if k has <=1 item, there's effectively nothing to remove => compare directly
-                if util[j] + eps < util[k]:
-                    return False
-            else:
-                # try removing each item i from k's bundle
-                possible_ok = False
-                for i in have_item:
-                    # agent k's utility minus item i
-                    k_minus_i = util[k] - V[k, i]
-                    if util[j] + eps >= k_minus_i:
-                        possible_ok = True
-                        break
-                if not possible_ok:
-                    return False
-    return True
+    (n, m) = np.shape(X)
+    
+    # compute each agent's utility for their allocated bundle
+    U = np.zeros(n)  # initialize utility array
+    for j in range(n):
+        U[j] = np.dot(V[j, :], X[j, :])  # compute total utility of agent j
+    
+    for j in range(n):
+        # if agent j has at most one item, eq1 trivially holds
+        if np.sum(X[j, :]) <= 1:
+            continue
+        
+        # compute the utility of j minus each of their items
+        vals = []
+        for i in range(m):
+            if X[j, i] > 0:  # check items allocated to agent j
+                vals.append(U[j] - V[j, i])  # compute utility without item i
+        
+        vals = np.array(vals)  # convert list to numpy array for efficiency
+
+        for k in range(n):
+            # check if removing any one item keeps eq1 satisfied
+            if np.all(vals > (1 + eps) * U[k]):
+                return False  # eq1 fails for this (j, k) pair
+
+    return True  # eq1 holds for all agent pairs
+
 
 
 def market_eq_phase1(V, eps):
     """
-    phase 1: assign each item to the agent with highest value => set price = that value.
+    phase 1: assign each item to the agent with the highest value and set price accordingly.
     then check if eq1 is satisfied. returns (status, X, p).
     status = True if eq1 is already satisfied, else False.
     """
-    (n, m) = V.shape
-    X = np.zeros((n, m), dtype=int)
+    (n, m) = np.shape(V)
+    X = np.zeros((n, m))  # allow default float type for flexibility
     p = np.zeros(m)
+
     for i in range(m):
-        j_star = np.argmax(V[:, i])
-        X[j_star, i] = 1
-        p[i] = V[j_star, i]
-    # check eq1
+        ivals = V[:, i]  # extract valuations for item i
+        j = np.argmax(ivals)  # find agent with max value for item i
+        X[j, i] = 1  # assign item i to agent j
+        p[i] = V[j, i]  # set price to max valuation
+
+    # check eq1 condition
     if isepeq1(V, X, eps):
         return True, X, p
     return False, X, p
-
-
-def build_mbb_graph_eq(V, p):
-    """
-    builds eq-based MBB graph: agent->item if item has the highest 'bang-per-buck' for that agent
-    under eq assumptions. often the same as bpb-based approach, but you can adapt if eq is different.
-    """
-    (n, m) = V.shape
-    # compute "bang per buck" = V[j,i] / p[i]
-    BB = np.zeros((n, m))
-    for j in range(n):
-        for i in range(m):
-            BB[j, i] = V[j, i] / p[i]
-    edges = []
-    for j in range(n):
-        row = BB[j, :]
-        best_val = np.max(row)
-        best_items = np.where(row == best_val)[0]
-        for i in best_items:
-            edges.append((('a', j), ('g', i)))
-    G = nx.DiGraph()
-    agent_nodes = [('a', j) for j in range(n)]
-    item_nodes = [('g', i) for i in range(m)]
-    G.add_nodes_from(agent_nodes + item_nodes)
-    G.add_edges_from(edges)
-    return G
-
-
-def augment_mbb_graph_eq(G_MBB, X):
-    """
-    adds edges item->agent for items that agent currently holds.
-    returns an augmented graph.
-    """
-    (n, m) = X.shape
-    new_edges = []
-    for j in range(n):
-        for i in range(m):
-            if X[j, i] > 0:
-                new_edges.append((('g', i), ('a', j)))
-    G_aug = deepcopy(G_MBB)
-    G_aug.add_edges_from(new_edges)
-    return G_aug
-
-
-def build_augmented_mbb_graph_eq(V, X, p):
-    """
-    build eq-based MBB, then augment with item->agent edges.
-    """
-    G_MBB = build_mbb_graph_eq(V, p)
-    return augment_mbb_graph_eq(G_MBB, X)
 
 
 def market_eq_phase2(V, eps, X, p):
     """
     attempts to fix eq1 envy by swapping items. returns (status, next_phase, X, p, jstar).
     """
-    (n, m) = X.shape
-    # spending
-    spending = np.array([np.dot(p, X[j]) for j in range(n)])
-    jstar = np.argmin(spending)
-    G_aug = build_augmented_mbb_graph_eq(V, X, p)
-    # BFS layering from jstar
-    H = {}
-    for lvl in range(n):
-        H[lvl] = []
-    # build layers
-    for k in range(n):
-        try:
-            dist = nx.shortest_path_length(G_aug, source=('a', jstar), target=('a', k))
-            level = dist // 2
-            H[level].append(k)
-        except nx.NetworkXNoPath:
-            pass
+    (n, m) = np.shape(V)  # get number of agents and items
+    U = np.zeros(n)  # initialize utility array
 
-    lvl = 1
-    while lvl in H and len(H[lvl]) > 0 and not isepeq1(V, X, eps):
-        for k in H[lvl]:
-            # find all shortest paths from jstar->k
-            for path in nx.all_shortest_paths(G_aug, source=('a', jstar), target=('a', k)):
-                if len(path) < 3:
-                    continue
-                # item is path[-2], agent is path[-3]
-                if path[-2][0] != 'g' or path[-3][0] != 'a':
-                    continue
-                i = path[-2][1]
-                holder = path[-3][1]
+    # compute each agent's utility for their allocated bundle
+    for j in range(n):
+        U[j] = np.dot(V[j, :], X[j, :])  
+
+    # find the least satisfied agent (minimum utility)
+    jstar = np.argmin(U)  
+
+    # build the augmented mbb graph
+    G = build_augmented_mbb_graph(V, X, p)  
+
+    # build hierarchical layers from jstar using bfs
+    H = build_hierarchy(jstar, G, X)  
+
+    l = 1  # start at level 1
+    while len(H[l]) > 0 and False == isepeq1(V, X, eps):  # exactly match prof's condition
+        for k in H[l]:  # iterate through agents at level l
+            jstar_k_paths = nx.all_shortest_paths(G, source=('a', jstar), target=('a', k))
+            for path in jstar_k_paths:
+                i = path[-2][1]  # item index being reallocated
+                lminus1 = path[-3][1]  # previous agent in path
+
                 # check if letting jstar have item i from k is beneficial
-                # eq-based condition => typically we see if k's utility minus item i
-                # is improved for jstar or fixes eq1 envy
-                if spending[k] - p[i] > (1 + eps)*spending[jstar]:
-                    X[k, i] -= 1
-                    X[holder, i] += 1
-                    return False, 2, X, p, jstar
-        lvl += 1
+                if U[k] - V[k, i] > (1 + eps) * U[jstar]:  
+                    X[k, i] -= 1  # remove item i from agent k
+                    X[lminus1, i] += 1  # give item i to agent lminus1
+                    return False, 2, X, p, jstar  
 
-    if isepeq1(V, X, eps):
-        return True, 0, X, p, jstar
-    return False, 3, X, p, jstar
+        l += 1  # move to the next level
+        if not l in H:  
+            break  
+
+    # check if eq1 is satisfied after adjustments
+    if isepeq1(V, X, eps):  
+        return True, 0, X, p, jstar  
+
+    return False, 3, X, p, jstar  # move to phase 3
+
 
 
 def market_eq_phase3(V, eps, X, p, jstar):
@@ -831,49 +787,52 @@ def market_eq_phase3(V, eps, X, p, jstar):
     scales prices in jstar's 'hierarchy' to reduce eq1 envy.
     returns (status, next_phase, X, p).
     """
-    (n, m) = X.shape
-    spending = np.array([np.dot(p, X[j]) for j in range(n)])
-    G_aug = build_augmented_mbb_graph_eq(V, X, p)
-    # build BFS from jstar
-    H = {}
-    for lvl in range(n):
-        H[lvl] = []
-    for k in range(n):
-        try:
-            dist = nx.shortest_path_length(G_aug, source=('a', jstar), target=('a', k))
-            lvl = dist // 2
-            H[lvl].append(k)
-        except nx.NetworkXNoPath:
-            pass
-    # gather items in jstar's "hierarchy"
-    H_agents = []
-    for lvl in H:
-        H_agents.extend(H[lvl])
-    H_items = []
-    for j in H_agents:
+    (n, m) = np.shape(V)  # get number of agents and items
+
+    # initialize utility array
+    U = np.zeros(n)
+    for j in range(n):
+        U[j] = np.dot(V[j, :], X[j, :])  # compute each agent's utility
+
+    # compute bang-per-buck ratios
+    BB = bpb(V, p)  
+    mbbr = dict()
+    for j in range(n):
+        mbbr[j] = np.max(BB[j, :])  # max bang-per-buck for each agent
+
+    # build augmented MBB graph and hierarchy
+    G = build_augmented_mbb_graph(V, X, p)  
+    H = build_hierarchy(jstar, G, X)  
+
+    # collect agents in jstar's hierarchy
+    Hagents = []
+    for l in range(n):
+        for j in H[l]:
+            Hagents.append(j)  
+    other_agents = [j for j in range(n) if j not in Hagents]  
+
+    # collect items in jstar's hierarchy
+    Hitems = []
+    for j in Hagents:
         for i in range(m):
             if X[j, i] > 0:
-                H_items.append(i)
-    other_items = [i for i in range(m) if i not in H_items]
+                Hitems.append(i)  
+    other_items = [i for i in range(m) if i not in Hitems]  
 
-    # eq-based scale factors a1, a2, a3 ...
-    # same logic as EF1 but eq-based checks, you can define them similarly
-    # or keep them consistent with your code
+    # compute scaling factor D
+    vals = []
+    for j in Hagents:
+        for i in other_items:
+            vals.append(mbbr[j] / (V[j, i] / p[i]))  
 
-    # for demonstration, set everything to a=1 => no real scaling
-    # you'd put your logic here
-    a = 1.0
+    D = np.min(vals)  # take the minimum scaling factor
 
-    # scale
-    for i in H_items:
-        p[i] *= a
+    # scale prices of items in jstar's hierarchy
+    for i in Hitems:
+        p[i] *= D  
 
-    # if a meets some eq1 condition, we might set status=True
-    status = isepeq1(V, X, eps)
-    if status:
-        return True, 0, X, p
-    else:
-        return False, 2, X, p
+    return False, 2, X, p  # return updated prices, move to phase 2
+
 
 
 def market_eq_solve(V):
@@ -884,28 +843,30 @@ def market_eq_solve(V):
       3) scale prices
     returns (status, X, p).
     """
-    # round eq instance
+    # round valuations for numerical stability
     V, eps = round_eq_instance(V)
+
+    # phase 1: initial allocation and pricing
     status, X, p = market_eq_phase1(V, eps)
     if status:
-        return True, X, p
-    # else proceed
+        return status, X, p  # if phase 1 is already eq1, return result
+
+    # initialize phase tracking variables
+    status = False
     next_phase = 2
-    jstar = None
-    while not status:
+    jstar = None  # least spender
+
+    # iterate through market phases until convergence
+    while False == status:
         if next_phase == 2:
-            status2, next_phase2, X, p, jstar = market_eq_phase2(V, eps, X, p)
-            if status2:
-                return True, X, p
-            next_phase = next_phase2
+            status, next_phase, X, p, jstar = market_eq_phase2(V, eps, X, p)
         elif next_phase == 3:
-            status3, next_phase3, X, p = market_eq_phase3(V, eps, X, p, jstar)
-            if status3:
-                return True, X, p
-            next_phase = next_phase3
+            status, next_phase, X, p = market_eq_phase3(V, eps, X, p, jstar)
         else:
-            return False, X, p
-    return status, X, p
+            return False, X, p  # invalid phase, return failure
+
+    return status, X, p  # return final allocation and price vector
+
 
 
 # ---------------------------------- Leximin helpers ----------------------------------
@@ -932,34 +893,39 @@ def leximin_solve(V, B=1000, chores=False):
     # iterate from k=1..n, gradually lifting the minimum utility
     for k in range(1, n + 1):
         A = np.zeros((n, m))  # reset allocation matrix
-        model = Model(f'leximin@{k}')
+        model = Model('leximin@{}'.format(k))  # initialize gurobi model
         model.setParam('OutputFlag', 0)
         model.setParam('TimeLimit', 5 * 60)
 
         # add variable for lower bound for level k
         if k == 1:
-            bvar = model.addVar(lb=-1 * int(chores) * B, ub=(1 - int(chores)) * B, vtype=GRB.CONTINUOUS, name='b')
+            bvar = model.addVar(lb=-1 * int(chores) * B, ub=(1 - int(chores)) * B, 
+                                vtype=GRB.CONTINUOUS, name='b')
         else:
-            bvar = model.addVar(lb=b[k-2], ub=(1 - int(chores)) * B, vtype=GRB.CONTINUOUS, name='b')
+            bvar = model.addVar(lb=b[k-2], ub=(1 - int(chores)) * B, 
+                                vtype=GRB.CONTINUOUS, name='b')
 
         # add allocation variables
         xvars = dict()
         for j in range(n):
             for i in range(m):
-                xvars[j, i] = model.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=f'x_{j}_{i}')
+                xvars[j, i] = model.addVar(lb=0, ub=1, vtype=GRB.BINARY, 
+                                           name='x_{}_{}'.format(j, i))
 
         # add utility variables
         uvars = dict()
         for j in range(n):
-            uvars[j] = model.addVar(lb=-1 * int(chores) * B, ub=(1 - int(chores)) * B, vtype=GRB.CONTINUOUS, name=f'u_{j}')
+            uvars[j] = model.addVar(lb=-1 * int(chores) * B, ub=(1 - int(chores)) * B, 
+                                    vtype=GRB.CONTINUOUS, name='u_{}'.format(j))
 
         # add level constraints
         yvars = dict()  # indicate whether agent is above lower bound for a level
         zvars = dict()  # count number of agents meeting lower bound
         for l in range(0, k):
             for j in range(n):
-                yvars[j, l] = model.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=f'y_{j}_{l}')
-            zvars[l] = model.addVar(lb=0, ub=n, vtype=GRB.INTEGER, name=f'z_{l}')
+                yvars[j, l] = model.addVar(lb=0, ub=1, vtype=GRB.BINARY, 
+                                           name='y_{}_{}'.format(j, l))
+            zvars[l] = model.addVar(lb=0, ub=n, vtype=GRB.INTEGER, name='z_{}'.format(l))
 
         # enforce allocation constraints
         for i in range(m):
@@ -1014,38 +980,45 @@ def leximin_solve(V, B=1000, chores=False):
 
 # ---------------------------------- MNW Binary Helpers ----------------------------------
 
+def get_path(G, pair):
+    """
+    returns the shortest path between two agents in the allocation graph.
+    """
+    (j, k) = pair
+    return nx.shortest_path(G, source=j, target=k)
+
+
 def get_reachability(V, G):
     """
-    computes the reachability set of each agent in the allocation graph.
-    returns a list of agent pairs that can swap items.
+    Computes the reachability set of each agent in the allocation graph.
+    Returns a list of agent pairs that can swap items.
     """
     (n, m) = np.shape(V)
     reachability = []
     for j in range(n):
         for k in range(n):
-            if j != k and nx.has_path(G, j, k):  # check if there is a path between agents j and k
+            if nx.has_path(G, source=j, target=k):
                 reachability.append((j, k))
     return reachability
+
 
 def do_swaps(V, A, pair, G, labels):
     """
     performs swaps along a given path to improve the allocation.
     """
-    path = get_path(G, pair)  # get the shortest path between the agents
-    B = deepcopy(A)  # copy the allocation matrix
-    cur = 0  # start from the first node in the path
-
+    path = get_path(G, pair)
+    B = deepcopy(A)
+    cur = 0
     while cur < len(path) - 1:
-        j = path[cur]  # current agent
-        k = path[cur + 1]  # next agent in path
-        i = labels[(j, k)]  # item being swapped
+        j = path[cur]
+        k = path[cur + 1]
+        i = labels[(j, k)]
+        # swap item i from agent k to agent j
+        B[j, i] = 1
+        B[k, i] = 0
+        cur = cur + 1
+    return B
 
-        B[j, i] = 1  # give item i to agent j
-        B[k, i] = 0  # remove item i from agent k
-
-        cur += 1  # move to the next pair in the path
-
-    return B  # return the updated allocation
 
 
 def solve_mnw_binary(V):
@@ -1056,7 +1029,7 @@ def solve_mnw_binary(V):
     """
     (n, m) = np.shape(V)  # get number of agents and items
 
-    # initialize an allocation using maximum matching
+    # initialize an allocation to start from
     A = max_match_allocation(V)
     Acur = deepcopy(A)
 
@@ -1087,4 +1060,5 @@ def solve_mnw_binary(V):
             return Aprev  # return previous allocation if no improvement
 
     return Acur  # return final optimized allocation
+
 
