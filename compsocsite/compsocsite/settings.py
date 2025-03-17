@@ -31,13 +31,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = eval(env('DEBUG'))
 
 # SECURITY WARNING: allow only specific domains to access the site
-ALLOWED_HOSTS = [
-    'opra.cs.binghamton.edu'
-    ]
-
-CSRF_TRUSTED_ORIGINS = [
-    'https://opra.cs.binghamton.edu',
-]
+ALLOWED_HOSTS = ['*']
 
 X_FRAME_OPTIONS = env('X_FRAME_OPTIONS') # has been taken care by middleware
 SESSION_COOKIE_SECURE = eval(env('SESSION_COOKIE_SECURE'))
@@ -227,12 +221,15 @@ EMAIL_PORT=587
 STATIC_URL = 'static/'
 LOGIN_URL = '/auth/login/'
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-# STATICFILES_DIRS = (
-#     STATIC_URL,
-#     os.path.join(os.path.abspath(BASE_DIR), 'static'),
-# )
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
+
+STATICFILES_DIRS = (
+    STATIC_URL,
+    os.path.join(os.path.abspath(BASE_DIR), 'static'),
+)
 
 # ACCOUNT_ADAPTER = 'appauth.adapters.CustomSocialAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'appauth.adapters.CustomSocialAccountAdapter'
