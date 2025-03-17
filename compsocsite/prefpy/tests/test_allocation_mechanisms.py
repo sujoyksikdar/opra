@@ -14,7 +14,7 @@ from prefpy.mechanism import (
 
 # import property checks (ef, ef1, po, etc.)
 from prefpy.allocation_properties import *
-
+from prefpy.allocation_utils import *
 
 class TestAllocationMechanismsBase(TestCase):
     """
@@ -198,72 +198,393 @@ class TestMaximumNashWelfare(TestAllocationMechanismsBase):
 
 
 # ------------------------------------------------------------------------
-#  market allocation tests (skeleton)
+#  Market Allocation Tests
 # ------------------------------------------------------------------------
 
 class TestMarketAllocation(TestAllocationMechanismsBase):
     """
-    tests for market-based allocation mechanism.
+    Tests for market-based allocation mechanism.
     """
 
     def setUp(self):
-        """ initialize market allocation mechanism. """
+        """ Initialize market allocation mechanism. """
         self.market_alloc = MechanismMarketAllocation()
 
     def test_market_basic(self):
-        """ test if market allocation mechanism runs successfully. """
-        pass
+        """ Test if market allocation mechanism runs successfully. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_alloc.allocate(V)
+            self.assertTrue(result.status, f"Market allocation failed on V{idx}")
+
+            A = result.A
+            print("\n" + "=" * 70)
+            print(f"MARKET BASIC TEST ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+
+            self.check_allocation_validity(V, A)
+
+    def test_market_ef1(self):
+        """ Check if market allocation satisfies EF1. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_alloc.allocate(V)
+            A = result.A
+
+            ef1_flag = is_ef1(V, A)
+            print("\n" + "=" * 70)
+            print(f"MARKET EF1 CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EF1: {ef1_flag} (Expected: Uncertain)\n")
+
+            self.assertTrue(ef1_flag, f"Market allocation did not satisfy EF1 on V{idx}")
+
+    def test_market_po(self):
+        """ Check if market allocation produces a Pareto optimal allocation. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_alloc.allocate(V)
+            A = result.A
+
+            po_flag = is_po(V, A)
+            print("\n" + "=" * 70)
+            print(f"MARKET PO CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"PO: {po_flag} (Expected: True)\n")
+
+            self.assertTrue(po_flag, f"Market allocation did not satisfy PO on V{idx}")
+
+    def test_market_eq(self):
+        """ Check if market allocation satisfies equitability. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_alloc.allocate(V)
+            A = result.A
+
+            eq_flag = is_eq(V, A)
+            print("\n" + "=" * 70)
+            print(f"MARKET EQ CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EQ: {eq_flag} (Expected: Uncertain)\n")
+
+            # self.assertTrue(eq_flag, f"Market allocation did not satisfy EQ on V{idx}")
+            print(f"Market Allocation EQ result on V{idx}: {eq_flag}")
+            
+
+    def test_market_nash_welfare(self):
+        """ Check if market allocation achieves a high Nash welfare. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_alloc.allocate(V)
+            A = result.A
+
+            nw_value, _ = nw(V, A)
+            print("\n" + "=" * 70)
+            print(f"MARKET NASH WELFARE CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"Nash Welfare: {nw_value}\n")
+
+            self.assertGreater(nw_value, 0, f"Market allocation produced a non-positive Nash Welfare on V{idx}")
 
 
 # ------------------------------------------------------------------------
-#  leximin allocation tests (skeleton)
+#  Leximin Allocation Tests
 # ------------------------------------------------------------------------
 
 class TestLeximinAllocation(TestAllocationMechanismsBase):
     """
-    tests for leximin allocation.
+    Tests for Leximin allocation.
     """
 
     def setUp(self):
-        """ initialize leximin allocation mechanism. """
+        """ Initialize leximin allocation mechanism. """
         self.leximin_alloc = MechanismLeximinAllocation()
 
     def test_leximin_basic(self):
-        """ test if leximin mechanism runs successfully. """
-        pass
+        """ Test if Leximin mechanism runs successfully. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.leximin_alloc.allocate(V)
+            self.assertTrue(result.status, f"Leximin allocation failed on V{idx}")
 
+            A = result.A
+            print("\n" + "=" * 70)
+            print(f"LEXIMIN BASIC TEST ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+
+            self.check_allocation_validity(V, A)
+
+    def test_leximin_ef1(self):
+        """ Check if Leximin allocation satisfies EF1. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.leximin_alloc.allocate(V)
+            A = result.A
+
+            ef1_flag = is_ef1(V, A)
+            print("\n" + "=" * 70)
+            print(f"LEXIMIN EF1 CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EF1: {ef1_flag}\n")
+
+            self.assertTrue(ef1_flag, f"Leximin allocation did not satisfy EF1 on V{idx}")
+
+    def test_leximin_efx(self):
+        """ Check if Leximin allocation satisfies EFX (Envy-Freeness up to any item). """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.leximin_alloc.allocate(V)
+            A = result.A
+
+            efx_flag = is_efx(V, A)
+            print("\n" + "=" * 70)
+            print(f"LEXIMIN EFX CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EFX: {efx_flag}\n")
+
+            print(f"Leximin Allocation EFX result on V{idx}: {efx_flag}")
+
+    def test_leximin_po(self):
+        """ Check if Leximin allocation produces a Pareto optimal allocation. """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.leximin_alloc.allocate(V)
+            A = result.A
+
+            po_flag = is_po(V, A)
+            print("\n" + "=" * 70)
+            print(f"LEXIMIN PO CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"PO: {po_flag}\n")
+
+            self.assertTrue(po_flag, f"Leximin allocation did not satisfy PO on V{idx}")
+
+    def test_leximin_eq(self):
+        """ Check if Leximin allocation satisfies Equitability (EQ). """
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.leximin_alloc.allocate(V)
+            A = result.A
+
+            eq_flag = is_eq(V, A)
+            print("\n" + "=" * 70)
+            print(f"LEXIMIN EQ CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EQ: {eq_flag}\n")
+
+            print(f"Leximin Allocation EQ result on V{idx}: {eq_flag}")
+
+    def test_leximin_nash_welfare(self):
+        """ Check if Leximin allocation achieves a high Nash welfare. """
+
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.leximin_alloc.allocate(V)
+            A = result.A
+
+            nw_value, _ = nw(V, A)  # Extract only the Nash welfare value
+            print("\n" + "=" * 70)
+            print(f"LEXIMIN NASH WELFARE CHECK ({idx})")
+            print("=" * 70 + "\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"Nash Welfare: {nw_value}\n")
+
+            self.assertGreater(nw_value, 0, f"Leximin allocation produced a non-positive Nash Welfare on V{idx}")
+ 
+ 
 
 # ------------------------------------------------------------------------
-#  market equilibrium allocation tests (skeleton)
+#  Market Equilibrium Allocation Tests (Fixed Version)
 # ------------------------------------------------------------------------
 
 class TestMarketEqAllocation(TestAllocationMechanismsBase):
     """
-    tests for market equilibrium allocation.
+    Tests for Market Equilibrium allocation.
     """
 
     def setUp(self):
-        """ initialize market equilibrium allocation mechanism. """
+        """Initialize Market Equilibrium allocation mechanism."""
         self.market_eq_alloc = MechanismMarketEqAllocation()
 
     def test_market_eq_basic(self):
-        """ test if market equilibrium mechanism runs successfully. """
-        pass
+        """Test if Market Equilibrium mechanism runs successfully."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_eq_alloc.allocate(V)
+            self.assertTrue(result.status, f"Market Equilibrium allocation failed on V{idx}")
+
+            A = result.A
+            print(f"\n{'=' * 70}\nMARKET EQUILIBRIUM BASIC TEST ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+
+            self.check_allocation_validity(V, A)
+
+    def test_market_eq_ef1(self):
+        """Check if Market Equilibrium allocation satisfies EF1."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_eq_alloc.allocate(V)
+            A = result.A
+
+            ef1_flag = is_ef1(V, A)
+            print(f"\n{'=' * 70}\nMARKET EQUILIBRIUM EF1 CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EF1: {ef1_flag}\n")
+
+            self.assertTrue(ef1_flag, f"Market Equilibrium allocation did not satisfy EF1 on V{idx}")
+
+    def test_market_eq_efx(self):
+        """Check if Market Equilibrium allocation satisfies EFX."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_eq_alloc.allocate(V)
+            A = result.A
+
+            efx_flag = is_efx(V, A)
+            print(f"\n{'=' * 70}\nMARKET EQUILIBRIUM EFX CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EFX: {efx_flag}\n")
+
+    def test_market_eq_po(self):
+        """Check if Market Equilibrium allocation produces a Pareto optimal allocation."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_eq_alloc.allocate(V)
+            A = result.A
+
+            po_flag = is_po(V, A)
+            print(f"\n{'=' * 70}\nMARKET EQUILIBRIUM PO CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"PO: {po_flag}\n")
+
+            self.assertTrue(po_flag, f"Market Equilibrium allocation did not satisfy PO on V{idx}")
+
+    def test_market_eq_eq(self):
+        """Check if Market Equilibrium allocation satisfies Equitability (EQ)."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_eq_alloc.allocate(V)
+            A = result.A
+
+            eq_flag = is_eq(V, A)
+            print(f"\n{'=' * 70}\nMARKET EQUILIBRIUM EQ CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EQ: {eq_flag}\n")
+
+    def test_market_eq_nash_welfare(self):
+        """Check if Market Equilibrium allocation achieves a high Nash welfare."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.market_eq_alloc.allocate(V)
+            A = result.A
+            nw_value, _ = nw(V, A)
+            print(f"\n{'=' * 70}\nMARKET EQUILIBRIUM NASH WELFARE CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"Nash Welfare: {nw_value}\n")
+
+            self.assertGreater(nw_value, 0, f"Market Equilibrium allocation produced a non-positive Nash Welfare on V{idx}")
+
 
 
 # ------------------------------------------------------------------------
-#  maximum nash welfare binary allocation tests (skeleton)
+#  Maximum Nash Welfare Binary Allocation Tests (Fixed Version)
 # ------------------------------------------------------------------------
 
 class TestMaximumNashWelfareBinary(TestAllocationMechanismsBase):
     """
-    tests for maximum nash welfare binary allocation.
+    Tests for Maximum Nash Welfare Binary allocation.
     """
 
     def setUp(self):
-        """ initialize mnw binary allocation mechanism. """
+        """Initialize MNW Binary allocation mechanism."""
         self.mnw_binary_alloc = MechanismMaximumNashWelfareBinary()
 
     def test_mnw_binary_basic(self):
-        """ test if mnw binary mechanism runs successfully. """
-        pass
+        """Test if MNW Binary mechanism runs successfully."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_binary_alloc.allocate(V)
+            self.assertTrue(result.status, f"MNW Binary allocation failed on V{idx}")
+
+            A = result.A
+            print(f"\n{'=' * 70}\nMNW BINARY BASIC TEST ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+
+            self.check_allocation_validity(V, A)
+
+    def test_mnw_binary_ef1(self):
+        """Check if MNW Binary allocation satisfies EF1."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_binary_alloc.allocate(V)
+            A = result.A
+
+            ef1_flag = is_ef1(V, A)
+            print(f"\n{'=' * 70}\nMNW BINARY EF1 CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EF1: {ef1_flag}\n")
+
+            self.assertTrue(ef1_flag, f"MNW Binary allocation did not satisfy EF1 on V{idx}")
+
+    def test_mnw_binary_efx(self):
+        """Check if MNW Binary allocation satisfies EFX."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_binary_alloc.allocate(V)
+            A = result.A
+
+            efx_flag = is_efx(V, A)
+            print(f"\n{'=' * 70}\nMNW BINARY EFX CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EFX: {efx_flag}\n")
+
+    def test_mnw_binary_po(self):
+        """Check if MNW Binary allocation produces a Pareto optimal allocation."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_binary_alloc.allocate(V)
+            A = result.A
+
+            po_flag = is_po(V, A)
+            print(f"\n{'=' * 70}\nMNW BINARY PO CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"PO: {po_flag}\n")
+
+            self.assertTrue(po_flag, f"MNW Binary allocation did not satisfy PO on V{idx}")
+
+    def test_mnw_binary_eq(self):
+        """Check if MNW Binary allocation satisfies Equitability (EQ)."""
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_binary_alloc.allocate(V)
+            A = result.A
+
+            eq_flag = is_eq(V, A)
+            print(f"\n{'=' * 70}\nMNW BINARY EQ CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"EQ: {eq_flag}\n")
+
+    def test_mnw_binary_nash_welfare(self):
+        """Check if MNW Binary allocation achieves a high Nash welfare."""
+
+        for idx, V in enumerate([self.V1, self.V2, self.V3], start=1):
+            result = self.mnw_binary_alloc.allocate(V)
+            A = result.A
+
+            nw_value, _ = nw(V, A)
+            print(f"\n{'=' * 70}\nMNW BINARY NASH WELFARE CHECK ({idx})\n{'=' * 70}\n")
+            print("Valuations:\n", V)
+            print("Allocation Matrix (A):\n", A)
+            print(f"Nash Welfare: {nw_value}\n")
+
+            self.assertGreater(nw_value, 0, f"MNW Binary allocation produced a non-positive Nash Welfare on V{idx}")
