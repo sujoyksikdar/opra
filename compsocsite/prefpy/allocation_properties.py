@@ -331,7 +331,6 @@ def is_dupeqx(V, A, chores=False):
     return True
 
 
-
 # ---------------- EF ----------------
 def is_ef(V, A, chores=False):
     """
