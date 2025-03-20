@@ -2805,7 +2805,7 @@ def getResponseOrder(allocation_order):
 # Dict<String, String> allocationResults
 def assignAllocation(question, allocationResults):
     for username, item in allocationResults.items():
-        currentUser = User.objects.filter(username=username)
+        currentUser = User.objects.filter(username=username).first()
         allocatedItem = question.item_set.get(item_text=item)
         mostRecentResponse = question.response_set.reverse().filter(user=currentUser)[0]
         mostRecentResponse.allocation = allocatedItem
