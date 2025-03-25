@@ -97,7 +97,7 @@
             }
         </style>
 
-        {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0  %}
+        {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0  %}
             <div class="panel panel-default" style="margin: 20px;">
                 <div class="panel-heading">Allocated Items Bundle:</div> 
                 <div class="panel-body">
@@ -135,7 +135,7 @@
     {% endif %}
 
     
-    {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0  %}
+    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0  %}
         <div class="panel panel-default" style="margin: 20px;">
             <div class="panel-heading">Allocation Results</div>
             <div class="panel-body">
@@ -183,7 +183,7 @@ td,th{
     </style>
 
     
-    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0  %}
+    {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0  %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading"> Envy matrix upto EF1 
             <div class="pull-right" style="display: flex;">

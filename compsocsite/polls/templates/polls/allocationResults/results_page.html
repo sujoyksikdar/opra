@@ -3,6 +3,7 @@
 {% load static %}
 
 {% block content %}
+<p>sum of alloc: {{selected_alloc_res_tables_sum }}</p>
 <div class="col-md-12">
     <!-- results header with current algorithm + dropdown -->
     <div class="results-header">
@@ -49,8 +50,31 @@
         </div>
     </div>
     {% endif %}
-
     {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">All User Preferences</div>
+        <div class="panel-body">
+            <table class="table">
+                <tr>
+                    <th>User</th>
+                    <th>Preferences</th>
+                </tr>
+                {% for username, prefs in all_user_preferences %}
+                <tr>
+                    <td>{{ username }}</td>
+                    <td>
+                        {% for item in prefs %}
+                            <span class="label label-info">{{ item }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading">Allocated Items Bundle:</div>
         <div class="panel-body">
@@ -84,9 +108,9 @@
     {% endif %}
     {% endif %}
 
-    {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %}
+    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %}
     <div class="panel panel-default" style="margin: 20px;">
-        <div class="panel-heading">Allocation Table</div>
+        <div class="panel-heading">Allocation Results</div>
         <div class="panel-body">
             <div class="table-responsive">
                 <table class="table">
@@ -123,7 +147,7 @@
     </div>
     {% endif %}
 
-    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %}
+    {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0 %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading">Envy Matrix
             <div class="pull-right" style="display: flex;">

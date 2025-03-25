@@ -1360,6 +1360,11 @@ class AllocateResultsView(views.generic.DetailView):
                 pic_path = resp.user.userprofile.profile_pic.name
                 user_pics[uid] = f"/{pic_path}" if pic_path else ""
 
+        # Extract preference data
+        submitted_rankings = {}
+        for resp in response_set:
+            submitted_rankings[resp.user_id] = json.loads(resp.behavior_data)["submitted_ranking"]
+
         sorted_user_ids = sorted(user_names.keys())
         ctx["candidates"]   = [user_names[uid] for uid in sorted_user_ids]
         ctx["profile_pics"] = [user_pics[uid]  for uid in sorted_user_ids]
@@ -1370,7 +1375,10 @@ class AllocateResultsView(views.generic.DetailView):
             uid = resp.user_id
             raw_list = ast.literal_eval(resp.resp_str)  # e.g. ["itema","12","itemb","8"]
             numeric_vals = []
-            for x in raw_list:
+            for sublist in raw_list:
+                if not sublist:
+                    continue
+                x = sublist[0] 
                 val = 0.0
                 if isinstance(x, (int, float)):
                     # if already a number
@@ -1397,6 +1405,20 @@ class AllocateResultsView(views.generic.DetailView):
         for uid in sorted_user_ids:
             # if not present or mismatch length, just get(...) or fill
             preferences.append(user_valuations_map.get(uid, []))
+        
+        # All Preferences (bit=2)
+        if question.alloc_res_tables & 2 != 0:
+            all_user_prefs = []
+            for uid in sorted_user_ids:
+                username = user_names[uid]
+                ranking = submitted_rankings[uid]
+                cleaned = []
+                for group in ranking:
+                    if group and isinstance(group[0], dict):
+                        item_name = group[0].get("name", "")[4:]
+                        cleaned.append((item_name))
+                all_user_prefs.append((username, cleaned))
+            ctx["all_user_preferences"] = all_user_prefs
 
         # 9) run the chosen mechanism
         mechanism = chosen_cls()
@@ -1428,11 +1450,19 @@ class AllocateResultsView(views.generic.DetailView):
                 M = len(allocation_matrix[0])
                 for i in range(N):
                     total_val = 0.0
+                    uid = sorted_user_ids[i]
+                    ranking = submitted_rankings.get(uid, [])
                     for j in range(M):
                         if allocation_matrix[i][j] == 1:
-                            total_val += preferences[i][j]
+                            item_name = f"item{question.item_set.all()[j].item_text}"
+                            for group in ranking:
+                                for item in group:
+                                    if isinstance(item, dict) and item.get("name") == item_name:
+                                        total_val += item.get("score", 0)
                     sum_of_alloc_items_values.append(total_val)
         ctx["sum_of_alloc_items_values"] = sum_of_alloc_items_values
+
+        items_obj = list(question.item_set.all())  # get all Item objects
 
         # 12) identify the current user’s name/bundle
         current_user_name = ""
@@ -1443,11 +1473,25 @@ class AllocateResultsView(views.generic.DetailView):
         if current_user_name:
             row_index = sorted_user_ids.index(current_user_id)
             if row_index < len(allocated_items):
-                ctx["curr_user_bundle"] = allocated_items[row_index]
-                if row_index < len(sum_of_alloc_items_values):
-                    ctx["curr_user_bundle_sum"] = sum_of_alloc_items_values[row_index]
-                else:
-                    ctx["curr_user_bundle_sum"] = 0
+                allocated_indexes = [int(name.split("#")[1]) for name in allocated_items[row_index]]
+                matched_items = [items_obj[i] for i in allocated_indexes]
+
+                ctx["curr_user_bundle"] = matched_items
+                ctx["curr_user_bundle_sum"] = sum_of_alloc_items_values[row_index] if row_index < len(sum_of_alloc_items_values) else 0
+        
+        # 13) Current user's preferences with values (for "My Preference" table)
+        if current_user_id in submitted_rankings:
+            curr_user_pref = []
+            curr_user_pref_values = []
+            for group in submitted_rankings[current_user_id]:
+                if group and isinstance(group[0], dict):
+                    item_name = group[0].get("name", "")[4:]  # remove 'item'
+                    score = group[0].get("score", 0)
+                    curr_user_pref.append(item_name)
+                    curr_user_pref_values.append(score)
+            ctx["curr_user_pref"] = curr_user_pref
+            ctx["curr_user_pref_values"] = curr_user_pref_values
+
 
         return ctx
 

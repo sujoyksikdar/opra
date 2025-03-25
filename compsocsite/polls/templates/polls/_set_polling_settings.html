@@ -102,28 +102,61 @@
     </fieldset>
     <br><br>
     <label>information to show in allocation results page</label>
-    <div id="visible">
-        <label class="checkbox-inline">
+        <!-- Preference View Options -->
+        <div id="visible">
+            <strong>Preference View Options</strong><br>
+            <label class="checkbox-inline">
             <input id="my_pref_table" type="checkbox" value="1" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:1 != 0 %} checked {% endif %}>
-            my preferences
-        </label>
-        <label class="checkbox-inline">
-            <input id="alloc_items_bundle_table" type="checkbox" value="2" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0 %} checked {% endif %}>
-            items bundle
-        </label>
-        <label class="checkbox-inline">
-            <input id="alloc_res_table" type="checkbox" value="4" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %} checked {% endif %}>
-            allocation result table
-        </label>
-        <label class="checkbox-inline">
-            <input id="EF1_matrix" type="checkbox" value="8" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %} checked {% endif %}>
-            envy matrix upto ef1
-        </label>
-    </div>
+                {% if selected_alloc_res_tables_sum|bitwise_and:1 != 0 %} checked {% endif %}> My Preferences
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" value="2" name="alloc_res_tables"
+                {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0 %} checked {% endif %}> All Preferences
+            </label>
+        </div>
+
+        <!-- Allocation View Options -->
+        <div id="visible">
+            <strong>Allocation View Options</strong><br>
+            <label class="checkbox-inline">
+            <input id="alloc_items_bundle_table" type="checkbox" value="4" name="alloc_res_tables"
+                {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %} checked {% endif %}> Items Bundle
+            </label>
+            <label class="checkbox-inline">
+                <input id="alloc_res_table" type="checkbox" value="8" name="alloc_res_tables"
+                    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %} checked {% endif %}> Allocation Result Table
+            </label>
+        </div>
+
+        <!-- Allocation Property View Options -->
+        <div id="visible">
+            <strong>Allocation Property View Options</strong><br>
+            <label class="checkbox-inline">
+                <input id="EF1_matrix" type="checkbox" value="16" name="alloc_res_tables"
+                    {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0 %} checked {% endif %}> Envy Matrix
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" value="32" name="alloc_res_tables" 
+                {% if selected_alloc_res_tables_sum|bitwise_and:32 != 0 %} checked {% endif %}> Equitability
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" value="64" name="alloc_res_tables"
+                {% if selected_alloc_res_tables_sum|bitwise_and:64 != 0 %} checked {% endif %}> Fractional Share
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" value="128" name="alloc_res_tables"
+                {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %} checked {% endif %}> Welfare
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" value="256" name="alloc_res_tables"
+                {% if selected_alloc_res_tables_sum|bitwise_and:256 != 0 %} checked {% endif %}> Pareto Optimality
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" value="512" name="alloc_res_tables"
+                {% if selected_alloc_res_tables_sum|bitwise_and:512 != 0 %} checked {% endif %}> First-choices
+            </label>
+        </div>
+
     {% endif %}
 
     <!-- script: bit-based logic -->

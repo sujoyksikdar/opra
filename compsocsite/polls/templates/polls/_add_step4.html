@@ -275,25 +275,50 @@
 
     {% if question.question_type == 2 %}
     <div class="panel panel-default">
-        <div class="panel-heading"><h4>Allocation Results:</h4></div>
+        <div class="panel-heading"><h4>Allocation Results:<h4></div>
         <div class="panel-body">
             <label>Information to show in Allocation Results Page</label>
-            <div id="visible2">
+            <div id="visible">
+                <strong>Preference View Options</strong><br>
                 <label class="checkbox-inline">
-                    <input id="my_pref_table" type="checkbox" value="1" name="alloc_res_tables">
-                    My Preferences
+                 <input id="my_pref_table" type="checkbox" value="1" name="alloc_res_tables" checked> My Preferences
                 </label>
                 <label class="checkbox-inline">
-                    <input id="alloc_items_bundle_table" type="checkbox" value="2" name="alloc_res_tables" checked>
-                    Items Bundle
+                    <input type="checkbox" value="2" name="alloc_res_tables"> All Preferences
+                </label>
+            </div>
+    
+            <!-- Allocation View Options -->
+            <div id="visible">
+                <strong>Allocation View Options</strong><br>
+                <label class="checkbox-inline">
+                 <input id="alloc_items_bundle_table" type="checkbox" value="4" name="alloc_res_tables" checked> Items Bundle
                 </label>
                 <label class="checkbox-inline">
-                    <input id="alloc_res_table" type="checkbox" value="4" name="alloc_res_tables" checked>
-                    Allocation Result Table
+                 <input id="alloc_res_table" type="checkbox" value="8" name="alloc_res_tables" checked> Allocation Result Table
+                </label>
+            </div>
+    
+            <!-- Allocation Property View Options -->
+            <div id="visible">
+                <strong>Allocation Property View Options</strong><br>
+                <label class="checkbox-inline">
+                    <input id="EF1_matrix" type="checkbox" value="16" name="alloc_res_tables" checked> Envy Matrix
                 </label>
                 <label class="checkbox-inline">
-                    <input id="EF1_matrix" type="checkbox" value="8" name="alloc_res_tables">
-                    Envy Matrix Upto EF1
+                    <input type="checkbox" value="32" name="alloc_res_tables"> Equitability
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" value="64" name="alloc_res_tables"> Fractional Share
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" value="128" name="alloc_res_tables"> Welfare
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" value="256" name="alloc_res_tables"> Pareto Optimality
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" value="512" name="alloc_res_tables"> First-choices
                 </label>
             </div>
         </div>
