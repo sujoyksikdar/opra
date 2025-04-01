@@ -206,6 +206,7 @@
     </div>
     {% endif %}
 
+    {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading">Welfare Metrics</div>
         <div class="panel-body">
@@ -223,6 +224,8 @@
                     </p>
                 </div>
             </div>
+            {% endif %}
+            {% if selected_alloc_res_tables_sum|bitwise_and:256 != 0 %}
             <div class="row">
                 <div class="col-md-6">
                     <p><strong>Pareto Optimality:</strong>
@@ -234,9 +237,10 @@
                     </p>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
-
+    {% if selected_alloc_res_tables_sum|bitwise_and:512 != 0 %}
     {% if first_choices_data %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading">First-choices Analysis</div>
@@ -249,6 +253,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     {% endif %}
 
     {% if fractional_share_data %}
@@ -316,6 +321,8 @@ th {
     width: 20px;
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 <script>
     function updateAllocationMechanism(mechanismId) {
@@ -353,6 +360,28 @@ th {
                 cell.style.backgroundColor = '#FE8176'; // envy
             }
         });
+    });
+    const ctxFC = document.getElementById('first-choices-chart').getContext('2d');
+    const firstChoicesChart = new Chart(ctxFC, {
+        type: 'bar',
+        data: {
+            labels: {{ candidates|safe }},  // from context
+            datasets: [{
+                label: 'First-choice Items',
+                data: {{ first_choices_data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stepSize: 1
+                }
+            }
+        }
     });
     </script>    
 {% endblock %}

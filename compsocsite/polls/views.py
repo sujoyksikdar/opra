@@ -26,6 +26,7 @@ from prefpy.egmm_mixpl import *
 from .email import EmailThread, emailSettings, setupEmail
 from django.conf import settings
 from multipolls.models import *
+from prefpy.allocation_properties import is_po
 
 from . import opra_crypto
 import json
@@ -1442,6 +1443,16 @@ class AllocateResultsView(views.generic.DetailView):
                     allocated_items.append(user_items)
         ctx["allocated_items"] = allocated_items
 
+        # 10.1 Check Pareto Optimality
+        ctx["is_pareto_optimal"] = False
+        if allocation_matrix is not None and preferences:
+            try:
+                V = np.array(preferences)
+                A = np.array(allocation_matrix)
+                ctx["is_pareto_optimal"] = is_po(V, A)
+            except Exception as e:
+                print("is_PO check failed:", e)
+
         # 11) sum of allocated items
         sum_of_alloc_items_values = []
         if allocation_matrix is not None:
@@ -1491,6 +1502,27 @@ class AllocateResultsView(views.generic.DetailView):
                     curr_user_pref_values.append(score)
             ctx["curr_user_pref"] = curr_user_pref
             ctx["curr_user_pref_values"] = curr_user_pref_values
+        
+        # 14) Compute Welfare Metrics
+        utilitarian_welfare = sum(sum_of_alloc_items_values) if sum_of_alloc_items_values else 0
+        egalitarian_welfare = min(sum_of_alloc_items_values) if sum_of_alloc_items_values else 0
+        ctx["utilitarian_welfare"] = utilitarian_welfare
+        ctx["egalitarian_welfare"] = egalitarian_welfare
+        
+        # 15) First-choice analysis
+        first_choices_data = []
+        if allocation_matrix is not None:
+            for i, row in enumerate(allocation_matrix):  # For each agent
+                # Get that agent's valuation vector
+                valuations = preferences[i]
+                max_val = max(valuations)  # Their most preferred item's value
+                count = 0
+                for j, alloc in enumerate(row):  # Loop through their allocated items
+                    if alloc == 1 and valuations[j] == max_val:
+                        count += 1
+                first_choices_data.append(count)
+
+        ctx["first_choices_data"] = first_choices_data
 
 
         return ctx
