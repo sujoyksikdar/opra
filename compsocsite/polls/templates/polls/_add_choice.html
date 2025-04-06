@@ -1,9 +1,107 @@
 <ul class="list-group" id="choicesetting">
+    <!-- delete -->
+    <li class="list-group-item">
+        <div class="row">
+            <div class="col-xs-12">
+                <button type="button" class="btn btn-danger" onclick="deleteSelected()">
+                    <span class="glyphicon glyphicon-trash"></span> Delete Selected
+                </button>
+                <button type="button" class="btn btn-danger" onclick="deleteAll()">
+                    <span class="glyphicon glyphicon-trash"></span> Delete All
+                </button>
+            </div>
+        </div>
+    </li>
+
+    <!-- add CSV upload -->
+    <li class="list-group-item">
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#csvUploadModal">
+            <span class="glyphicon glyphicon-upload"></span> Add from CSV
+        </button>
+    </li>
+
+    <!-- CSV upload modal -->
+    <div class="modal fade" id="csvUploadModal" tabindex="-1" role="dialog" aria-labelledby="csvUploadModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title" id="csvUploadModalLabel">Upload Items from CSV</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Please upload a CSV file with the following format:</p>
+                    <ul>
+                        <li>One row per item</li>
+                        <li>First column: Item name (required)</li>
+                        <li>Second column: Item description (optional)</li>
+                        <li>Third column: Image URL (optional)</li>
+                        <li>Additional columns will be ignored</li>
+                    </ul>
+                    <div class="well">
+                        <p><strong>Example CSV content:</strong></p>
+                        <pre>Item A, This is a description for Item A
+Item B, Another description here
+Item C, https://example.com/imageC.jpg
+Item D</pre>
+                    </div>
+
+                    <!-- add bulk image upload -->
+                    <div class="form-group">
+                        <label>Choose Upload Method:</label>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default active" onclick="showCSVUpload()">CSV Upload</button>
+                            <button type="button" class="btn btn-default" onclick="showBulkImageUpload()">Bulk Image Upload</button>
+                        </div>
+                    </div>
+
+                    <!-- CSV upload form -->
+                    <div id="csvUploadForm">
+                        <form action="{% url 'polls:upload_csv_choices' question.id %}" method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="csvFile">Select CSV File:</label>
+                                <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+                            </div>
+                            <div class="alert alert-info">
+                                <span class="glyphicon glyphicon-info-sign"></span>
+                                You can create a CSV file using Excel, Google Sheets, or any text editor. Save it with a .csv extension.
+                            </div>
+                            <button type="submit" class="btn btn-primary">Upload CSV</button>
+                        </form>
+                    </div>
+
+                    <!-- bulk image upload form -->
+                    <div id="bulkImageUploadForm" style="display: none;">
+                        <form action="{% url 'polls:upload_bulk_images' question.id %}" method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="imageFiles">Select Multiple Images:</label>
+                                <input type="file" id="imageFiles" name="imageFiles" accept="image/*" multiple required>
+                                <p class="help-block">Selected images will be added as new items using their filenames (without extension) as item names.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="namePrefix">Name Prefix (optional):</label>
+                                <input type="text" class="form-control" id="namePrefix" name="namePrefix" placeholder="e.g., 'Item '">
+                                <p class="help-block">Will be added before each filename to create the item name.</p>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Upload Images</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <form id="choiceform"  action="{% url 'polls:editchoice' question.id %}" method="post">
         {% csrf_token %}
         {% for item in items %}
             <li class="list-group-item " >
                 <div class="row" data-toggle="collapse" data-target="#iteminfo{{item.id}}">
+                    <div class="form-group col-xs-1">
+                        <input type="checkbox" class="item-checkbox" value="{{item.id}}" onclick="event.stopPropagation();">
+                    </div>
                     <div class="form-group col-xs-1"   >
                         <span class="caret" style="color:#377BB5;"></span>   
                     </div>   
@@ -107,4 +205,64 @@
                     }
                 });
             });
+
+// delete selected
+function deleteSelected() {
+    var selectedItems = [];
+    $('.item-checkbox:checked').each(function() {
+        selectedItems.push($(this).val());
+    });
+    
+    if (selectedItems.length === 0) {
+        alert('Please select items to delete');
+        return;
+    }
+    
+    if (confirm('Are you sure you want to delete the selected items?')) {
+        $.ajax({
+            type: 'POST',
+            url: '{% url "polls:delete_items" question.id %}',
+            data: {
+                'item_ids': JSON.stringify(selectedItems),
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function() {
+                location.reload();
+            }
+        });
+    }
+}
+
+// delete all
+function deleteAll() {
+    if (confirm('Are you sure you want to delete ALL items? This cannot be undone.')) {
+        $.ajax({
+            type: 'POST',
+            url: '{% url "polls:delete_items" question.id %}',
+            data: {
+                'delete_all': 'true',
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function() {
+                location.reload();
+            }
+        });
+    }
+}
+
+// show CSV upload  
+function showCSVUpload() {
+    $('#csvUploadForm').show();
+    $('#bulkImageUploadForm').hide();
+    $('.btn-group .btn').removeClass('active');
+    $('.btn-group .btn:first-child').addClass('active');
+}
+
+// show bulk image upload
+function showBulkImageUpload() {
+    $('#csvUploadForm').hide();
+    $('#bulkImageUploadForm').show();
+    $('.btn-group .btn').removeClass('active');
+    $('.btn-group .btn:last-child').addClass('active');
+}
 </script>

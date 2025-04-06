@@ -1,4 +1,4 @@
-from django.urls import re_path
+from django.urls import path, re_path
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import cache_page
 from . import views
@@ -142,4 +142,8 @@ urlpatterns = [
     re_path(r'^request/(?P<request_id>[0-9]+)/approve/$', views.approve_request, name='approverequest'),
     re_path(r'^(?P<pk>[0-9]+)/selfregister/$', views.SelfRegisterView.as_view(), name='selfregister'),
 
+    # delete items and upload files
+    path('<int:question_id>/upload_csv_choices/', views.upload_csv_choices, name='upload_csv_choices'),
+    re_path(r'^(?P<question_id>[0-9]+)/delete_items/$', views.delete_items, name='delete_items'),
+    path('<int:question_id>/upload_bulk_images/', views.upload_bulk_images, name='upload_bulk_images'),
 ]

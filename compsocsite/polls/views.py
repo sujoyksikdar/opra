@@ -36,7 +36,7 @@ import numpy as np
 import random
 import csv
 import ast
-
+from io import TextIOWrapper
 
 active_polls = []
 
@@ -3793,3 +3793,169 @@ def GradesDownload(request, pk):
         writer.writerow([k, student_dict[k], len(quizzes), student_dict[k] * 100. / len(quizzes)])
 
     return response
+
+def upload_csv_choices(request, question_id):
+    """
+    Handle CSV file upload to add multiple alternatives at once.
+    Expected CSV format:
+    - One row per item
+    - First column: Item name (required)
+    - Second column: Item description (optional)
+    - Third column: Image URL (optional)
+    - Additional columns are ignored
+    
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # check if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can add alternatives.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST' and request.FILES.get('csvFile'):
+        csv_file = request.FILES['csvFile']
+        
+        # validate file type
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, "Please upload a CSV file.")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        try:
+            # read CSV file
+            csv_text = TextIOWrapper(csv_file.file, encoding='utf-8')
+            csv_reader = csv.reader(csv_text)
+            
+            items_added = 0
+            items_skipped = 0
+            items_with_desc = 0
+            items_with_images = 0
+            
+            for row in csv_reader:
+                if not row or not row[0].strip():  # skip empty rows or rows without name
+                    continue
+                    
+                item_name = row[0].strip()
+                item_description = row[1].strip() if len(row) > 1 else ""
+                image_url = row[2].strip() if len(row) > 2 else ""
+                
+                # check duplicates
+                if question.item_set.filter(item_text=item_name).exists():
+                    items_skipped += 1
+                    continue
+                
+                # create new item
+                recentlyAdded = question.status == 4
+                item = Item(
+                    question=question,
+                    item_text=item_name,
+                    item_description=item_description,
+                    imageURL=image_url if image_url else None,
+                    timestamp=timezone.now(),
+                    recently_added=recentlyAdded
+                )
+                item.save()
+                items_added += 1
+                if item_description:
+                    items_with_desc += 1
+                if image_url:
+                    items_with_images += 1
+            
+            # provide feedback
+            if items_added > 0:
+                success_msg = f"Successfully added {items_added} items"
+                details = []
+                if items_with_desc > 0:
+                    details.append(f"{items_with_desc} with descriptions")
+                if items_with_images > 0:
+                    details.append(f"{items_with_images} with images")
+                if details:
+                    success_msg += f" ({', '.join(details)})"
+                messages.success(request, success_msg + ".")
+            if items_skipped > 0:
+                messages.warning(request, f"Skipped {items_skipped} duplicate items.")
+                
+        except Exception as e:
+            messages.error(request, f"Error processing CSV file: {str(e)}")
+    
+    request.session['setting'] = 0
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+def upload_bulk_images(request, question_id):
+    """
+    Handle bulk image upload to create multiple items at once.
+    Each image file will become a new item, using the filename (without extension) as the item name.
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can add alternatives.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST' and request.FILES.getlist('imageFiles'):
+        try:
+            image_files = request.FILES.getlist('imageFiles')
+            name_prefix = request.POST.get('namePrefix', '').strip()
+            
+            items_added = 0
+            items_skipped = 0
+            
+            for image_file in image_files:
+                # get filename without extension as item name
+                filename = os.path.splitext(image_file.name)[0]
+                item_name = f"{name_prefix}{filename}" if name_prefix else filename
+                
+                # check for duplicates
+                if question.item_set.filter(item_text=item_name).exists():
+                    items_skipped += 1
+                    continue
+                
+                # create new item
+                recentlyAdded = question.status == 4
+                item = Item(
+                    question=question,
+                    item_text=item_name,
+                    image=image_file,
+                    timestamp=timezone.now(),
+                    recently_added=recentlyAdded
+                )
+                item.save()
+                items_added += 1
+            
+            if items_added > 0:
+                messages.success(request, f"Successfully added {items_added} items with images.")
+            if items_skipped > 0:
+                messages.warning(request, f"Skipped {items_skipped} items due to duplicate names.")
+                
+        except Exception as e:
+            messages.error(request, f"Error processing image files: {str(e)}")
+    
+    request.session['setting'] = 0
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+def delete_items(request, question_id):
+    """Delete multiple items or all items from a poll."""
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # check if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can delete alternatives.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST':
+        if 'delete_all' in request.POST:
+            # delete all 
+            question.item_set.all().delete()
+            messages.success(request, "All items have been deleted.")
+        else:
+            # delete selected 
+            try:
+                item_ids = json.loads(request.POST.get('item_ids', '[]'))
+                question.item_set.filter(id__in=item_ids).delete()
+                messages.success(request, f"{len(item_ids)} items have been deleted.")
+            except Exception as e:
+                messages.error(request, f"Error deleting items: {str(e)}")
+    
+    request.session['setting'] = 0
+
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
