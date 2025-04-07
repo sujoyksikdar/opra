@@ -1294,16 +1294,16 @@ class AllocateResultsView(views.generic.DetailView):
         ctx = super().get_context_data(**kwargs)
         question = self.object  # the current question instance
 
-        # 1) if no responses, nothing to show
+        # if no responses, nothing to show
         if not question.response_set.exists():
             ctx['error_message'] = "No responses found. Users must submit preferences before viewing allocations."
             return ctx
         
-        # 2-6) get mechanism information and prepare context
+        # get mechanism information and prepare context
         mechanism_info = self._prepare_mechanism_info(question)
         ctx.update(mechanism_info)
         
-        # 7-8) get user responses and preferences
+        # get user responses and preferences
         user_data = self._prepare_user_data(question)
         ctx.update(user_data)
         
@@ -1333,6 +1333,41 @@ class AllocateResultsView(views.generic.DetailView):
                 user_data['submitted_rankings']
             )
         
+        # Check Pareto Optimality
+        ctx["is_pareto_optimal"] = False
+        if allocation_result.get('allocation_matrix') is not None and user_data.get('preferences'):
+            try:
+                V = np.array(user_data['preferences'])
+                A = np.array(allocation_result['allocation_matrix'])
+                ctx["is_pareto_optimal"] = is_po(V, A)
+            except Exception as e:
+                print("is_PO check failed:", e)
+
+        # Compute Welfare Metrics
+        sum_values = allocation_result.get('sum_of_alloc_items_values', [])
+        if sum_values:
+            utilitarian_welfare = sum(sum_values)
+            egalitarian_welfare = min(sum_values)
+            ctx["utilitarian_welfare"] = utilitarian_welfare
+            ctx["egalitarian_welfare"] = egalitarian_welfare
+
+        # First-choice analysis
+        first_choices_data = []
+        if allocation_result.get('allocation_matrix') is not None:
+            allocation_matrix = allocation_result['allocation_matrix']
+            preferences = user_data['preferences']
+            for i, row in enumerate(allocation_matrix):  # For each agent
+                # Get that agent's valuation vector
+                valuations = preferences[i]
+                max_val = max(valuations)  # Their most preferred item's value
+                count = 0
+                for j, alloc in enumerate(row):  # Loop through their allocated items
+                    if alloc == 1 and valuations[j] == max_val:
+                        count += 1
+                first_choices_data.append(count)
+
+        ctx["first_choices_data"] = first_choices_data
+
         return ctx
 
     def _prepare_mechanism_info(self, question):
