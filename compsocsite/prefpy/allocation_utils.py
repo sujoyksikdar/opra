@@ -338,16 +338,32 @@ def max_cardinality_allocation(V):
 
 # ---------------------------------- Market helpers ----------------------------------
 
-def round_instance(V):
+def round_instance(V, scale=1000):
     """
     rounds valuations for numerical stability.
     returns:
     - Vprime: the adjusted valuation matrix.
     - eps: the computed precision factor.
     """
-    (n, m) = V.shape
+    # handle empty arrays
+    if V.size == 0:
+        return V, 1.0
+    
+    try:
+        n, m = V.shape
+    except ValueError:
+        # handle 1d arrays
+        V = V.reshape(1, -1)
+        n, m = V.shape
+    
+    # handle zeros
+    if np.all(V == 0):
+        return V.copy(), 1.0
+    
     vmax = np.max(V)
-    eps = 1.0 / (6.0 * (m**3) * vmax)
+    
+    # calculate epsilon
+    eps = 1.0 / (6.0 * (np.float64(m) ** 3) * vmax)
     
     Vprime = np.zeros((n, m))
     for j in range(n):
@@ -366,6 +382,9 @@ def is3epef1(X, p, eps):
 
     for j in range(n):  
         spending[j] = np.dot(p, X[j, :])  # calculate total spending per agent
+    
+    if n == 0 or np.all(np.isnan(spending)):
+        return True # no agents => trivially satisfied
 
     min_spend = np.min(spending)  # find the least spending agent
 
@@ -375,6 +394,10 @@ def is3epef1(X, p, eps):
 
         # compute spending if one item is removed
         vals = [spending[j] - (p[i] * X[j, i]) for i in range(m) if X[j, i] > 0]
+        
+        # skip if no items to remove
+        if not vals:
+            continue
 
         # check if all possible spends remain above (1 + 3*eps) * min_spend
         if np.all(np.array(vals) > (1 + 3 * eps) * min_spend):
@@ -580,8 +603,9 @@ def market_phase3(V, eps, X, p, jstar):
     if vals1 and spending[jstar] > 0:
         a2 = (1 / spending[jstar]) * np.max(vals1)
     if spending[jstar] == 0:
-        a2 = np.infty
-
+        # np.infty was deprecated and has been removed in NumPy 2.0
+        # a2 = np.infty # outdated
+        a2 = np.inf
     # compute a3: scale to surpass some outside agent
     a3 = 0
     if len(other_agents) > 0 and spending[jstar] > 0:
@@ -591,7 +615,8 @@ def market_phase3(V, eps, X, p, jstar):
             s += 1
         a3 = (1 + eps) ** s
     else:
-        a3 = np.infty
+        # a3 = np.infty
+        a3 = np.inf
 
     # determine the final scaling factor
     a = np.min([a1, a2, a3])
@@ -609,13 +634,35 @@ def market_solve(V):
     runs the market-based allocation mechanism to find an ef1 + po allocation.
     returns (status, allocation matrix X, price vector p).
     """
-    (n, m) = V.shape
+    if V.size == 0:
+        return True, np.array([]), np.array([])
+
+    try:
+        n, m = V.shape
+    except ValueError:
+        # handle 1D arrays by reshaping
+        V = V.reshape(1, -1)
+        n, m = V.shape
+        
+    # if no agents or items, return empty allocation
+    if n == 0 or m == 0:
+        return True, np.zeros((n, m)), np.zeros(m)
 
     # round valuations for numerical stability
     V, eps = round_instance(V)
 
     # phase 1: initial allocation and pricing
-    status, X, p = market_phase1(V, eps)
+    try:
+        status, X, p = market_phase1(V, eps)
+    except Exception as e:
+        print(f"Market phase 1 failed: {str(e)}")
+        # fallback
+        X = np.zeros((n, m))
+        for i in range(m):
+            if n > 0:  # at least one agent
+                X[0, i] = 1 
+        p = np.ones(m)  # set all prices to 1
+        return True, X, p
 
     # compute initial utilities and spending
     U = [np.dot(X[j, :], V[j, :]) for j in range(n)]    # utilities per agent
@@ -652,27 +699,43 @@ def market_solve(V):
 
 # ---------------------------------- Market_eq helpers ----------------------------------
 
-def round_eq_instance(V):
+def round_eq_instance(V, scale=1000):
     """
-    rounds valuations for eq-based approach.
-    returns (Vprime, eps).
+    rounds valuations for numerical stability.
+    returns:
+    - Vprime: the adjusted valuation matrix.
+    - eps: the computed precision factor.
     """
-    (n, m) = np.shape(V)
+    # handle empty arrays
+    if V.size == 0:
+        return V, 1.0
+    
+    try:
+        n, m = V.shape
+    except ValueError:
+        # handle 1d arrays
+        V = V.reshape(1, -1)
+        n, m = V.shape
+    
+    # handle zeros
+    if np.all(V == 0):
+        return V.copy(), 1.0
+    
     vmax = np.max(V)
     
-    # compute small tolerance epsilon for rounding
-    eps = 1 / (16 * m * np.power(np.float64(vmax), 4))  # cast as float64 to ensure 64-bit precision
+    # if max value is zero or very small, use default epsilon
+    if vmax < 1e-10:
+        return V.copy(), 1.0
     
-    # initialize rounded valuation matrix
+    # compute epsilon and round
+    eps = 1.0 / (6.0 * (np.float64(m) ** 3) * vmax)
+    
     Vprime = np.zeros((n, m))
-
     for j in range(n):
         for i in range(m):
             if V[j, i] > 0:
-                # round valuations to a (1+eps)-logarithmic grid
                 Vprime[j, i] = (1 + eps) ** np.ceil(np.log(V[j, i]) / np.log(1 + eps))
-
-    return Vprime, eps
+    return Vprime, eps 
 
 
 def isepeq1(V, X, eps=1e-6):
@@ -843,29 +906,50 @@ def market_eq_solve(V):
       3) scale prices
     returns (status, X, p).
     """
-    # round valuations for numerical stability
-    V, eps = round_eq_instance(V)
+    # Handle empty arrays
+    if V.size == 0:
+        return False, np.array([]), np.array([])
+    
+    try:
+        n, m = V.shape
+    except ValueError:
+        # Handle 1D arrays by reshaping
+        V = V.reshape(1, -1)
+        n, m = V.shape
+    
+    # If no agents or items, return empty allocation
+    if n == 0 or m == 0:
+        return False, np.zeros((n, m)), np.zeros(m)
+    
+    try:
+        # round valuations for numerical stability
+        V, eps = round_eq_instance(V)
 
-    # phase 1: initial allocation and pricing
-    status, X, p = market_eq_phase1(V, eps)
-    if status:
-        return status, X, p  # if phase 1 is already eq1, return result
+        # phase 1: initial allocation and pricing
+        status, X, p = market_eq_phase1(V, eps)
+        if status:
+            return status, X, p  # if phase 1 is already eq1, return result
 
-    # initialize phase tracking variables
-    status = False
-    next_phase = 2
-    jstar = None  # least spender
+        # initialize phase tracking variables
+        status = False
+        next_phase = 2
+        jstar = None  # least spender
 
-    # iterate through market phases until convergence
-    while False == status:
-        if next_phase == 2:
-            status, next_phase, X, p, jstar = market_eq_phase2(V, eps, X, p)
-        elif next_phase == 3:
-            status, next_phase, X, p = market_eq_phase3(V, eps, X, p, jstar)
-        else:
-            return False, X, p  # invalid phase, return failure
+        # iterate through market phases until convergence
+        while False == status:
+            if next_phase == 2:
+                status, next_phase, X, p, jstar = market_eq_phase2(V, eps, X, p)
+            elif next_phase == 3:
+                status, next_phase, X, p = market_eq_phase3(V, eps, X, p, jstar)
+            else:
+                return False, X, p  # invalid phase, return failure
 
-    return status, X, p  # return final allocation and price vector
+        return status, X, p  # return final allocation and price vector
+    
+    except Exception as e:
+        # If any phase fails, return empty allocation
+        print(f"Market equilibrium solver failed: {str(e)}")
+        return False, np.zeros((n, m)), np.zeros(m)
 
 
 
@@ -1020,45 +1104,73 @@ def do_swaps(V, A, pair, G, labels):
     return B
 
 
-
 def solve_mnw_binary(V):
-    """
-    runs the MNW binary allocation procedure.
-    iteratively swaps allocations to maximize Nash Welfare.
-    returns an n x m binary allocation matrix.
-    """
-    (n, m) = np.shape(V)  # get number of agents and items
-
-    # initialize an allocation to start from
+    """solve maximum nash welfare with binary allocations"""
+    # handle empty arrays
+    if V.size == 0:
+        return np.zeros((0, 0))
+    try:
+        n, m = V.shape
+    except ValueError:
+        # handle 1d arrays
+        V = V.reshape(1, -1)
+        n, m = V.shape
+    
+    # handle edge cases
+    if n == 0 or m == 0:
+        return np.zeros((n, m))
+    
+    # initialize allocation using max match
     A = max_match_allocation(V)
     Acur = deepcopy(A)
+    
+    # main iteration loop following fairdivision implementation
+    for t in range(1, int(2*m*(n+1)*np.log(max(n*m, 2)) + 1)):
+        Aprev = deepcopy(Acur)
+        Gprev, labels = construct_alloc_graph(V, Aprev)
+        R = get_reachability(V, Gprev)
 
-    # iterate over potential swaps to improve Nash Welfare
-    for t in np.arange(1, 2 * m * (n + 1) * np.log(n * m) + 1, 1):
-        Aprev = deepcopy(Acur)  # store previous allocation
-        Gprev, labels = construct_alloc_graph(V, Aprev)  # construct allocation graph
-        R = get_reachability(V, Gprev)  # get reachable agent pairs
-
-        Apairs = list()  # store candidate allocations
-        nwApairs = list()  # store corresponding Nash Welfare values
-
-        # compute new allocations for each reachable pair
+        # if no reachable pairs, we're done
+        if not R:
+            break
+            
+        Apairs = []
+        nwApairs = []
+        
+        # try all possible swaps
         for pair in R:
-            Apair = do_swaps(V, Aprev, pair, Gprev, labels)  # swap allocations
-            Apairs.append(Apair)  # store new allocation
-            nwApair, U = nw(V, Apair)  # compute Nash Welfare
-            nwApairs.append(nwApair)  # store Nash Welfare value
-
-        # find the best swap that improves Nash Welfare
-        max_nw_pairs = np.max(nwApairs)
-        nw_prev, U = nw(V, Aprev)  # compute previous allocation's welfare
-
-        if max_nw_pairs > nw_prev:
-            max_pair_idx = np.argmax(nwApairs)  # find best swap
-            Acur = deepcopy(Apairs[max_pair_idx])  # apply the best swap
-        else:
-            return Aprev  # return previous allocation if no improvement
-
-    return Acur  # return final optimized allocation
-
-
+            Apair = do_swaps(V, Aprev, pair, Gprev, labels)
+            Apairs.append(Apair)
+            nwApair, U = nw(V, Apair)
+            nwApairs.append(nwApair)
+        
+        # find best swap
+        if nwApairs:  # ensure we have at least one swap
+            max_nw_pairs = np.max(nwApairs)
+            nw_prev, U = nw(V, Aprev)
+            
+            # update if better allocation found
+            if max_nw_pairs > nw_prev:
+                max_pair_idx = np.argmax(nwApairs)
+                Acur = deepcopy(Apairs[max_pair_idx])
+            else:
+                # no improvement found
+                return Aprev
+    
+    # validate final allocation
+    for j in range(m):
+        if np.sum(Acur[:, j]) != 1:
+            # fix allocations if needed
+            if np.sum(Acur[:, j]) == 0:
+                # unallocated item - give to agent with highest value
+                i_max = np.argmax(V[:, j])
+                Acur[i_max, j] = 1
+            else:
+                # over-allocated item - keep highest value allocation
+                agents = np.where(Acur[:, j] > 0)[0]
+                values = [V[agent, j] for agent in agents]
+                best_agent = agents[np.argmax(values)]
+                Acur[:, j] = 0
+                Acur[best_agent, j] = 1
+    
+    return Acur

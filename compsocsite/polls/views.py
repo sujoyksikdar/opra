@@ -13,6 +13,7 @@ from django import views
 from django.db.models import Q
 
 from django.utils import timezone
+from django.core.cache import cache
 from django.template import RequestContext
 from django.shortcuts import render
 from django.contrib import messages
@@ -36,6 +37,11 @@ import numpy as np
 import random
 import csv
 import ast
+import hashlib
+import logging
+
+# logger for cache
+logger = logging.getLogger(__name__)
 from io import TextIOWrapper
 
 active_polls = []
@@ -1290,14 +1296,52 @@ class AllocateResultsView(views.generic.DetailView):
 
         # 1) if no responses, nothing to show
         if not question.response_set.exists():
+            ctx['error_message'] = "No responses found. Users must submit preferences before viewing allocations."
             return ctx
+        
+        # 2-6) get mechanism information and prepare context
+        mechanism_info = self._prepare_mechanism_info(question)
+        ctx.update(mechanism_info)
+        
+        # 7-8) get user responses and preferences
+        user_data = self._prepare_user_data(question)
+        ctx.update(user_data)
+        
+        # create context data dictionary for caching
+        context_data = {
+            'question_id': question.id,
+            'mechanism_id': ctx['current_mechanism_id'],
+            'preferences': user_data['preferences'],
+            'sorted_user_ids': user_data['sorted_user_ids']
+        }
+        
+        # get cached result or compute new allocation
+        allocation_result, is_cache_hit = self._get_allocation_result(
+            context_data, 
+            ctx['chosen_cls'], 
+            ctx['chosen_label']
+        )
+        
+        # Update context with allocation results
+        ctx.update(allocation_result)
+        
+        # Add additional UI-specific data
+        if question.alloc_res_tables & 2 != 0:
+            ctx["all_user_preferences"] = self._format_user_preferences(
+                user_data['sorted_user_ids'],
+                user_data['user_names'],
+                user_data['submitted_rankings']
+            )
+        
+        return ctx
 
-        # 2) read from the question model
-        locked_alg_id = question.poll_algorithm  # the poll’s “locked” or default algorithm
-        alg_bitmask   = question.alloc_algorithms
-        ctx["selected_alloc_res_tables_sum"] = question.alloc_res_tables
-
-        # 3) define known allocation mechanisms
+    def _prepare_mechanism_info(self, question):
+        """Prepare mechanism selection information"""
+        # question model
+        locked_alg_id = question.poll_algorithm
+        alg_bitmask = question.alloc_algorithms
+        
+        # define known allocation mechanisms
         all_mechanisms = [
             (1,  "Round Robin",       MechanismRoundRobinAllocation),
             (2,  "Max Nash Welfare",  MechanismMaximumNashWelfare),
@@ -1307,14 +1351,18 @@ class AllocateResultsView(views.generic.DetailView):
             (32, "MNW Binary",        MechanismMaximumNashWelfareBinary),
         ]
 
-        # 4) build a list of allowed (bit, label) from the bitmask
+        # build a list of allowed (bit, label) from the bitmask
         available_mechanisms = []
         for (bit, label, cls) in all_mechanisms:
             if (alg_bitmask & bit) != 0:
                 available_mechanisms.append((bit, label))
-        ctx["available_mechanisms"] = available_mechanisms
-
-        # 5) see if user requested ?alg=...
+        
+        # if no algorithms are selected, fall back to Round Robin
+        if not available_mechanisms:
+            # Fall back to Round Robin if no algorithms are selected
+            available_mechanisms = [(1, "Round Robin")]
+        
+        # requested ?alg=...
         requested_alg = self.request.GET.get("alg", None)
         if requested_alg is not None:
             try:
@@ -1329,9 +1377,7 @@ class AllocateResultsView(views.generic.DetailView):
         else:
             current_mechanism_id = locked_alg_id
 
-        ctx["current_mechanism_id"] = current_mechanism_id
-
-        # 6) find which mechanism class is chosen
+        # Find which mechanism class is chosen
         chosen_cls = None
         chosen_label = "Unknown"
         for (bit, label, cls) in all_mechanisms:
@@ -1340,52 +1386,75 @@ class AllocateResultsView(views.generic.DetailView):
                 chosen_label = label
                 break
 
-        # if none matched, default to round robin
+        # If none matched, default to round robin
         if not chosen_cls:
             chosen_cls = MechanismRoundRobinAllocation
             chosen_label = "Round Robin"
+        
+        return {
+            "available_mechanisms": available_mechanisms,
+            "current_mechanism_id": current_mechanism_id,
+            "current_mechanism": chosen_label,
+            "chosen_cls": chosen_cls,
+            "chosen_label": chosen_label,
+            "selected_alloc_res_tables_sum": question.alloc_res_tables
+        }
 
-        ctx["current_mechanism"] = chosen_label
-
-        # 7) gather user responses
+    def _prepare_user_data(self, question):
+        """Extract user responses and preferences"""
         response_set = question.response_set.all()
         current_user_id = self.request.user.id
 
-        # build map of user ids -> name/pic
+        # Build map of user ids -> name/pic
         user_names = {}
         user_pics = {}
+        submitted_rankings = {}
+        
         for resp in response_set:
             uid = resp.user_id
             if uid not in user_names:
                 user_names[uid] = resp.user.first_name
                 pic_path = resp.user.userprofile.profile_pic.name
                 user_pics[uid] = f"/{pic_path}" if pic_path else ""
-
-        # Extract preference data
-        submitted_rankings = {}
-        for resp in response_set:
-            submitted_rankings[resp.user_id] = json.loads(resp.behavior_data)["submitted_ranking"]
+            submitted_rankings[uid] = json.loads(resp.behavior_data)["submitted_ranking"]
 
         sorted_user_ids = sorted(user_names.keys())
-        ctx["candidates"]   = [user_names[uid] for uid in sorted_user_ids]
-        ctx["profile_pics"] = [user_pics[uid]  for uid in sorted_user_ids]
+        
+        # Build a matrix of numeric valuations
+        preferences = self._extract_numeric_preferences(
+            response_set, 
+            sorted_user_ids, 
+            question.item_set.count()
+        )
+        
+        return {
+            "candidates": [user_names[uid] for uid in sorted_user_ids],
+            "profile_pics": [user_pics[uid] for uid in sorted_user_ids],
+            "user_names": user_names,
+            "submitted_rankings": submitted_rankings,
+            "sorted_user_ids": sorted_user_ids,
+            "preferences": preferences,
+            "current_user_id": current_user_id
+        }
 
-        # 8) build a matrix of numeric valuations from resp.resp_str
-        user_valuations_map = {}  # user_id -> list of floats
+    def _extract_numeric_preferences(self, response_set, sorted_user_ids, item_count):
+        """Extract numeric preference values from responses"""
+        user_valuations_map = {}
+        
+        # Process each response
         for resp in response_set:
             uid = resp.user_id
-            raw_list = ast.literal_eval(resp.resp_str)  # e.g. ["itema","12","itemb","8"]
+            raw_list = ast.literal_eval(resp.resp_str)
             numeric_vals = []
+            
             for sublist in raw_list:
                 if not sublist:
                     continue
-                x = sublist[0] 
+                x = sublist[0]
                 val = 0.0
                 if isinstance(x, (int, float)):
-                    # if already a number
                     val = float(x)
                 else:
-                    # if it's a string, try to parse
                     s = str(x).lower().strip()
                     if s.startswith("item"):
                         remainder = s[4:]
@@ -1401,14 +1470,131 @@ class AllocateResultsView(views.generic.DetailView):
                 numeric_vals.append(val)
             user_valuations_map[uid] = numeric_vals
 
-        # convert them to a 2d list in user-id sorted order
+        # Fix for empty preferences
+        for uid in sorted_user_ids:
+            if uid not in user_valuations_map or not user_valuations_map[uid]:
+                user_valuations_map[uid] = [0.0] * item_count
+        
+        # Make sure all preference lists have the same length
+        max_length = max([len(vals) for vals in user_valuations_map.values()]) if user_valuations_map else item_count
+        for uid in user_valuations_map:
+            if len(user_valuations_map[uid]) < max_length:
+                user_valuations_map[uid] += [0.0] * (max_length - len(user_valuations_map[uid]))
+
+        # Convert to a 2d list in user-id sorted order
         preferences = []
         for uid in sorted_user_ids:
-            # if not present or mismatch length, just get(...) or fill
-            preferences.append(user_valuations_map.get(uid, []))
+            preferences.append(user_valuations_map.get(uid, [0.0] * max_length))
         
-        # All Preferences (bit=2)
-        if question.alloc_res_tables & 2 != 0:
+        return preferences
+
+    def _process_allocation_result(self, result, preferences, sorted_user_ids, question_id):
+        """Process allocation result into template context data"""
+        # Extract allocation matrix
+        allocation_matrix = result.A  # shape: (num_agents, num_items)
+        
+        # Get question and items
+        question = Question.objects.get(id=question_id) if question_id else None
+        items = list(question.item_set.all()) if question else []
+        
+        # Create basic allocation data
+        allocation_data = {
+            'allocation_matrix': allocation_matrix,
+            'items_obj': items,
+        }
+        
+        # Reconstruct allocated items
+        allocated_items = []
+        if allocation_matrix is not None:
+            N = len(allocation_matrix)
+            if N > 0:
+                M = len(allocation_matrix[0])
+                for i in range(N):
+                    user_items = []
+                    for j in range(M):
+                        if allocation_matrix[i][j] == 1 and j < len(items):
+                            # Store the actual Item object
+                            user_items.append(items[j])
+                        elif allocation_matrix[i][j] == 1:
+                            # Fallback for items beyond the range
+                            user_items.append({'item_text': f"Item #{j}", 'id': -1})
+                    allocated_items.append(user_items)
+        allocation_data['allocated_items'] = allocated_items
+        
+        # Calculate sum of values for each agent
+        sum_values = []
+        for i, prefs in enumerate(preferences):
+            if i < len(allocation_matrix):
+                utility = sum(prefs[j] * allocation_matrix[i][j] for j in range(len(prefs)))
+                sum_values.append(utility)
+        
+        allocation_data['sum_of_alloc_items_values'] = sum_values
+        
+        return allocation_data
+
+    def _get_allocation_result(self, context_data, mechanism_class, mechanism_label):
+        """Get cached allocation or compute a new one"""
+        # Try to get from cache
+        cached_result, is_hit = AllocationCache.get_cached_result(context_data)
+        
+        if is_hit:
+            logger.info(f"Cache hit for mechanism {mechanism_label}")
+            print(f"\n>>> CACHE HIT: Using cached result for {mechanism_label} <<<\n")
+            # return cached_result, True
+            # Process the cached data to ensure it's in the right format for the template
+            processed_result = self._process_cached_allocation_data(cached_result)
+            return processed_result, True
+        
+        # If not in cache, compute allocation
+        logger.info(f"Cache miss for mechanism {mechanism_label}, computing allocation")
+        print(f"\n>>> CACHE MISS: Computing new result for {mechanism_label} <<<\n")
+        start_time = timezone.now()
+        
+        try:
+            # Run the allocation mechanism
+            mechanism = mechanism_class()
+            result = mechanism.allocate(valuations=context_data['preferences'])
+            
+            # Process the allocation result
+            allocation_data = self._process_allocation_result(
+                result, 
+                context_data['preferences'],
+                context_data['sorted_user_ids'],
+                context_data.get('question_id')
+            )
+            
+            # Store in cache
+            AllocationCache.store_result(context_data, allocation_data)
+            
+            # Log performance
+            end_time = timezone.now()
+            computation_time = (end_time - start_time).total_seconds()
+            logger.info(f"Allocation computed in {computation_time:.2f}s for mechanism {mechanism_label}")
+            print(f"Allocation computed in {computation_time:.2f}s for mechanism {mechanism_label}")
+            
+            return allocation_data, False
+            
+        except Exception as e:
+            logger.error(f"Error computing allocation with {mechanism_label}: {str(e)}", exc_info=True)
+            print(f"\n>>> ERROR computing allocation with {mechanism_label}: {str(e)} <<<\n")
+            
+            # Create fallback allocation
+            n = len(context_data['preferences'])
+            m = max([len(p) for p in context_data['preferences']]) if context_data['preferences'] else 0
+            empty_matrix = np.zeros((n, m))
+            
+            # Return error data
+            error_data = {
+                'error_message': f"Could not compute allocation with {mechanism_label}: {str(e)}",
+                'allocation_matrix': empty_matrix,
+                'allocated_items': [[] for _ in range(n)],
+                'sum_of_alloc_items_values': [0] * n
+            }
+            
+            return error_data, False
+
+        def _format_user_preferences(self, sorted_user_ids, user_names, submitted_rankings):
+            """Format user preferences for display"""
             all_user_prefs = []
             for uid in sorted_user_ids:
                 username = user_names[uid]
@@ -1419,113 +1605,31 @@ class AllocateResultsView(views.generic.DetailView):
                         item_name = group[0].get("name", "")[4:]
                         cleaned.append((item_name))
                 all_user_prefs.append((username, cleaned))
-            ctx["all_user_preferences"] = all_user_prefs
+            return all_user_prefs
 
-        # 9) run the chosen mechanism
-        mechanism = chosen_cls()
-        result = mechanism.allocate(valuations=preferences)  # => AllocationResult
-
-        # 10) extract NxM allocation matrix
-        allocation_matrix = result.A  # shape: (num_agents, num_items)
-        ctx["allocation_matrix"] = allocation_matrix
-
-        # reconstruct allocated items
-        allocated_items = []
-        if allocation_matrix is not None:
-            N = len(allocation_matrix)
-            if N > 0:
-                M = len(allocation_matrix[0])
-                for i in range(N):
-                    user_items = []
-                    for j in range(M):
-                        if allocation_matrix[i][j] == 1:
-                            user_items.append(f"Item #{j}")
-                    allocated_items.append(user_items)
-        ctx["allocated_items"] = allocated_items
-
-        # 10.1 Check Pareto Optimality
-        ctx["is_pareto_optimal"] = False
-        if allocation_matrix is not None and preferences:
-            try:
-                V = np.array(preferences)
-                A = np.array(allocation_matrix)
-                ctx["is_pareto_optimal"] = is_po(V, A)
-            except Exception as e:
-                print("is_PO check failed:", e)
-
-        # 11) sum of allocated items
-        sum_of_alloc_items_values = []
-        if allocation_matrix is not None:
-            N = len(allocation_matrix)
-            if N > 0:
-                M = len(allocation_matrix[0])
-                for i in range(N):
-                    total_val = 0.0
-                    uid = sorted_user_ids[i]
-                    ranking = submitted_rankings.get(uid, [])
-                    for j in range(M):
-                        if allocation_matrix[i][j] == 1:
-                            item_name = f"item{question.item_set.all()[j].item_text}"
-                            for group in ranking:
-                                for item in group:
-                                    if isinstance(item, dict) and item.get("name") == item_name:
-                                        total_val += item.get("score", 0)
-                    sum_of_alloc_items_values.append(total_val)
-        ctx["sum_of_alloc_items_values"] = sum_of_alloc_items_values
-
-        items_obj = list(question.item_set.all())  # get all Item objects
-
-        # 12) identify the current user’s name/bundle
-        current_user_name = ""
-        if current_user_id in user_names:
-            current_user_name = user_names[current_user_id]
-        ctx["current_user_name"] = current_user_name
-
-        if current_user_name:
-            row_index = sorted_user_ids.index(current_user_id)
-            if row_index < len(allocated_items):
-                allocated_indexes = [int(name.split("#")[1]) for name in allocated_items[row_index]]
-                matched_items = [items_obj[i] for i in allocated_indexes]
-
-                ctx["curr_user_bundle"] = matched_items
-                ctx["curr_user_bundle_sum"] = sum_of_alloc_items_values[row_index] if row_index < len(sum_of_alloc_items_values) else 0
+    def _process_cached_allocation_data(self, cached_result, question_id=None):
+        """Process cached allocation data to work with the template"""
+        if not question_id:
+            question_id = self.kwargs.get('pk')
+            
+        question = Question.objects.get(id=question_id)
+        items = list(question.item_set.all())
         
-        # 13) Current user's preferences with values (for "My Preference" table)
-        if current_user_id in submitted_rankings:
-            curr_user_pref = []
-            curr_user_pref_values = []
-            for group in submitted_rankings[current_user_id]:
-                if group and isinstance(group[0], dict):
-                    item_name = group[0].get("name", "")[4:]  # remove 'item'
-                    score = group[0].get("score", 0)
-                    curr_user_pref.append(item_name)
-                    curr_user_pref_values.append(score)
-            ctx["curr_user_pref"] = curr_user_pref
-            ctx["curr_user_pref_values"] = curr_user_pref_values
+        # Store items_obj reference
+        cached_result['items_obj'] = items
         
-        # 14) Compute Welfare Metrics
-        utilitarian_welfare = sum(sum_of_alloc_items_values) if sum_of_alloc_items_values else 0
-        egalitarian_welfare = min(sum_of_alloc_items_values) if sum_of_alloc_items_values else 0
-        ctx["utilitarian_welfare"] = utilitarian_welfare
-        ctx["egalitarian_welfare"] = egalitarian_welfare
+        # Convert dictionary items back to Item objects
+        if 'allocated_items' in cached_result:
+            for i, agent_items in enumerate(cached_result['allocated_items']):
+                for j, item_data in enumerate(agent_items):
+                    if isinstance(item_data, dict) and 'id' in item_data and item_data['id'] > 0:
+                        # Find matching item by ID
+                        for item in items:
+                            if item.id == item_data['id']:
+                                cached_result['allocated_items'][i][j] = item
+                                break
         
-        # 15) First-choice analysis
-        first_choices_data = []
-        if allocation_matrix is not None:
-            for i, row in enumerate(allocation_matrix):  # For each agent
-                # Get that agent's valuation vector
-                valuations = preferences[i]
-                max_val = max(valuations)  # Their most preferred item's value
-                count = 0
-                for j, alloc in enumerate(row):  # Loop through their allocated items
-                    if alloc == 1 and valuations[j] == max_val:
-                        count += 1
-                first_choices_data.append(count)
-
-        ctx["first_choices_data"] = first_choices_data
-
-
-        return ctx
+        return cached_result
 
 # view for submission confirmation
 class ConfirmationView(views.generic.DetailView):
@@ -2507,7 +2611,7 @@ def setInitialSettings(request, question_id):
         # read which allocation algorithms are checked
         # round robin => bit=1 is always included
         posted_algs = request.POST.getlist("alloc_algorithms")  # e.g. ["2","4","16"]
-        alg_sum = 1  # start with round robin
+        alg_sum = 0
         for alg_str in posted_algs:
             alg_sum += int(alg_str)
         question.alloc_algorithms = alg_sum
@@ -2561,7 +2665,7 @@ def setPollingSettings(request, question_id):
         # 3a) read the posted "alloc_algorithms" checkboxes
         #     round robin (bit=1) is always included, so start with 1
         posted_alloc_algs = request.POST.getlist('alloc_algorithms')  # e.g. ["2","8","16"]
-        alloc_algs_sum = 1  # we always include round robin
+        alloc_algs_sum = 0
         for alg_str in posted_alloc_algs:
             alg_val = int(alg_str)
             alloc_algs_sum += alg_val

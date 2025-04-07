@@ -8,6 +8,11 @@ from six import python_2_unicode_compatible
 from django.contrib.auth.models import User
 import os
 from django.conf import settings
+import json
+import hashlib
+import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 # Models
 
@@ -68,7 +73,7 @@ class Question(models.Model):
     ui_number = models.IntegerField(default=6)
     vote_rule = models.IntegerField(default=4095)
     alloc_res_tables = models.IntegerField(default=6)
-    alloc_algorithms = models.IntegerField(default=1)
+    alloc_algorithms = models.IntegerField(default=0)
     first_tier = models.IntegerField(default=0)
     utility_model = models.IntegerField(default=0)
 
@@ -400,3 +405,95 @@ class SignUpRequest(models.Model):
     status = models.IntegerField(default=1)
     timestamp = models.DateTimeField('request timestamp')
 
+# caching for allocations
+class AllocationCache(models.Model):
+    """Cache for allocation results to avoid recomputation"""
+    hash_key = models.CharField(max_length=64, unique=True)
+    allocation_data = models.TextField()
+    timestamp = models.DateTimeField(auto_now=True)
+    hit_count = models.IntegerField(default=0)
+    
+    @staticmethod
+    def generate_key(context_data):
+        """Generate a deterministic hash key from context data"""
+        # Create a stable representation of the data
+        data_str = json.dumps(context_data, sort_keys=True)
+        return hashlib.sha256(data_str.encode()).hexdigest()
+    
+    @staticmethod
+    def get_cached_result(context_data):
+        """Get cached allocation result if it exists"""
+        try:
+            hash_key = AllocationCache.generate_key(context_data)
+            cache_entry = AllocationCache.objects.get(hash_key=hash_key)
+            
+            # Update hit count
+            cache_entry.hit_count += 1
+            cache_entry.save()
+            
+            logger.info(f"Cache HIT for allocation computation (key: {hash_key[:8]}...)")
+            return json.loads(cache_entry.allocation_data), True
+        except AllocationCache.DoesNotExist:
+            logger.info(f"Cache MISS for allocation computation")
+            return None, False
+        except Exception as e:
+            logger.error(f"Cache error: {str(e)}")
+            return None, False
+    
+    @staticmethod
+    def store_result(context_data, allocation_result):
+        """Store allocation result in cache"""
+        try:
+            hash_key = AllocationCache.generate_key(context_data)
+            
+            # Convert numpy arrays to lists for JSON serialization
+            serializable_result = AllocationCache._make_serializable(allocation_result)
+            
+            # Store or update cache entry
+            AllocationCache.objects.update_or_create(
+                hash_key=hash_key,
+                defaults={'allocation_data': json.dumps(serializable_result)}
+            )
+            
+            logger.info(f"Stored result in cache (key: {hash_key[:8]}...)")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to store in cache: {str(e)}")
+            return False
+    
+    @staticmethod
+    def _make_serializable(obj):
+        """Convert object to JSON serializable format"""
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif hasattr(obj, 'id') and hasattr(obj, 'item_text'):  # Item object
+            return {
+                'id': obj.id,
+                'item_text': obj.item_text,
+                'item_description': obj.item_description or "",
+                'imageURL': obj.imageURL or ""
+            }
+        elif isinstance(obj, dict):
+            return {k: AllocationCache._make_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list) or isinstance(obj, tuple):
+            return [AllocationCache._make_serializable(i) for i in obj]
+        else:
+            return obj
+
+def debug_cache():
+    print("\n\n====== CHECKING CACHE ======")
+    from django.db import connection
+    cursor = connection.cursor()
+    cursor.execute("SELECT COUNT(*) FROM polls_allocationcache")
+    count = cursor.fetchone()[0]
+    print(f"Total cache entries: {count}")
+    
+    if count > 0:
+        cursor.execute("SELECT hash_key, hit_count FROM polls_allocationcache LIMIT 5")
+        for row in cursor.fetchall():
+            print(f"Key: {row[0][:10]}..., Hits: {row[1]}")
+    print("====== END CHECK ======\n\n")
