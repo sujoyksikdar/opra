@@ -405,9 +405,9 @@ class SignUpRequest(models.Model):
     status = models.IntegerField(default=1)
     timestamp = models.DateTimeField('request timestamp')
 
-# caching for allocations
+# Caching for allocations
 class AllocationCache(models.Model):
-    """Cache for allocation results to avoid recomputation"""
+    """cache for allocation results to avoid recomputation"""
     hash_key = models.CharField(max_length=64, unique=True)
     allocation_data = models.TextField()
     timestamp = models.DateTimeField(auto_now=True)
