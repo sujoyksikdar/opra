@@ -36,15 +36,19 @@
                         <li>One row per item</li>
                         <li>First column: Item name (required)</li>
                         <li>Second column: Item description (optional)</li>
-                        <li>Third column: Image URL (optional)</li>
+                        <li>Third column: Asset name (optional)</li>
                         <li>Additional columns will be ignored</li>
                     </ul>
                     <div class="well">
                         <p><strong>Example CSV content:</strong></p>
-                        <pre>Item A, This is a description for Item A
-Item B, Another description here
-Item C, https://example.com/imageC.jpg
-Item D</pre>
+                        <pre>Item A, This is a description for Item A, image1.jpg
+Item B, Another description here, image2.png
+Item C, Description for Item C, image3.jpg
+Item D,                       , image4.png</pre>
+                    </div>
+                    <div class="alert alert-info">
+                        <span class="glyphicon glyphicon-info-sign"></span>
+                        The asset name in the third column should match the filename of the image you want to associate with the item.
                     </div>
 
                     <!-- add bulk image upload -->

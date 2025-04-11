@@ -3965,7 +3965,7 @@ def upload_csv_choices(request, question_id):
     - One row per item
     - First column: Item name (required)
     - Second column: Item description (optional)
-    - Third column: Image URL (optional)
+    - Third column: Asset name (optional)
     - Additional columns are ignored
     
     """
@@ -4000,7 +4000,7 @@ def upload_csv_choices(request, question_id):
                     
                 item_name = row[0].strip()
                 item_description = row[1].strip() if len(row) > 1 else ""
-                image_url = row[2].strip() if len(row) > 2 else ""
+                asset_name = row[2].strip() if len(row) > 2 else ""
                 
                 # check duplicates
                 if question.item_set.filter(item_text=item_name).exists():
@@ -4013,7 +4013,7 @@ def upload_csv_choices(request, question_id):
                     question=question,
                     item_text=item_name,
                     item_description=item_description,
-                    imageURL=image_url if image_url else None,
+                    image=asset_name if asset_name else None,
                     timestamp=timezone.now(),
                     recently_added=recentlyAdded
                 )
@@ -4021,7 +4021,7 @@ def upload_csv_choices(request, question_id):
                 items_added += 1
                 if item_description:
                     items_with_desc += 1
-                if image_url:
+                if asset_name:
                     items_with_images += 1
             
             # provide feedback
