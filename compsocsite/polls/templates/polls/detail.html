@@ -203,6 +203,7 @@
     });
     //set the webpage for ajax to report user behavior
     submissionURL="{% url 'polls:record' question.id%}";
+    var previouslySubmitted = {{ submitted_ranking|default:"null" |safe }};
 	
     $(function(){
         $(document).ready(function() {
@@ -236,9 +237,12 @@
             method = 1;
 
             // for allocation UIs:
+            {% if question.twocol_enabled %} changeMethod(1);{% endif %}
+            {% if question.onecol_enabled %} changeMethod(2);{% endif %}            
             {% if question.budgetUI_enabled %} changeMethod(7);{% endif %}
             {% if question.ListUI_enabled %} changeMethod(8);{% endif %}
             {% if question.infiniteBudgetUI_enabled %} changeMethod(9);{% endif %}
+            method = 1;
 
             //alert(method);
 

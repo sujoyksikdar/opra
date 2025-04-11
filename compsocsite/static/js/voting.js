@@ -17,6 +17,10 @@ var methodIndicator = "two_column";
 var init_star = false;
 
 var top_tier_layer = 0;
+// Cache for storing preferences per UI method
+var cachedOrders = {
+	1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null, 8: null, 9: null
+  };
 
 // Function to check if a given value is numeric
 function isNumeric(value) {
@@ -355,22 +359,72 @@ function dictCol(num){
 	if(num == 1){ arr = [$('#left-sortable'), $('#right-sortable')]; }
 	else if(num == 2){ arr = [$('#one-sortable')]; }
 	var order = [];
+	var allItems = [];
 	var tier = 1;
 	var item_type = ".list-element";
+	// Collect all items first
+	$.each(arr, function( index, value ){
+		value.children().each(function( i1 ){
+			if( $( this ).children().size() > 0 && $( this ).attr("class") != "top_tier"){
+				var inner = [];
+				$( this ).children().each(function( i2 ){
+					if ($(this).hasClass('list-element')) {
+						const id = $(this).attr('id');
+						const utility = $(this).attr('title');
+						allItems.push({ id, utility, ranked: index, tier });
+					}
+				});
+				tier++;
+			}
+		});
+	});
+
+	// Compute normalized scores
+	const N = allItems.length;
+	const totalWeight = (N * (N + 1)) / 2;
+
+	// Step 1: Calculate raw scores and remainders
+	let rawScores = allItems.map((item, i) => {
+		const rank = N - i;
+		const raw = (rank / totalWeight) * 100;
+		return { index: i, raw, floor: Math.floor(raw), remainder: raw - Math.floor(raw) };
+	});
+	// Step 2: Distribute leftover points so sum = 100
+	let scoreSum = rawScores.reduce((acc, val) => acc + val.floor, 0);
+	let leftover = 100 - scoreSum;
+
+	// Sort by remainder descending to add round off value to top value 
+	//eg. 66.6->67 33.3->33 so total=100
+	rawScores.sort((a, b) => b.remainder - a.remainder);
+	for (let i = 0; i < leftover; i++) {
+		rawScores[i].floor += 1;
+	}
+	// Step 3: Restore scores to original order
+	rawScores.sort((a, b) => a.index - b.index);
+	for (let i = 0; i < N; i++) {
+		allItems[i].score = rawScores[i].floor;
+	}
+	let idx=0
+	let tierCount=1
 	$.each(arr, function( index, value ){
 		value.children().each(function( i1 ){
 			if( $( this ).children().size() > 0  && $( this ).attr("class") != "top_tier"){
 				var inner = [];
 				$( this ).children().each(function( i2 ){
-					var temp = {};
-					temp["name"] = $(item_type + "[type='" + $( this ).attr('type') + "']").attr('id');
-					temp["utility"] = $(item_type + "[type='" + $( this ).attr('type') + "']").attr('title');
-					temp["tier"] = tier;
-					temp["ranked"] = index;
-					inner.push(temp);
+					if ($(this).hasClass('list-element')) {
+						var temp = {};
+						//var element = $(this);
+						const original = allItems[idx++]
+						temp["name"] = original.id
+						temp["utility"] = original.utility
+						temp["tier"] = tierCount;
+						temp["ranked"] = original.ranked;
+						temp["score"] = original.score;
+						inner.push(temp);
+					}
 				});
 				order.push(inner);
-				tier++;
+				tierCount++;
 			}
 		});
   });
@@ -385,8 +439,8 @@ function twoColSort( order ){
 	$.each(order, function(index, value){
 		html += "<ul class=\"choice1\"> <div class=\"tier two\"> #" + tier + "</div>"; 
 		$.each(value, function(i, v){
-			html += "<li class=\"list-element\" id=\"" + $(".list-element[type='" + v.toString() + "']").attr('id') + "\" type=" + v.toString() + ">";
-			html += $(".list-element[type='" + v.toString() + "']").html();
+			html += "<li class=\"list-element\" id=\"" + v.name + "\" type=\"" + v.name + "\">";
+			html += $("#" + v.name).html();
 			html += "</li>";
     });
     html += "</ul>";
@@ -440,7 +494,29 @@ function sliderBUIZeroSort( order ){
 		});
 	});
 }
-
+function sliderBUIRestore(prefOrder) {
+	if (!Array.isArray(prefOrder)) return;
+  
+	prefOrder.forEach(group => {
+	  group.forEach(item => {
+		const itemId = item.name; //"itemcake1"
+		const score = item.score;
+  
+		const input = document.querySelector(`.slider_item[id="${itemId}"] .slide_BUI`);
+		if (input) {
+		  input.value = score;
+  
+		  const displayId = "sliderValue" + input.id.replace("slideBUI", "");
+		  const scoreDisplay = document.getElementById(displayId);
+		  if (scoreDisplay) scoreDisplay.innerText = score;
+		}
+	  });
+	});
+  
+	// update total score 
+	const sliders = document.querySelectorAll('.slide_BUI');
+	setSliderTotal(sliders);
+  }  
 function sliderZeroSort( order ){
 	$.each(order, function(index, value){
 		$.each(value, function(i, v){
@@ -556,54 +632,90 @@ function changeCSS(){
 }
 
 
-function changeMethod (value){
+function changeMethod(value) {
+	var prevMethod = method;
 	var order;
 	var d = Date.now() - startTime;
-	if(method == 1){ 
-		swit += d + ";1";
-		order = orderCol(method);
-		
-	}else if(method == 2){
-		swit += d + ";2";
-		order = orderCol(method);
-	}
-	else if(method == 3){
-		swit += d + ";3";
-		order = orderSlideStar('slide');
-	}
-	else if(method == 4){
-		swit += d + ";4";
-		order = orderSlideStar('star');
-	}
-	else if(method == 5 || method == 6){
-		order = orderYesNo(method);
-	}
-	else if(method == 7){
-		swit += d + ";7";
-		order = orderSlideStar('slide');
-	}else if(method == 8){
-		swit += d + ";8";
-		order = getOrderFromListUI();
-	}else if(method == 9){
-		swit += d + ";9";
-		order = getOrderFromInfiniteBudgetUI();
-	}
-  method = value;
-  removeSelected();
-  changeCSS();
 
-	if(method == 1){ swit += ";1;;"; methodIndicator = "two_column"; twoColSort(order); }
-	else if(method == 2){ swit += ";2;;"; methodIndicator = "one_column"; oneColSort(order); }
-	else if(method == 3){ swit += ";3;;"; methodIndicator = "slider"; sliderSort(order); }
-	else if(method == 4){ swit += ";4;;"; methodIndicator = "star"; init_star = true; starSort(order); init_star = false;}
-	else if(method == 5 || method == 6){ yesNoSort(method, order); }
-	else if(method == 7){ swit += ";7;;"; }
-	else if(method == 8){ swit += ";8;;"; }
-	else if(method == 9){ swit += ";9;;"; }
+	// Cache current UI preferences before switching
+	if (prevMethod == 1) {
+		const rankedItems = $('#left-sortable').find('.list-element');
+		if (rankedItems.length > 0) {
+			cachedOrders[1] = dictCol(1);
+		}
+	}
+	else if (prevMethod == 2) cachedOrders[2] = dictCol(2);
+	else if (prevMethod == 3) cachedOrders[3] = dictSlideStar('slide');
+	else if (prevMethod == 4) cachedOrders[4] = dictSlideStar('star');
+	else if (prevMethod == 7) cachedOrders[7] = dictSlideStar('slide_BUI');
+	else if (prevMethod == 8) cachedOrders[8] = getOrderFromListUI();
+	else if (prevMethod == 9) cachedOrders[9] = getOrderFromInfiniteBudgetUI();
+	else if (prevMethod == 5 || prevMethod == 6) cachedOrders[prevMethod] = orderYesNo(prevMethod);
+	
 
-	// Hard-coded allowing submission
-	//if(method != 1){ $(".submitbutton").prop("disabled", "false");console.log("method", method); }
+	// Update method
+	method = value;
+	removeSelected();
+	changeCSS();
+
+	// Restore UI from cachedOrders if available
+	if (method == 1) {
+		swit += d + ";1;;";
+		methodIndicator = "two_column";
+		if (cachedOrders[1]) {
+			order = cachedOrders[1];
+			twoColSort(order);
+		} else {
+			//switching ui shouldn't move items to ranked
+			changeCSS();
+		}
+	}
+	else if (method == 2) {
+		swit += d + ";2;;";
+		methodIndicator = "one_column";
+		order = cachedOrders[2] || orderCol(2);
+		oneColSort(order);
+	}
+	else if (method == 3) {
+		swit += d + ";3;;";
+		methodIndicator = "slider";
+		order = cachedOrders[3] || orderSlideStar('slide');
+		sliderSort(order);
+	}
+	else if (method == 4) {
+		swit += d + ";4;;";
+		methodIndicator = "star";
+		order = cachedOrders[4] || orderSlideStar('star');
+		init_star = true;
+		starSort(order);
+		init_star = false;
+	}
+	else if (method == 7) {
+		swit += d + ";7;;";
+		methodIndicator = "slider_BUI";
+		order = cachedOrders[7] || orderSlideStar('slide_BUI');
+		sliderSort(order);  // Or create a new function for BUI
+	}
+	else if (method == 8) {
+		swit += d + ";8;;";
+		methodIndicator = "list_ui";
+		order = cachedOrders[8] || getOrderFromListUI();
+		// restore logic if needed
+	}
+	else if (method == 9) {
+		swit += d + ";9;;";
+		methodIndicator = "infinite_budget_ui";
+		order = cachedOrders[9] || getOrderFromInfiniteBudgetUI();
+		// restore logic if needed
+	}
+	else if (method == 5 || method == 6) {
+		order = cachedOrders[method] || orderYesNo(method);
+		yesNoSort(method, order);
+	}
 };
+// 	// Hard-coded allowing submission
+// 	//if(method != 1){ $(".submitbutton").prop("disabled", "false");console.log("method", method); }
+//};
 
 function recordCommentTime(){
 	if(commentTime == ""){
@@ -679,7 +791,15 @@ var VoteUtil = (function () {
 		var record_data = {};
 		var d = (Date.now() - startTime).toString();
 		$(".top_tier").remove();
-		if(method == 1)      {order_list = orderCol(0); final_list = dictCol(1);}
+		if(method == 1){
+			const rankedItems = $('#left-sortable').find('.list-element');
+			if (rankedItems.size() > 0) {
+				final_list = dictCol(1);
+			} else {
+				final_list = [];
+			}
+			order_list = orderCol(0);	
+		}
 		else if(method == 2){ order_list = orderCol(method); final_list = dictCol(2);}
 		else if(method == 3){ order_list = orderSlideStar('slide'); item_type = ".slider_item"; final_list = dictSlideStar('slide');}
 		else if(method == 4){ order_list = orderSlideStar('star'); item_type= ".star_item";final_list = dictSlideStar('star');}
@@ -698,14 +818,14 @@ var VoteUtil = (function () {
 			}
 			order = JSON.stringify(final_order);
 		} else {
-			for (var i = 0; i < order_list.length; i++) {
-				var sametier = [];
-				for (var j = 0; j < order_list[i].length; j++) {
-					sametier.push($(item_type + "[type='" + order_list[i][j].toString() + "']").attr('id'));
-				}
-				final_order.push(sametier);
-			}
-			order = JSON.stringify(final_order);
+			// for (var i = 0; i < final_list.length; i++) {
+			// 	var sametier = [];
+			// 	for (var j = 0; j < final_list[i].length; j++) {
+			// 		sametier.push(final_list[i][j]["name"]); //includes score for two-col &one-col
+			// 	}
+			// 	final_order.push(sametier);
+			// }
+			order = JSON.stringify(final_list);
 		}
 
 		//var d = Date.now() - startTime;
@@ -713,6 +833,8 @@ var VoteUtil = (function () {
 		var record_final = JSON.stringify(final_list);
 
 		record_data["data"] = JSON.parse(record);
+		// Cache current method's ranking to restore on UI switch
+		cachedOrders[method] = final_list;
 		record_data["submitted_ranking"] = final_list;
 		if(order1 != ""){
 			record_data["initial_ranking"] = JSON.parse(order1);
@@ -786,6 +908,7 @@ var VoteUtil = (function () {
 			$(this).children(".tier").text("#" +tierleft.toString());
 			tierleft++;
 		});
+		cachedOrders[1] = dictCol(1);
 		$('#left-sortable').children().each(function() {
 			$(this).removeAttr('onclick');
 		});
@@ -835,6 +958,7 @@ var VoteUtil = (function () {
 				moveToPref($(this));
 			});
 		}
+		cachedOrders[1] = dictCol(1);
 		$( '#right-sortable' ).html("");
 		//VoteUtil.checkStyle();
 		enableSubmission();
@@ -1022,7 +1146,7 @@ $( document ).ready(function() {
 			handle: ".tier",
 			//items: "ul",
 			change: function(e, ui) {
-			if (method == 1)      { $(".col-placeHolder").css("width", "inherit"); }
+			if (method == 1)  { $(".col-placeHolder").css("width", "inherit"); }
 			else if (method == 2) { $(".col-placeHolder").css("width", "inherit"); }
 			},
 			stop: function(e, ui) {
@@ -1229,4 +1353,31 @@ $( document ).ready(function() {
 			}
 		}
 	});
+	function restoreAllUIScores(prefOrder) {
+		if (!prefOrder || !Array.isArray(prefOrder)) return;
+	  
+		// Cache for all UIs so switching updates other ui
+		cachedOrders[1] = prefOrder; // Two-column
+		cachedOrders[2] = prefOrder; // One-column
+		cachedOrders[3] = prefOrder; // Slider
+		cachedOrders[4] = prefOrder; // Star
+		cachedOrders[7] = prefOrder; // Budget UI
+		cachedOrders[8] = prefOrder; // List UI
+		cachedOrders[9] = prefOrder; // Infinite Budget
+	  
+		// Populate each UI
+		try { twoColSort(prefOrder); } catch (e) {}
+		try { oneColSort(prefOrder); } catch (e) {}
+		try { sliderSort(prefOrder); } catch (e) {}
+		try { starSort(prefOrder); } catch (e) {}
+		try { sliderBUIRestore(prefOrder); } catch (e) {}
+	}
+	
+	
+	
+	if (previouslySubmitted && previouslySubmitted.submitted_ranking) {
+		restoreAllUIScores(previouslySubmitted.submitted_ranking);
+	}
+	  
+	
 });

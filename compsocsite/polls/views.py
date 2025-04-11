@@ -958,6 +958,8 @@ class DetailView(views.generic.DetailView):
         currentUserResponses = self.object.response_set.filter(user=self.request.user).reverse()
 
         if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            ctx['submitted_ranking'] = latest_response.behavior_data
             if currentUserResponses[0].comment:
                 ctx['lastcomment'] = currentUserResponses[0].comment
 
@@ -994,7 +996,8 @@ def addPreferenceValueToResp(objs):
         response, prefOrder = objs[i]
 
         # convert behavior_data to json and extract submitted_ranking
-        submitted_rankings = json.loads(response.behavior_data)["submitted_ranking"]
+        behavior_data = json.loads(response.behavior_data)
+        submitted_rankings = behavior_data.get("submitted_ranking", [])
 
         # Initialize empty set
         scores = set()
@@ -1002,12 +1005,13 @@ def addPreferenceValueToResp(objs):
         # Extract the scores from submitted_rankings and add it to the scores set
         for tier in submitted_rankings:
             for jsonObj in tier:
-                scores.add(jsonObj['score'])
+                if isinstance(jsonObj, dict) and "score" in jsonObj:
+                    scores.add(jsonObj["score"])
 
-        scores = sorted(list(scores))[-1::-1]
+        scores = sorted(list(scores))[-1::-1] if scores else []
 
         # Add score as the first element in the tier-list
-        for i in range(len(scores)):
+        for i in range(len(scores) if len(scores) < len(prefOrder) else len(prefOrder)):
             prefOrder[i].insert(0, scores[i])
 
         # print(prefOrder, scores)
@@ -1189,8 +1193,9 @@ class AllocateResultsView(views.generic.DetailView):
         for i in range(len(allocated_items)):
             sum_of_values = 0
             items_with_values = []
+            submitted_rankings_values = list(submitted_rankings.values())[i]
             for j in range(len(allocated_items[i])):
-                submitted_rankings_values = list(submitted_rankings.values())[i]
+                #submitted_rankings_values = list(submitted_rankings.values())[i]
                 for k in range(len(submitted_rankings_values)):
                     if "score" in submitted_rankings_values[k][0]:
                         if(submitted_rankings_values[k][0]["name"] == allocated_items[i][j]):
@@ -1198,7 +1203,6 @@ class AllocateResultsView(views.generic.DetailView):
                             items_with_values.append((submitted_rankings_values[k][0]["name"][4:], submitted_rankings_values[k][0]["score"]))
             sum_of_alloc_items_values.append(sum_of_values)
             allocated_items_with_values.append(items_with_values)
-
         return allocated_items_with_values, sum_of_alloc_items_values
     
     def formatOptions(self, items):
@@ -1307,6 +1311,25 @@ class AllocateResultsView(views.generic.DetailView):
         user_data = self._prepare_user_data(question)
         ctx.update(user_data)
         
+        current_user_id = self.request.user.id
+        current_user_name = user_data['user_names'].get(current_user_id, "")
+        ctx['current_user_name'] = current_user_name
+        ctx['empty_string'] = ""
+
+        curr_user_ranking = user_data['submitted_rankings'].get(current_user_id, [])
+        ctx['curr_user_pref'] = []
+        ctx['curr_user_pref_values'] = []
+
+        for entry in curr_user_ranking: #support for twocol & onecol
+            if not entry:
+                continue
+            val = entry[0]
+            if isinstance(val, dict) and 'name' in val:
+                ctx['curr_user_pref'].append(val['name'][4:])  # Strip "item" prefix
+                ctx['curr_user_pref_values'].append(val.get('score', 0))
+            elif isinstance(val, str):
+                ctx['curr_user_pref'].append(val[4:])  #for string like "itemcake"
+                ctx['curr_user_pref_values'].append(0)
         # create context data dictionary for caching
         context_data = {
             'question_id': question.id,
@@ -1480,29 +1503,31 @@ class AllocateResultsView(views.generic.DetailView):
         for resp in response_set:
             uid = resp.user_id
             raw_list = ast.literal_eval(resp.resp_str)
+            behavior_dict = json.loads(resp.behavior_data or '{}')
+            submitted_scores = behavior_dict.get("submitted_ranking", [])
+            item_score_map = {}
+            for group in submitted_scores:
+                if group and isinstance(group[0], dict):
+                    name = group[0].get("name", "")
+                    score = group[0].get("score", 0)
+                    item_score_map[name] = score
+            
             numeric_vals = []
             
             for sublist in raw_list:
-                if not sublist:
-                    continue
-                x = sublist[0]
-                val = 0.0
-                if isinstance(x, (int, float)):
-                    val = float(x)
-                else:
-                    s = str(x).lower().strip()
-                    if s.startswith("item"):
-                        remainder = s[4:]
-                        try:
-                            val = float(remainder)
-                        except ValueError:
-                            val = 0.0
+                for x in sublist:  # handle multiple items per tier
+                    if isinstance(x, str):  # raw_list
+                        name=x
+                    elif isinstance(x, dict) and "name" in x:
+                        name=x["name"]
+                    if name:
+                        val=item_score_map.get(name,0.0)
                     else:
                         try:
-                            val = float(s)
-                        except ValueError:
+                            val = float(x[4:]) if isinstance(x, str) and x.startswith("item") else 0.0
+                        except:
                             val = 0.0
-                numeric_vals.append(val)
+                    numeric_vals.append(val)
             user_valuations_map[uid] = numeric_vals
 
         # Fix for empty preferences
@@ -1520,7 +1545,7 @@ class AllocateResultsView(views.generic.DetailView):
         preferences = []
         for uid in sorted_user_ids:
             preferences.append(user_valuations_map.get(uid, [0.0] * max_length))
-        
+                  
         return preferences
 
     def _process_allocation_result(self, result, preferences, sorted_user_ids, question_id):
@@ -1628,19 +1653,19 @@ class AllocateResultsView(views.generic.DetailView):
             
             return error_data, False
 
-        def _format_user_preferences(self, sorted_user_ids, user_names, submitted_rankings):
-            """Format user preferences for display"""
-            all_user_prefs = []
-            for uid in sorted_user_ids:
-                username = user_names[uid]
-                ranking = submitted_rankings[uid]
-                cleaned = []
-                for group in ranking:
-                    if group and isinstance(group[0], dict):
-                        item_name = group[0].get("name", "")[4:]
-                        cleaned.append((item_name))
-                all_user_prefs.append((username, cleaned))
-            return all_user_prefs
+    def _format_user_preferences(self, sorted_user_ids, user_names, submitted_rankings):
+        """Format user preferences for display"""
+        all_user_prefs = []
+        for uid in sorted_user_ids:
+            username = user_names[uid]
+            ranking = submitted_rankings[uid]
+            cleaned = []
+            for group in ranking:
+                if group and isinstance(group[0], dict):
+                    item_name = group[0].get("name", "")[4:]
+                    cleaned.append((item_name))
+            all_user_prefs.append((username, cleaned))
+        return all_user_prefs
 
     def _process_cached_allocation_data(self, cached_result, question_id=None):
         """Process cached allocation data to work with the template"""

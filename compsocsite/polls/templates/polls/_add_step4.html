@@ -259,13 +259,19 @@
                 </label>
                 {% elif question.question_type == 2 %}
                 <label class="checkbox-inline">
-                    <input id="budgetUI_slider_checkbox" type="radio" value="BUI_slider" name="ui" checked>Budget UI
+                    <input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" checked>Two Column
                 </label>
                 <label class="checkbox-inline">
-                    <input id="listUI_checkbox" type="radio" value="LUI" name="ui">List UI
+                    <input id="onecol_checkbox" type="checkbox" value="onecol" name="ui">One Column
                 </label>
                 <label class="checkbox-inline">
-                    <input id="InfiniteBudgetUI_checkbox" type="radio" value="IBUI" name="ui">Infinite Budget UI
+                    <input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui" checked>Budget UI
+                </label>
+                <label class="checkbox-inline">
+                    <input id="listUI_checkbox" type="checkbox" value="LUI" name="ui">List UI
+                </label>
+                <label class="checkbox-inline">
+                    <input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui">Infinite Budget UI
                 </label>
                 {% endif %}
             </div>
