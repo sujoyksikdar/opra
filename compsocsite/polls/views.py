@@ -4016,7 +4016,7 @@ def upload_csv_choices(request, question_id):
                 if row and row[0].strip():
                     item_name = row[0].strip()
                     item_description = row[1].strip() if len(row) > 1 else ""
-                    asset_name = row[2].strip() if len(row) > 2 else ""
+                    item_reference = row[2].strip() if len(row) > 2 else ""
                     
                     # check duplicates
                     if not question.item_set.filter(item_text=item_name).exists():
@@ -4026,7 +4026,7 @@ def upload_csv_choices(request, question_id):
                             question=question,
                             item_text=item_name,
                             item_description=item_description,
-                            image=asset_name if asset_name else None,
+                            imageReference=item_reference,
                             timestamp=timezone.now(),
                             recently_added=recentlyAdded
                         )
@@ -4034,7 +4034,7 @@ def upload_csv_choices(request, question_id):
                         items_added += 1
                         if item_description:
                             items_with_desc += 1
-                        if asset_name:
+                        if item_reference:
                             items_with_images += 1
                     else:
                         items_skipped += 1
@@ -4046,7 +4046,7 @@ def upload_csv_choices(request, question_id):
                     
                 item_name = row[0].strip()
                 item_description = row[1].strip() if len(row) > 1 else ""
-                asset_name = row[2].strip() if len(row) > 2 else ""
+                item_reference = row[2].strip() if len(row) > 2 else ""
                 
                 # check duplicates
                 if question.item_set.filter(item_text=item_name).exists():
@@ -4059,7 +4059,7 @@ def upload_csv_choices(request, question_id):
                     question=question,
                     item_text=item_name,
                     item_description=item_description,
-                    image=asset_name if asset_name else None,
+                    imageReference=item_reference,
                     timestamp=timezone.now(),
                     recently_added=recentlyAdded
                 )
@@ -4067,7 +4067,7 @@ def upload_csv_choices(request, question_id):
                 items_added += 1
                 if item_description:
                     items_with_desc += 1
-                if asset_name:
+                if item_reference:
                     items_with_images += 1
             
             # provide feedback
@@ -4080,7 +4080,7 @@ def upload_csv_choices(request, question_id):
                 if items_with_desc > 0:
                     details.append(f"{items_with_desc} with descriptions")
                 if items_with_images > 0:
-                    details.append(f"{items_with_images} with images")
+                    details.append(f"{items_with_images} with image references")
                 if details:
                     success_msg += f" ({', '.join(details)})"
                 messages.success(request, success_msg + ".")
@@ -4095,8 +4095,8 @@ def upload_csv_choices(request, question_id):
 
 def upload_bulk_images(request, question_id):
     """
-    Handle bulk image upload to create multiple items at once.
-    Each image file will become a new item, using the filename (without extension) as the item name.
+    Handle bulk image upload to match with existing items.
+    Images will be attached to items that have a matching reference in their imageReference field.
     """
     question = get_object_or_404(Question, pk=question_id)
     
@@ -4108,37 +4108,40 @@ def upload_bulk_images(request, question_id):
     if request.method == 'POST' and request.FILES.getlist('imageFiles'):
         try:
             image_files = request.FILES.getlist('imageFiles')
-            name_prefix = request.POST.get('namePrefix', '').strip()
             
-            items_added = 0
-            items_skipped = 0
+            images_matched = 0
+            images_unmatched = 0
+            
+            # Get all items for this question
+            all_items = question.item_set.all()
             
             for image_file in image_files:
-                # get filename without extension as item name
-                filename = os.path.splitext(image_file.name)[0]
-                item_name = f"{name_prefix}{filename}" if name_prefix else filename
+                # Try to find items with matching imageReference
+                matching_items = all_items.filter(imageReference=image_file.name)
                 
-                # check for duplicates
-                if question.item_set.filter(item_text=item_name).exists():
-                    items_skipped += 1
-                    continue
-                
-                # create new item
-                recentlyAdded = question.status == 4
-                item = Item(
-                    question=question,
-                    item_text=item_name,
-                    image=image_file,
-                    timestamp=timezone.now(),
-                    recently_added=recentlyAdded
-                )
-                item.save()
-                items_added += 1
+                if matching_items.exists():
+                    # Update all matching items with the actual image file
+                    for item in matching_items:
+                        item.image = image_file
+                        item.save()
+                        images_matched += 1
+                else:
+                    # Try with just the filename without extension as fallback
+                    base_name = os.path.splitext(image_file.name)[0]
+                    matching_items = all_items.filter(imageReference=base_name)
+                    
+                    if matching_items.exists():
+                        for item in matching_items:
+                            item.image = image_file
+                            item.save()
+                            images_matched += 1
+                    else:
+                        images_unmatched += 1
             
-            if items_added > 0:
-                messages.success(request, f"Successfully added {items_added} items with images.")
-            if items_skipped > 0:
-                messages.warning(request, f"Skipped {items_skipped} items due to duplicate names.")
+            if images_matched > 0:
+                messages.success(request, f"Successfully attached {images_matched} images to existing items.")
+            if images_unmatched > 0:
+                messages.warning(request, f"Could not match {images_unmatched} images to any existing items.")
                 
         except Exception as e:
             messages.error(request, f"Error processing image files: {str(e)}")
