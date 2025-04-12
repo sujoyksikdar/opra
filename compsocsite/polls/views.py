@@ -3989,11 +3989,57 @@ def upload_csv_choices(request, question_id):
             csv_text = TextIOWrapper(csv_file.file, encoding='utf-8')
             csv_reader = csv.reader(csv_text)
             
+            # Check if first row is a header
+            # Get the first row to inspect
+            first_row = next(csv_reader, None)
+            
+            # If no rows, exit early
+            if not first_row:
+                messages.error(request, "The CSV file is empty.")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            
+            # Check if first row contains common header terms
+            header_indicators = ['course', 'name', 'description', 'image', 'reference', 'title', 'alternative']
+            first_cell_lower = first_row[0].lower().strip()
+            is_header = any(indicator in first_cell_lower for indicator in header_indicators)
+            
+            # If it's not a header, we need to process it as a data row
+            rows_to_process = [first_row] if not is_header else []
+            
             items_added = 0
             items_skipped = 0
             items_with_desc = 0
             items_with_images = 0
             
+            # Process the first row if it wasn't a header
+            for row in rows_to_process:
+                if row and row[0].strip():
+                    item_name = row[0].strip()
+                    item_description = row[1].strip() if len(row) > 1 else ""
+                    asset_name = row[2].strip() if len(row) > 2 else ""
+                    
+                    # check duplicates
+                    if not question.item_set.filter(item_text=item_name).exists():
+                        # create new item
+                        recentlyAdded = question.status == 4
+                        item = Item(
+                            question=question,
+                            item_text=item_name,
+                            item_description=item_description,
+                            image=asset_name if asset_name else None,
+                            timestamp=timezone.now(),
+                            recently_added=recentlyAdded
+                        )
+                        item.save()
+                        items_added += 1
+                        if item_description:
+                            items_with_desc += 1
+                        if asset_name:
+                            items_with_images += 1
+                    else:
+                        items_skipped += 1
+            
+            # Process the remaining rows
             for row in csv_reader:
                 if not row or not row[0].strip():  # skip empty rows or rows without name
                     continue
@@ -4025,6 +4071,9 @@ def upload_csv_choices(request, question_id):
                     items_with_images += 1
             
             # provide feedback
+            if is_header:
+                messages.info(request, "Detected and skipped header row.")
+                
             if items_added > 0:
                 success_msg = f"Successfully added {items_added} items"
                 details = []
