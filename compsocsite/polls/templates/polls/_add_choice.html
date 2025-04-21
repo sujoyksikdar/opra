@@ -106,9 +106,9 @@ Item D,                       , image4.png</pre>
                     <div class="form-group col-xs-1">
                         <input type="checkbox" class="item-checkbox" value="{{item.id}}" onclick="event.stopPropagation();">
                     </div>
-                    <div class="form-group col-xs-1"   >
-                        <span class="caret" style="color:#377BB5;"></span>   
-                    </div>   
+                    <div class="form-group col-xs-1 pull-right" style="text-align: right;">
+                        <span class="caret" style="color:#377BB5;"></span>
+                    </div>                   
                     {% if item.image %}
                         <div class="col-xs-1">
                         <img src='/{{ item.image }}' width="40px"/>
@@ -121,19 +121,21 @@ Item D,                       , image4.png</pre>
                     {% endif %}
                     <div class="form-group col-xs-7">
                         {% if question.status == 1 or item.recently_added %}
-                        <input type="text" class="form-control auto_submit" name="item{{item.id}}" size="50" value="{{ item }}"/>
+                        <input type="text" class="form-control input-sm auto_submit" name="item{{item.id}}" value="{{ item }}">
                         {% else %}
                         {{item}}
                         {% endif %}
                     </div>
                     {% if question.status == 1 or item.recently_added %}
-                    <div class="form-group {% if item.image or item.imageURL != Null %} col-xs-3 {% else %} col-xs-4 {% endif %}">
+                    <!-- <div class="form-group {% if item.image or item.imageURL != Null %} col-xs-3 {% else %} col-xs-4 {% endif %}">
                         <a href="{% url 'polls:delchoice' item.id %}">
                             <div class="pull-right">
-                                <span class="glyphicon glyphicon-remove"></span>
+                                <button class="btn btn-sm btn-danger" title="Delete">
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                </button>                                
                             </div>
                         </a>
-                    </div>
+                    </div> -->
 				    {% endif %}
                 </div>
                 <div id="iteminfo{{item.id}}" class="accordian-body collapse">
@@ -143,7 +145,7 @@ Item D,                       , image4.png</pre>
                         <div class="form-group col-xs-9">
                     <p>Additional Description:</p>
 						{% if question.status == 1 or question.status == 2 or question.status == 4 or item.recently_added %}
-                        <textarea class="form-control auto_submit" name="itemdescription{{item.id}}">{% if item.item_description %}{{item.item_description}}{% endif %}</textarea>
+                        <textarea class="form-control input-sm auto_submit" name="itemdescription{{item.id}}" rows="2">{{ item.item_description }}</textarea>
 						{% else%}
 						<p>{% if item.item_description %}{{item.item_description}}{% else %}None{% endif %}</p>
 						{% endif %}
@@ -173,7 +175,7 @@ Item D,                       , image4.png</pre>
             {% csrf_token %}
             <div class="row">
             <div class="col-xs-6 form-group">
-                <input type="text" class="form-control" name="choice" value="" size="50" placeholder="Option name" autofocus/>
+                <input type="text" class="form-control input-sm" name="choice" placeholder="Add new item..." autofocus/>
             </div>
 
             <div class="col-xs-4 form-group">
