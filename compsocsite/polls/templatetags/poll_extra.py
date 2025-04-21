@@ -13,8 +13,11 @@ def smallest(l):
     return min(l)
     
 @register.filter
-def index(sequence, position):
-    return sequence[position]
+def index(lst, idx):
+    try:
+        return lst[idx]
+    except:
+        return ''
 
 @register.filter(name='bitwise_and')
 def bitwise_and(value, arg):
@@ -34,3 +37,10 @@ def random_utility(original_value):
 		return str(utility)
 	except:
 		return original_value
+
+@register.filter
+def get_item(dictionary, key):
+    """Get an item from a dictionary using key"""
+    if not dictionary:
+        return 0
+    return dictionary.get(key, 0)

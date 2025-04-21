@@ -124,6 +124,7 @@ class Item(models.Model):
     item_description = models.CharField(max_length=1000, blank=True, null=True)
     image = models.ImageField(upload_to='static/img/items/', blank=True, null=True)
     imageURL = models.CharField(max_length=500, blank=True, null=True)
+    imageReference = models.CharField(max_length=500, blank=True, null=True)
     timestamp = models.DateTimeField('item timestamp')
     recently_added = models.BooleanField(default=False)
     utility = models.FloatField(default=0.0)
