@@ -1,0 +1,155 @@
+{% extends 'polls/base.html' %}
+
+{% load static%}
+
+{% block content %}
+<style>
+    h3{
+        font-size: 35px;
+    }
+
+</style>
+
+<!-- Top menu on small screens -->
+<header class="w3-container w3-top w3-hide-large bu-green w3-xlarge w3-padding" style="margin-top:75px">
+  <a href="javascript:void(0)" class="w3-button bu-green w3-margin-right" onclick="w3_open()">☰</a>
+  <span>OPRA</span>
+</header>
+
+<!-- Overlay effect when opening sidebar on small screens -->
+<div class="w3-overlay w3-hide-large" onclick="w3_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
+
+
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:320px;margin-right:40px">
+    
+    <!--Tutorial -->
+  <div class="w3-container" style="margin-top: 30px" id="tutorial">
+      <h1 class="w3-xxxlarge"><b>Course Assignment Fall 2025</b> </h1><h1 class= "w3-xlarge"> Binghamton University School of Computing Fall 2025 Course Assignment.
+          
+          <span class="glyphicon glyphicon-info-sign bu-text-green w3-hover-white" data-toggle="modal" data-target="#More"></span>
+
+            <div class="modal fade" id = "More" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+              <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">More Information</h4>
+                  </div>
+                  <div class="modal-body">
+                    <h2> 
+                    	<div>How to assign a limited number of seats in popular courses to students who have complex preferences over being assigned combinations of courses?
+                        </div>
+	                      <br/>
+                        <div> This web application uses student preferences expressed as partial rankings over the courses offered by the School of Computing to decide 
+                        the assignment of courses to students. The objectives are two-fold: (1) Efficiency, i.e. maximize the total satisfaction of students, which at a high level, 
+                        is achieved by assigning seats to students that value them the most, and (2) Fairness, i.e. ensure that students with similar preferences are treated similarly.
+                        </div>                        
+                        <br/>
+                        <div> There are several nuances to this problem. For example: (1) There are many other natural notions of efficiency and fairness to consider.
+                          (2) While partial rankings over courses makes it easier to express preferences, it also introduces uncertainties and distortions: How to extend the submitted partial rankings over individual courses
+                          to rankings over combinations of courses? (3) What about relative intensities of preferences over the courses? And so on. Resolving these issues is 
+                          an area of active ongoing research in economics, and also computer science, since these often lead to problems that are computationally hard.
+                        </div>
+                        <br/>  
+                        <div>If you
+                        would like to learn more, please contact Sujoy Sikdar, who is always happy to discuss resource allocation, matching, computational social science and game theory. 
+                        </div>
+                        </h2>
+                  </div>
+                </div><!-- /.modal-content -->
+              </div>
+            </div>
+          
+          
+          
+          
+      </h1>
+      <br/>
+
+      <!-- The Candidates -->
+      <div class="w3-row-padding w3-grayscale">
+          
+        <div class="w3-col m6 w3-margin-bottom w3-hide-small"  >
+            <a href="/polls/1/demo">
+          <div class="w3-light-grey" >
+            
+            <div class="w3-container w3-center w3-hover-grey" style="height:130px;padding:20px;">
+              <h3>CourseMatch<br/>Tutorial</h3>
+                  </div>
+            
+          </div></a>
+        </div>
+
+        <div class="w3-col m6 w3-margin-bottom" >
+          <a href="/polls/1">
+
+          <div class="w3-light-grey" >
+
+            <div class="w3-container w3-center w3-hover-grey" style="height:130px; padding:20px;">
+                
+              <h3>Enter<br>
+                  CourseMatch</h3>
+                </div>
+              </div></a>
+        </div>
+          
+          
+      </div>
+  </div>
+        
+  <!-- Comments -->
+  <div class="w3-container" id="comments" style="margin-top:50px">
+    <h1 class="w3-xxlarge bu-text-green" style="margin-top:80px"><b>Comments.</b></h1>
+    <hr style="width:50px;border:5px solid" class="w3-round bu-text-green">
+    <br/>
+     <p>We need your comments.</p>
+    <form action="/message" method="post">
+	  {% csrf_token %}
+      <div class="w3-section">
+        <label>Name</label>
+        <input class="w3-input w3-border" type="text" name="name" required>
+      </div>
+      <div class="w3-section">
+        <label>Email</label>
+        <input class="w3-input w3-border" type="text" name="email" required>
+      </div>
+      <div class="w3-section">
+        <label>Message</label>
+        <input class="w3-input w3-border" type="text" name="message" required>
+      </div>
+      <button type="submit" class="w3-button w3-block w3-padding-large bu-green w3-margin-bottom">Send Message</button>
+    </form>  
+      <br/><br/>
+  </div> 
+    
+    <br/><br/>
+    <br/><br/>
+    <br/><br/>
+
+<!-- End page content -->
+</div>
+
+<script>
+// Script to open and close sidebar
+function w3_open() {
+    document.getElementById("mySidebar").style.display = "block";
+    document.getElementById("myOverlay").style.display = "block";
+}
+ 
+function w3_close() {
+    document.getElementById("mySidebar").style.display = "none";
+    document.getElementById("myOverlay").style.display = "none";
+}
+
+// Modal Image Gallery
+function onClick(element) {
+  document.getElementById("img01").src = element.src;
+  document.getElementById("modal01").style.display = "block";
+  var captionText = document.getElementById("caption");
+  captionText.innerHTML = element.alt;
+}
+ 
+</script>
+{% endblock %}

@@ -28,53 +28,17 @@
     }
 </script>
 <div class="col-md-6 col-md-offset-3" align="center" style="padding: 60px 20px;">
-    <h3>Register with OPRA</h3>
+    <h3>Log in or Register with OPRA</h3>
     <br/>
 
-    {% if registered %}
-        Thank you for registering! 
-        <!-- Please check your email to activate your account. -->
-        <a href="/polls/">Return to the homepage for signing in.</a><br />
-    {% else %}
-        <div id="error" style="color: #ff4d4d;"></div>
-        <form id="user_form" method="post" action="/auth/register/" enctype="multipart/form-data">
-
-            {% csrf_token %}
-
-            <fieldset class="form-group">
-                <label for="email">Email</label>
-                <input type="text" class="form-control" id="reg_email" name="email" placeholder="Enter Email" value="" size="50" autofocus />
-                <small class="text-muted">We will only use this to send notifications. We will never share your information with anyone else.</small>
-            </fieldset>
-            
-            <!-- <fieldset class="form-group">
-                <label for="username">Username</label>
-                <input type="text" class="form-control" id="reg_username" name="username" placeholder="Enter Username" value="" size="50" />  
-            </fieldset> -->
-            
-            <fieldset class="form-group">
-                <label for="password">Password</label> 
-                <input type="password" class="form-control" id="reg_password" name="password" placeholder="Password" value="" size="50" />
-            </fieldset>
-
-            <fieldset class="form-group">
-                <label for="confirm_password">Confirm Password</label> 
-                <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-type Password" value="" size="50" />
-            </fieldset>
-
-            <input type="button" value="Register" class="btn btn-primary" onclick="register()"/> 
-            <br><br>OR<br><br>        
-        </form>
-
-        <!-- <a title="Google" href="/accounts/google/login/?process=login">Sign up with Google</a> -->
-        <form method="post" action="{% url 'appauth:socialSignup' %}">
-            <input type="hidden">
-            {% csrf_token %}
-            <button type="submit" title="Google" class="btn btn-dark">
-                 Sign up with Google
-            </button>
-        </form>
-    {% endif %}
+    <!-- <a title="Google" href="/accounts/google/login/?process=login">Sign up with Google</a> -->
+    <form method="post" action="/accounts/google/login/">
+        <input type="hidden">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-dark">
+            Using Google
+        </button>
+    </form>
 </div>
 
 {% endblock %}

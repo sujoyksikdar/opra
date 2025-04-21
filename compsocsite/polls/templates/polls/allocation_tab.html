@@ -17,7 +17,7 @@
         var va_mid = "<td style=\"vertical-align:middle\">";
         var title = "<td><a href=\"/polls/" + item.id + "/pollinfo/\" data-toggle=\"tooltip\" data-placement=\"right\" title=\"Description: " + item.desc + "\">" + item.value + "</a></td>" + va_mid;
         if(item.status == 2 && item.voter){
-            title +="<a href=\"/polls/" + item.id + "/\" class =\"btn btn-dark\" role=\"button\">Vote</a>";
+            title +="<a href=\"/polls/" + item.id + "/\" class =\"btn btn-dark\" role=\"button\">Enter Preferences</a>";
         }
         if(item.curr_win){
             title += "<a href=\"/polls/" + item.id + "/vote/results/\" class =\"btn btn-dark\" role=\"button\" target=\"_blank\" >Current Winners</a>";
@@ -201,7 +201,7 @@
                     <td style="vertical-align:middle">
                         {% if question.status == 2 %}
 							{% if request.user in question.question_voters.all %}
-								<a href="{% url 'polls:detail' question.id %}" class ="btn btn-dark" role="button" >Vote</a>
+								<a href="{% url 'polls:detail' question.id %}" class ="btn btn-dark" role="button" >Enter Preferences</a>
 							{% endif %}
                             
                         {% endif %}

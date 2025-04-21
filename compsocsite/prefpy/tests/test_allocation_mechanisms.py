@@ -1,6 +1,6 @@
 import numpy as np
 
-from prefpy.mechanism import (
+from compsocsite.prefpy.voting_mechanism import (
     MechanismRoundRobinAllocation,
     MechanismMaximumNashWelfare,
     MechanismMarketAllocation,

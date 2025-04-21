@@ -34,6 +34,18 @@ input[type="submit"] {
     font-family: FontAwesome;
 }
 
+label {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+input[type="number"] {
+    flex: 0 0 200px;
+    margin-top: 10px;
+    margin-left: 10px;
+    font-family: FontAwesome;
+}
+
 .greycolor {
 	color: grey;
 }

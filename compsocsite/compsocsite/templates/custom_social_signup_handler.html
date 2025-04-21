@@ -76,22 +76,12 @@
                     You are about to sign in using a third-party account from Google.
                 </p>
 
-
-                <form method="post" action="/accounts/google/login/">
-
-
-
+                <form method="post" action="/accounts/google/login/?next={{ request.path }}">
                     <input type="hidden">
-
                     {% csrf_token %}
-
                     <button type="submit" class="btn btn-dark">
-
                         Continue
-
                     </button>
-
-
                 </form>
 
             </div>

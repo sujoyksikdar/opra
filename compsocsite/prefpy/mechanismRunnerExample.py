@@ -6,7 +6,7 @@ import math
 import itertools
 from profile import Profile
 from preference import Preference
-import mechanism
+import compsocsite.prefpy.voting_mechanism as voting_mechanism
 import mov
 import utilityFunction
 import mechanismMcmc
@@ -74,11 +74,11 @@ print(profile.getOrderVectors())
 # Now let's see which candidate would win an election were we to use the Plurality rule.
 
 # First, we construct a Mechanism object
-mechanism = mechanism.MechanismPlurality()
+voting_mechanism = voting_mechanism.MechanismPlurality()
 
 # Let's print the ouputs of some of the Mechanism object's methods.
-print(mechanism.getWinners(profile))
-print(mechanism.getMov(profile))
+print(voting_mechanism.getWinners(profile))
+print(voting_mechanism.getMov(profile))
 
 # We can also call margin of victory functions directly without constructing a mechanism object.
 # Let's print the margin of victory using Borda rule.

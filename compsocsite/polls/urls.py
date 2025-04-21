@@ -4,29 +4,19 @@ from django.views.decorators.cache import cache_page
 from . import views
 from . import email
 from . import record
-from . import experiment
 
 app_name = 'polls'
 urlpatterns = [
     re_path(r'^$', login_required(views.IndexView.as_view()), name='index'),
     re_path(r'^main$', views.MainView.as_view(), name='index_guest'),
     
-    #for IRB experiment
-    re_path(r'^Exp/(?P<pk>[0-9]+)/$', views.IRBDetailView.as_view(), name='IRBdetail'),
-    re_path(r'^Exp/(?P<question_id>[0-9]+)/MTurkvote/$', views.MturkVote, name='Mturkvote'),
-    re_path(r'^Exp/addComments/$', views.ExpAddComment, name='ExpAddComment'),
-    re_path(r'^Exp/SurveyCode/$', views.SurveyFinalView.as_view(), name='SurveyCode'),
-    re_path(r'^Exp/End/$', views.SurveyEndView.as_view(), name='SurveyEnd'),
-
-
     #Two main types of polls
     re_path(r'^regular_polls$', login_required(views.RegularPollsView.as_view()), name='regular_polls'),
     re_path(r'^allocation_tab$', login_required(views.RegularAllocationView.as_view()), name='allocation_tab'),
     re_path(r'^regular_polls/(?P<pk>[0-9]+)/folder$', login_required(views.RegularPollsFolderView.as_view()), name='regular_polls_folder'),
     re_path(r'^m_polls$', login_required(views.MultiPollsView.as_view()), name='m_polls'),
     re_path(r'^(?P<pk>[0-9]+)/demo$', views.DemoView.as_view(), name='voting_demo'),
-    re_path(r'^classes$', login_required(views.ClassesView.as_view()), name='classes'),
-   
+    
     # Create a new poll
     re_path(r'^add_step1/$', views.AddStep1View, name='AddStep1'), 
     re_path(r'^(?P<pk>[0-9]+)/add_step2/$', views.AddStep2View.as_view(), name='AddStep2'), 
@@ -57,6 +47,12 @@ urlpatterns = [
     # re_path(r'^(?P<question_id>[0-9]+)/addUsersAndSendEmailInvite/$', views.addUsersAndSendEmailInvite, name='addUsersAndSendEmailInvite'),
     
     # vote
+    # course match
+    re_path(r'^(?P<pk>1)/$', views.CourseMatchView.as_view(), name='coursematch'),
+    re_path(r'^(?P<pk>1)/demo$', views.DemoView.as_view(), name='coursematch_demo'),
+    re_path(r'^(?P<question_id>1+)/vote/$', views.coursematch_vote, name='vote'),
+
+    # usual business
     re_path(r'^(?P<pk>[0-9]+)/$', views.DetailView.as_view(), name='detail'),
     re_path(r'^(?P<question_id>[0-9]+)/vote/$', views.vote, name='vote'),    
     re_path(r'^(?P<pk>[0-9]+)/confirmation/$', views.ConfirmationView.as_view(), name='confirmation'),
@@ -88,7 +84,7 @@ urlpatterns = [
     
     # dropdown allocation algorithms
     re_path(r'^(?P<question_id>[0-9]+)/settings/polling$', views.show_polling_settings, name='show_polling_settings'),
-       
+    
     # anonymous voting
     re_path(r'^(?P<question_id>[0-9]+)/anonymousjoin/$', views.anonymousJoin, name='anonymousjoin'),
     re_path(r'^(?P<question_id>[0-9]+)/anonymousvote/$', views.anonymousVote, name='anonymousvote'),
@@ -119,23 +115,6 @@ urlpatterns = [
     re_path(r'^delete_messages/$', views.delete_messages, name='delete_messages'),
     re_path(r'^get_resp_num/$', views.get_num_responses, name='get_resp_num'),
     
-    # Mturk
-    re_path(r'^getmturklist/$', views.getMturkPollList, name='getmturklist'),
-    re_path(r'^experiment/add$', experiment.createNewExperiment, name='experimentcreate'),
-    re_path(r'^experiment/(?P<pk>[0-9]+)/detail$', experiment.ExperimentSetup.as_view(), name='experimentdetail'),
-    re_path(r'^experiment/addpoll/(?P<exp_id>[0-9]+)$', experiment.addPollToExperiment, name='addpolltoexp'),
-
-    # classes
-    re_path(r'^newClass/$', views.newClass, name='newClass'),
-    re_path(r'^class/(?P<pk>[0-9]+)/takeAttendance/$', views.takeAttendance, name='takeAttendance'),
-    re_path(r'^class/(?P<pk>[0-9]+)/stopAttendance/$', views.stopAttendance, name='stopAttendance'),
-    re_path(r'^class/(?P<pk>[0-9]+)/classSignIn/$', views.classSignIn, name='classSignIn'),
-    re_path(r'^class/(?P<pk>[0-9]+)/newQuiz/$', views.newQuiz, name='newQuiz'),
-    re_path(r'^class/(?P<pk>[0-9]+)/grades/$', views.GradesView.as_view(), name='grades'),
-    re_path(r'^class/(?P<pk>[0-9]+)/gradesCSV/$', views.GradesDownload, name='gradesCSV'),
-    re_path(r'^class/(?P<question_id>[0-9]+)/attendclass/$', views.attendanceSignIn, name='attendclass'),
-    #re_path(r'^(?P<pk>[0-9]+)/qrcode/$', views.QRView.as_view(), name='qrview'),
-
     # self sign up
     re_path(r'^(?P<question_id>[0-9]+)/changeselfsignup/$', views.change_self_sign_up, name='changeselfsignup'),
     re_path(r'^(?P<question_id>[0-9]+)/selfsignup/$', views.self_sign_up, name='selfsignup'),

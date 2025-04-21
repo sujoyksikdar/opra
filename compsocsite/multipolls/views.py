@@ -386,7 +386,7 @@ class DependencyView(views.generic.DetailView):
 
         if defaultResponse != None:
             ctx["default_response"] = getCurrentSelection(defaultResponse)        
-        ctx['items'] = self.get_order(ctx)        
+        ctx['items'] = self.get_order(ctx)
         return ctx
 
 # get the item that is currently selected for each subpoll

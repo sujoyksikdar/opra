@@ -20,11 +20,9 @@ urlpatterns = [
     re_path(r'^settings/diablehint/$', views.disableHint, name='disableHint'),
     re_path(r'^settings/update/global$', views.updateGlobalSettings, name='updateGlobalSettings'),
 	re_path(r'^register/confirm/(?P<key>\w+)/$',views.confirm, name='confirm'),
-    re_path(r'^messages$', views.MessageView.as_view(), name='messages'),
     re_path(r'^(?P<question_id>[0-9]+)/quickregister/$', views.quickRegister, name='quickregister'),
     re_path(r'^(?P<question_id>[0-9]+)/quickconfirm/(?P<key>\w+)/$', views.quickConfirm, name='quickconfirm'),
     re_path(r'^(?P<key>\w+)/(?P<question_id>[0-9]+)/quicklogin/$', views.quickLogin, name='quickLogin'),
-    re_path(r'^createmturk/$', views.createMturkUser, name='createmturk'),
     re_path(r'^resetfinish/$', views.resetAllFinish, name='resetfinish'),
     re_path(r'^socialSignup/$', views.socialSignup, name='socialSignup'),
     re_path('accounts/', include('allauth.urls'))

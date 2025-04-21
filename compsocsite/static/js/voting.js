@@ -790,6 +790,7 @@ var VoteUtil = (function () {
 		var item_type = ".list-element";
 		var record_data = {};
 		var d = (Date.now() - startTime).toString();
+		var num_courses = 0;
 		$(".top_tier").remove();
 		if(method == 1){
 			const rankedItems = $('#left-sortable').find('.list-element');
@@ -842,8 +843,11 @@ var VoteUtil = (function () {
 		else{
 			record_data["initial_ranking"] = [];
 		}
+		num_courses = document.getElementById("num-courses").value; 
+		record_data["num_courses"] = num_courses;
 		record_data["time_submission"] = d;
 		record_data["platform"] = flavor;
+		console.log(record_data);
 		var record_string = JSON.stringify(record_data);
 		$('.record_data').each(function(){
 			$(this).val(record_string);
@@ -1373,11 +1377,16 @@ $( document ).ready(function() {
 		try { sliderBUIRestore(prefOrder); } catch (e) {}
 	}
 	
-	
+	function restoreNumCourses(numCourses) {
+		document.getElementById("num-courses").value = numCourses;
+	}
 	
 	if (previouslySubmitted && previouslySubmitted.submitted_ranking) {
 		restoreAllUIScores(previouslySubmitted.submitted_ranking);
 	}
-	  
+
+	if (previouslySubmitted_num_courses) {
+		restoreNumCourses(previouslySubmitted_num_courses);
+	}
 	
 });

@@ -99,10 +99,9 @@ def register(request):
         user_form = UserForm()
 
     return render(request,
-                              'register.html',
-                              {'user_form': user_form, 'registered': registered})
+                'register.html',
+                {'user_form': user_form, 'registered': registered})
 
-							  
 def confirm(request, key):
     context = RequestContext(request)
     user_id = opra_crypto.decrypt(key)
@@ -141,8 +140,8 @@ def quickRegister(request, question_id):
         else:
             return HttpResponse("This email already exists. Please try a different one. <a href='/polls/"+str(question_id)+"'>Return to registration</a>")
     return render(request,
-                              'register.html',
-                              {'user_form': user_form, 'registered': registered})
+                'register.html',
+                {'user_form': user_form, 'registered': registered})
 
 def quickConfirm(request,question_id,key):
     user_id = opra_crypto.decrypt(key)
@@ -196,19 +195,6 @@ def user_login(request):
             login(request, user)
             return HttpResponseRedirect('/polls/main')
             # return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        else:
-            return HttpResponse("Invalid login details supplied.")
-        
-        if user:
-            if user.is_active:
-                login(request, user)
-                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-            else:
-                email = user.email
-                if email:
-                    htmlstr = "Please <a href='https://opra.cs.rpi.edu/auth/register/confirm/"+opra_crypto.encrypt(user.id)+"'>CLICK HERE</a> to activate your account."
-                    mail.send_mail("OPRA Confirmation From Invalid Login","Please confirm your account registration.",'oprahprogramtest@gmail.com',[email],html_message=htmlstr)
-                return HttpResponse("Your account is not active. We have resent an activation link to your email address. Please check.")
         else:
             return HttpResponse("Invalid login details supplied.")
 	
@@ -306,7 +292,6 @@ def forgetPasswordView(request):
 def resetPage(request, key):
     context = RequestContext(request)
     return render(request,'resetpassword.html',{'key':key})
-    
 
 def forgetPassword(request):
     email = request.POST['email']
@@ -346,113 +331,6 @@ def changepassword(request):
     else:
         return HttpResponse("The password you entered is wrong.")
 
-def createMturkUser(request):
-    code= uuid.uuid1()
-    if request.method == "POST":
-        name = request.POST["name"]
-        redirect_page = 0
-        if name != "" and request.user.username == "":
-            age = 0
-            try:
-                age = int(request.POST["age"])
-            except ValueError:
-                pass
-            newname = name+"@mturk"
-            exist = User.objects.filter(username=newname).exists()
-            #first_or_last = [42]
-            #list1 = [2,3]
-            #list2 = [94,97,98,99,100]
-            #random.shuffle(list2)
-            #flag = random.randrange(2)
-            polls = list(range(180,190))
-            #random.shuffle(polls)
-            # if flag == 1:
-                #polls = list1 + first_or_last + list2
-                
-            #else:
-                #polls = list1 + list2 + first_or_last
-            polls_str = json.dumps(polls)
-
-            if not exist:
-                user = User.objects.create_user(username=newname, password=name)
-                profile = UserProfile(user=user,mturk=1,age=age,code=code,sequence=polls_str,cur_poll=polls[0],time_creation=timezone.now(),numq=len(polls))
-                profile.save()
-                redirect_page = polls[0]
-                # user.backend = 'django.contrib.auth.backends.ModelBackend'
-                user.backend = 'compsocsite.appauth.custom_backends.CustomUserModelBackend'
-                login(request,user)
-            else:
-                user = get_object_or_404(User, username=newname)
-                user.backend = 'django.contrib.auth.backends.ModelBackend'
-                # user.backend = 'compsocsite.appauth.custom_backends.CustomUserModelBackend'
-                login(request,user)
-                if user.userprofile.finished and user.userprofile.cur_poll in polls:
-                    return HttpResponseRedirect(reverse('polls:SurveyCode'))
-                if user.userprofile.cur_poll in polls and user.userprofile.numq ==len(polls):
-                    idx = 0
-                    try:
-                        user_seq = json.loads(user.userprofile.sequence)
-                        idx = user_seq.index(user.userprofile.cur_poll)
-                        redirect_page = user.userprofile.cur_poll
-                    except ValueError:
-                        user.userprofile.sequence = polls_str
-                        user.userprofile.cur_poll = polls[0]
-                        user.userprofile.numq=len(polls)
-                        user.userprofile.save()
-                        redirect_page = polls[0]
-                else:
-                    user.userprofile.sequence = polls_str
-                    user.userprofile.cur_poll = polls[0]
-                    user.userprofile.numq=len(polls)
-                    user.userprofile.save()
-                    redirect_page = polls[0]
-    
-    
-                
-        elif request.user.username != "":
-            #first_or_last = [42]
-            #list1 = [2,3]
-            #list2 = [94,97,98,99,100]
-            #random.shuffle(list2)
-            #flag = random.randrange(2)
-            polls = list(range(180,190))
-            #random.shuffle(polls)
-                #if flag == 1:
-                #polls = list1 + first_or_last + list2
-                #else:
-                #polls = list1 + list2 + first_or_last
-            polls_str = json.dumps(polls)
-            request.user.userprofile.sequence = polls_str
-            request.user.userprofile.cur_poll = polls[0]
-            request.user.userprofile.numq=len(polls)
-            request.user.userprofile.save()
-            redirect_page = polls[0]
-        #poll_list = list(Question.objects.filter(question_owner = get_object_or_404(User, username="opraexp")))
-        return HttpResponseRedirect(reverse('polls:IRBdetail', args=(redirect_page,)))
-    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        
-
-def getRPIUsers():
-    users = User.objects.filter(username__contains='@rpi.edu')
-    return users
-        
-class MessageView(generic.ListView):
-    template_name = 'messages.html'
-    context_object_name = 'message_list'
-    def get_queryset(self):
-        return Message.objects.all()
-    def get_context_data(self, **kwargs):
-        ctx = super(MessageView, self).get_context_data(**kwargs)
-        permit = []
-        permit.append("lirong")
-        permit.append("WANGJ33@RPI.EDU")
-        permit.append("wangj33@rpi.edu")
-        permit.append("xial@rpi.edu")
-        permit.append("XIAL@RPI.EDU")
-        ctx['rpi_users'] = getRPIUsers()
-        ctx['allowed_users'] = permit
-        return ctx
-
 def resetAllFinish(request):
     if request.user.username == "opraadmin":
         users = User.objects.all()
@@ -486,4 +364,4 @@ def resetAllFinish(request):
 
 # custom handler for Google sign-in/sign-up
 def socialSignup(request):
-    return render(request,'custom_social_signup_handler.html', {})
+    return render(request,'register.html', {})

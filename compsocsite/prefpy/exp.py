@@ -6,7 +6,7 @@ import json
 import os
 from preference import Preference
 from profile import Profile
-import mechanism
+import compsocsite.prefpy.voting_mechanism as voting_mechanism
 
 # Below is a template Main which shows off some of the
 # features of this library.
@@ -36,9 +36,9 @@ if __name__ == '__main__':
     # else:
     #     print("not ok")
 
-    stvwinners = mechanism.MechanismSTV().STVwinners(profile)
+    stvwinners = voting_mechanism.MechanismSTV().STVwinners(profile)
     print("stvwinners=", stvwinners)
-    baldwinners = mechanism.MechanismBaldwin().baldwin_winners(profile)
+    baldwinners = voting_mechanism.MechanismBaldwin().baldwin_winners(profile)
     print("baldwinners=", baldwinners)
-    coombswinners = mechanism.MechanismCoombs().coombs_winners(profile)
+    coombswinners = voting_mechanism.MechanismCoombs().coombs_winners(profile)
     print("coombswinners=", coombswinners)

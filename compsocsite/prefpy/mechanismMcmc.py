@@ -9,7 +9,7 @@ import random
 import json
 from profile import Profile
 from preference import Preference
-from mechanism import Mechanism
+from compsocsite.prefpy.voting_mechanism import Mechanism
 
 SAMPLESFILEMETADATALINECOUNT = 3
 

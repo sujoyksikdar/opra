@@ -25,7 +25,6 @@ class Classes(models.Model):
     teachingAssistants = models.ManyToManyField(User, related_name='tas')
     students = models.ManyToManyField(User, related_name='students')
 
-
 # question that will receive responses
 @python_2_unicode_compatible
 class Question(models.Model):

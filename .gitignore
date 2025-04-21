@@ -9,3 +9,4 @@ static_root/
 .env
 compsocsite/static 
 compsocsite/media
+compsocsite/compsocsite/coursematch/

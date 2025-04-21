@@ -31,11 +31,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = eval(env('DEBUG'))
 
 # SECURITY WARNING: allow only specific domains to access the site
-ALLOWED_HOSTS = [
-    'opra.cs.binghamton.edu',
-    '127.0.0.1',
-    'localhost'
-]
+ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://opra.cs.binghamton.edu',
@@ -108,6 +104,9 @@ TEMPLATES = [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
+                "django.template.context_processors.i18n",
+                "django.template.context_processors.media",
+                "django.template.context_processors.request",
                 'django.contrib.messages.context_processors.messages',
                 'django_mobile.context_processors.flavour',
             ],
@@ -122,7 +121,6 @@ TEMPLATES = [
         },
     },
 ]
-
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -165,28 +163,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# PASSWORD_HASHERS = [
-#     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
-#     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
-#     'django.contrib.auth.hashers.Argon2PasswordHasher',
-#     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
-# ]
-
-#CAS
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'guardian.backends.ObjectPermissionBackend',
     'appauth.custom_backends.CustomUserModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend'
-    # 'django.contrib.auth.backends.ModelBackend'
-    #  'cas.backends.CASBackend',
-    #  'django_cas.backends.CASBackend'
 ]
-# CAS_GATEWAY = True
-
-# CAS_RESPONSE_CALLBACKS = (
-#     'module.callbackfunction',
-# )
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
@@ -200,16 +182,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
-#CAS
-# CAS_SERVER_URL = "https://cas-auth.rpi.edu/cas/"
-# CAS_LOGOUT_COMPLETELY = True
-# CAS_PROVIDE_URL_TO_LOGOUT = True
-# CAS_AUTO_CREATE_USERS = True
-# CAS_IGNORE_REFERER = True
-# CAS_REDIRECT_URL = '/polls/regular_polls'
-#'https://opra.cs.rpi.edu'
-# CAS_FORCE_SSL_SERVICE_URL = True
 
 #################################################
 # Email settings                                #
@@ -251,5 +223,11 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {
             'access_type': 'online',
         },
+        'EMAIL_AUTHENTICATION': True,
+        'SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT': True,
+        'SOCIALACCOUNT_EMAIL_VERIFICATION': True,
+        'SOCIALACCOUNT_EMAIL_REQUIRED': True,
     }
 }
+
+LOGOUT_REDIRECT_URL = '/'

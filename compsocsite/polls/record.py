@@ -102,7 +102,7 @@ def interpretRecordForDownload(record):
                         each_record.append("Submit")
                         each_record.append(str1[1:])
                     elif str1.find("||") == -1:
-                        each_record.append("Move All")
+                        each_record.append("Accept This Order")
                         each_record.append(str1)
                     else:
                         str2 = ""
@@ -160,7 +160,7 @@ def interpretRecord(record):
                         str2 = "Clicked submit at time " + str1[1:] + "."
                         record_arr.append(str2)
                     elif str1.find("||") == -1:
-                        str2 = "Clicked move all at time " + str1 + "."
+                        str2 = "Clicked accept this order at time " + str1 + "."
                         record_arr.append(str2)
                     else:
                         clear_arr = str1.split("||")
@@ -255,8 +255,7 @@ def downloadAllRecord1(request, user_id):
             writer.writerow([])
     return response
             
-    
-    
+
 class RecordView(generic.DetailView):
     model = Question
     template_name = 'polls/record.html'
@@ -413,8 +412,6 @@ def downloadSpecificRecords(request):
             dic["user_id"] = 0
         result.append(dic)
     return JsonResponse(result, safe=False)
-        
-
 
 def getMturkPollID():
     polls = list(range(180,190))
@@ -441,4 +438,3 @@ def getUIs(poll):
     if(poll.infiniteBudgetUI_enabled):
         result.append("infinite_budget_ui")
     return result
-    

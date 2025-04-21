@@ -8,7 +8,7 @@ import itertools
 import copy
 from numpy import *
 from .profile import Profile
-from .mechanism import *
+from .voting_mechanism import *
 from .preference import Preference
 
 

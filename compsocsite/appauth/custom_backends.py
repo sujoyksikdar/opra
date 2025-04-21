@@ -19,3 +19,7 @@ class CustomUserModelBackend(ModelBackend):
         if user.password == password:
             return user
         return None
+    
+    def user_can_authenticate(self, user):
+        print(f'user {getattr(user, "username")} with email {getattr(user, "email")} and is_active set to {getattr(user, "is_active", True)} is being authenticated')
+        return True
