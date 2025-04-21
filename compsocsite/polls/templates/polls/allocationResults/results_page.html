@@ -28,7 +28,7 @@
                     <option value="">switch allocation method</option>
                     {% for mechanism in available_mechanisms %}
                     <!-- mechanism is a tuple (bit, label) -->
-                    <option value="{{ mechanism.0 }}" {% if mechanism.0==current_mechanism_id %} selected {% endif %}>
+                    <option value="{{ mechanism.0 }}" {% if mechanism.0 == current_mechanism_id %} selected {% endif %}>
                         {{ mechanism.1 }}
                     </option>
                     {% endfor %}

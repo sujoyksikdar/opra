@@ -29,7 +29,6 @@
                     <!-- Your preferences header -->
                     <div class="panel-heading" >
                         <h4>Your preferences:
-                            {% include "polls/voteOptions/_courses_dropdown.html" %}
                             {% if not request.flavour == "mobile" %}
                                 <button id="submitbutton-IBUI" type="submit" 
                                 onclick="VoteUtil.submitPref(this);"
