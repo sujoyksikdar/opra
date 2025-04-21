@@ -1,0 +1,431 @@
+<div class="dropdown"
+    style="display: inline-block; text-align: center; vertical-align: middle; margin-left: 15px; margin-right: 15px;">
+    <select id="numCoursesDropdown" name="num_courses" class="form-control"
+        style="width: auto; display: inline-block; margin: 0 auto;">
+        <option value="0">0 courses</option>
+        <option value="1">1 course</option>
+        <option value="2">2 courses</option>
+        <option value="3">3 courses</option>
+        <option value="4">4 courses</option>
+        <option value="5">5 courses</option>
+    </select>
+</div>
+<input type="hidden" id="numCoursesValue" name="num_courses_value" value="0" />
+
+<script>
+    $(document).ready(function () {
+        // FIXED: Initialize the hidden value from the dropdown on page load
+        var initialValue = parseInt($('#numCoursesDropdown').val());
+        $('#numCoursesValue').val(initialValue);
+        console.log("Initial dropdown value:", initialValue);
+
+        // Enhanced dropdown change handler
+        $('#numCoursesDropdown').change(function () {
+            var selectedValue = parseInt($(this).val());
+            $('#numCoursesValue').val(selectedValue);
+            console.log("Dropdown changed to:", selectedValue);
+
+            // Apply limits based on template type
+            enforceSelectionLimit(selectedValue);
+
+            // Remove any "Submitting..." text that might be present
+            $('.submitting, #submitting-text, span:contains("Submitting...")').hide();
+        });
+
+        // For oneCol and stars templates
+        $('.list-element, .star-option').on('click', function () {
+            var limit = parseInt($('#numCoursesValue').val());
+            if (limit > 0) {
+                checkAndEnforceLimit(limit);
+            }
+        });
+
+        // For slider template
+        $('.slider-input').on('change input', function () {
+            var limit = parseInt($('#numCoursesValue').val());
+            if (limit > 0) {
+                enforceSliderLimits($(this));
+            }
+        });
+
+        // Helper function to enforce limits
+        function enforceSelectionLimit(limit) {
+            if (limit === 0) {
+                // No limit
+                $('.list-element').removeClass('disabled-option');
+                $('.sortable-ties').removeClass('selection-limit-reached');
+                return;
+            }
+
+            checkAndEnforceLimit(limit);
+        }
+
+        // The function that checks and enforces limits
+        function checkAndEnforceLimit(limit) {
+            if (limit === 0) return; // No limit
+
+            var currentCount = countSelectedItems();
+
+            // If already over limit, force user to remove items
+            if (currentCount > limit) {
+                alert('You have selected ' + currentCount + ' courses but set a limit of ' + limit + '.\nPlease remove some selections.');
+            }
+
+            if (currentCount >= limit) {
+                // Disable unselected options based on template
+                if ($('.sortable-ties').length) { // oneCol
+                    $('.sortable-ties').addClass('selection-limit-reached');
+                    // Disable empty tiers
+                    $('.choice1:not(:has(li))').addClass('disabled-option');
+                } else if ($('.stars-container').length) { // stars
+                    // Disable unselected stars
+                    $('.star:not(.selected)').addClass('disabled-option');
+                }
+            } else {
+                // Re-enable options
+                $('.sortable-ties').removeClass('selection-limit-reached');
+                $('.list-element, .choice1, .star').removeClass('disabled-option');
+            }
+        }
+
+        // Function for enforcing slider limits
+        function enforceSliderLimits(changedSlider) {
+            var limit = parseInt($('#numCoursesValue').val());
+            if (limit === 0) return; // No limit
+
+            var nonZeroSliders = 0;
+            var sliders = $('.slider-input');
+
+            // Count non-zero sliders
+            sliders.each(function () {
+                if (parseInt($(this).val()) > 0) nonZeroSliders++;
+            });
+
+            // If over limit and this slider was just changed to non-zero
+            if (nonZeroSliders > limit && parseInt(changedSlider.val()) > 0) {
+                alert('You can only select ' + limit + ' courses. Please deselect one before adding another.');
+                changedSlider.val(0);
+                changedSlider.trigger('change');
+                return;
+            }
+
+            // Disable/enable sliders as needed
+            if (nonZeroSliders >= limit) {
+                // Disable zero-valued sliders
+                sliders.each(function () {
+                    if (parseInt($(this).val()) === 0) {
+                        $(this).addClass('disabled-option');
+                    }
+                });
+            } else {
+                // Re-enable all sliders
+                sliders.removeClass('disabled-option');
+            }
+        }
+
+        // Create validation modal
+        $('body').append('<div id="custom-course-alert" class="modal fade" tabindex="-1" role="dialog">' +
+            '<div class="modal-dialog"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title">Course Selection</h5></div>' +
+            '<div class="modal-body"></div>' +
+            '<div class="modal-footer"><button type="button" class="btn btn-primary" data-dismiss="modal">OK</button></div>' +
+            '</div></div></div>');
+
+        // Better function to identify course name 
+        function getCourseName(input) {
+            // Try to find element with the course name
+            var element = $(input).closest('.row, tr').find('span:contains("CS")').first();
+            if (!element.length) {
+                element = $(input).parent().parent().find('span:contains("CS")').first();
+            }
+            if (!element.length) {
+                element = $(input).closest('.row, tr').prev().find('span:contains("CS")').first();
+            }
+
+            // Last resort, try to find text nearby
+            if (!element.length) {
+                var prevText = $(input).parent().prev().text().trim();
+                if (prevText.indexOf('CS') >= 0) {
+                    return prevText;
+                }
+            }
+
+            return element.length ? element.text().trim() : "";
+        }
+
+        // Better counting function for all inputs - COMPLETELY REVISED
+        function countInputsWithValues() {
+            var count = 0;
+            var inputs = [];
+            var debugInfo = [];
+
+            // Display all visible elements with values to help debug
+            $('input, textarea, select, .range, [id^="value-"], .value, span:contains("Value")').each(function () {
+                var elem = $(this);
+                var id = elem.attr('id') || 'no-id';
+                var cls = elem.attr('class') || 'no-class';
+                var val = elem.val() || elem.text();
+                debugInfo.push({ id: id, class: cls, value: val });
+            });
+            console.log("All potential value elements:", debugInfo);
+
+            // IMPROVED DETECTION: Check for BudgetUI by looking for specific elements
+            var sliders = $('input[type="range"], .range, .slider');
+            var valueDisplays = $('[id^="value-"], .value');
+            var valueLabelText = $('span:contains("Value:")');
+
+            var isBudgetUI = sliders.length > 0 || valueDisplays.length > 0 || valueLabelText.length > 0;
+
+            if (isBudgetUI) {
+                console.log("BudgetUI detected - checking for values");
+                console.log("Found sliders:", sliders.length);
+                console.log("Found value displays:", valueDisplays.length);
+                console.log("Found value labels:", valueLabelText.length);
+
+                // For BudgetUI: Try multiple methods to find course values
+
+                // Method 1: Check input ranges directly
+                sliders.each(function () {
+                    var val = parseInt($(this).val() || "0");
+                    if (val > 0) {
+                        count++;
+                        var courseName = getCourseName($(this));
+                        inputs.push({
+                            method: "slider",
+                            input: $(this),
+                            value: val,
+                            course: courseName
+                        });
+                        console.log("Counted slider:", $(this).attr('id'), "with value:", val, "for course:", courseName);
+                    }
+                });
+
+                // Method 2: Look for value displays 
+                valueDisplays.each(function () {
+                    // Extract numeric value from text
+                    var text = $(this).text();
+                    var val = parseInt(text.replace(/[^0-9]/g, '') || "0");
+
+                    if (val > 0) {
+                        var courseName = getCourseName($(this));
+                        // Check if we've already counted this course
+                        if (!inputs.some(i => i.course === courseName)) {
+                            count++;
+                            inputs.push({
+                                method: "value-display",
+                                input: $(this),
+                                value: val,
+                                course: courseName
+                            });
+                            console.log("Counted value display:", $(this).attr('id'), "with value:", val, "for course:", courseName);
+                        }
+                    }
+                });
+
+                // Method 3: Look for "Value: X" patterns in text
+                valueLabelText.each(function () {
+                    var text = $(this).text();
+                    var match = text.match(/Value:\s*(\d+)/i);
+                    if (match && match[1]) {
+                        var val = parseInt(match[1]);
+                        if (val > 0) {
+                            var courseName = getCourseName($(this));
+                            // Check if we've already counted this course
+                            if (!inputs.some(i => i.course === courseName)) {
+                                count++;
+                                inputs.push({
+                                    method: "value-label",
+                                    input: $(this),
+                                    value: val,
+                                    course: courseName
+                                });
+                                console.log("Counted value label:", text, "with value:", val, "for course:", courseName);
+                            }
+                        }
+                    }
+                });
+
+                // Method 4: Try a different BudgetUI pattern - look for elements with numbers > 0
+                if (count === 0) {
+                    console.log("No values found with standard methods, trying fallback...");
+                    // Find any span that could be displaying values
+                    $('div.Value, span.Value, div:contains("Value:"), span:contains("Value:")').each(function () {
+                        var parent = $(this).closest('.row, tr, div[class*="course"]');
+                        var text = $(this).text();
+                        var nums = text.match(/\d+/g);
+                        if (nums && nums.length > 0) {
+                            var val = parseInt(nums[0]);
+                            if (val > 0) {
+                                var courseName = getCourseName(parent);
+                                if (!inputs.some(i => i.course === courseName)) {
+                                    count++;
+                                    inputs.push({
+                                        method: "fallback",
+                                        input: $(this),
+                                        value: val,
+                                        course: courseName
+                                    });
+                                    console.log("Fallback counted:", text, "with value:", val, "for course:", courseName);
+                                }
+                            }
+                        }
+                    });
+                }
+            } else {
+                // For InfiniteBudget/Regular UI: count input fields
+                $('input[type="text"], input[type="number"]').each(function () {
+                    // Skip system inputs and hidden fields
+                    if ($(this).is(':visible') &&
+                        $(this).attr('id') !== 'numCoursesValue' &&
+                        $(this).attr('id') !== 'record_data' &&
+                        !$(this).attr('name')?.includes('csrfmiddlewaretoken') &&
+                        !$(this).attr('id')?.includes('_value')) {
+
+                        var val = parseFloat($(this).val() || "0");
+                        if (!isNaN(val) && val > 0) {
+                            count++;
+                            inputs.push({
+                                method: "text-input",
+                                input: $(this),
+                                value: val,
+                                course: getCourseName($(this))
+                            });
+                        }
+                    }
+                });
+            }
+
+            // FALLBACK: If no values found, try a more aggressive approach
+            if (count === 0) {
+                console.log("No values found with standard methods. Trying more aggressive detection...");
+                // Look for ANY number > 0 inside a span near a course name
+                $('span:visible').each(function () {
+                    var text = $(this).text();
+                    if (/Value: \d+/i.test(text)) {
+                        var val = parseInt(text.match(/\d+/)[0]);
+                        if (val > 0) {
+                            count++;
+                            inputs.push({
+                                method: "last-resort",
+                                input: $(this),
+                                value: val,
+                                course: getCourseName($(this))
+                            });
+                            console.log("Last resort found value:", val, "in:", text);
+                        }
+                    }
+                });
+            }
+
+            console.log("FINAL COUNT - Total inputs with values:", count, "Details:", inputs);
+            return { count: count, inputs: inputs };
+        }
+
+        // COMPLETELY REWRITTEN VALIDATION LOGIC
+        // Remove previous handlers to start fresh
+        $('form').off('submit.courseValidation');
+
+        // Add simple click handler to Submit button
+        $('button[type="submit"], input[type="submit"]').off('click.validateCourses').on('click.validateCourses', function (e) {
+            // Skip for twoCol template
+            if ($('#left-sortable').length) {
+                return true;
+            }
+
+            // Prevent the default action first
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Get current values
+            var dropdownVal = $('#numCoursesDropdown').val();
+            var selectedCourses = parseInt(dropdownVal || "0");
+
+            // Get actual votes - count more carefully
+            var result = countInputsWithValues();
+            var actualVotes = result.count;
+
+            console.log("VALIDATION CHECK - Selected:", selectedCourses, "Actual:", actualVotes, "Inputs:", result.inputs);
+
+            // Update hidden field
+            $('#numCoursesValue').val(selectedCourses);
+
+            // CASE 1: Dropdown is zero
+            if (selectedCourses === 0) {
+                var message = 'Please select how many courses you want to vote for from the dropdown.<br><br>' +
+                    'You\'ve currently given points to ' + actualVotes + ' course' +
+                    (actualVotes !== 1 ? 's' : '') + '.';
+
+                $('#custom-course-alert .modal-body').html(message);
+                $('#custom-course-alert').modal('show');
+                return false;
+            }
+
+            // CASE 2: Values don't match
+            if (selectedCourses !== actualVotes) {
+                var message = 'You selected ' + selectedCourses + ' course' +
+                    (selectedCourses !== 1 ? 's' : '') + ' in the dropdown, but gave points to ' +
+                    actualVotes + ' course' + (actualVotes !== 1 ? 's' : '') + '.<br><br>' +
+                    'Please adjust your selection or votes to match.';
+
+                $('#custom-course-alert .modal-body').html(message);
+                $('#custom-course-alert').modal('show');
+                return false;
+            }
+
+            // CASE 3: Everything is valid, submit the form
+            console.log("Validation passed! Submitting form...");
+
+            // Use a proper form submission that actually works
+            var theForm = $(this).closest('form');
+
+            // Disable the handler temporarily to avoid infinite loops
+            $(this).off('click.validateCourses');
+
+            // Use a timeout to ensure the UI updates before submitting
+            setTimeout(function () {
+                theForm[0].submit(); // Use native submit for maximum compatibility
+            }, 50);
+
+            return true;
+        });
+
+        // Make sure to hide "Submitting..." text
+        $(document).on('click', 'button[type="submit"], input[type="submit"]', function () {
+            setTimeout(function () {
+                $('.submitting, [id^="submitting"], .submitting-text').hide();
+            }, 100);
+        });
+
+        // Different counting logic based on template
+        function countSelectedItems() {
+            if ($('.sortable-ties').length) {  // oneCol template
+                return $('.sortable-ties li.list-element').length;
+            } else if ($('.slider-input').length) {  // slider template
+                var count = 0;
+                $('.slider-input').each(function () {
+                    if (parseInt($(this).val()) > 0) count++;
+                });
+                return count;
+            }
+            return 0;
+        }
+
+        // Initialize limit enforcement on page load
+        var initialLimit = parseInt($('#numCoursesValue').val());
+        if (initialLimit > 0) {
+            enforceSelectionLimit(initialLimit);
+        }
+
+        // Fix for the "Submitting..." issue - run every 500ms
+        setInterval(function () {
+            // If any submitting element is visible but we're not actually submitting
+            if ($('.submitting, button[id^="submitting"], span:contains("Submitting...")').is(':visible')) {
+                // Hide all submitting elements
+                $('.submitting, button[id^="submitting"], span:contains("Submitting...")').hide();
+
+                // Ensure submit button is visible
+                $('button[type="submit"], input[type="submit"], .submit_button').show();
+            }
+        }, 500);
+    });
+</script>

@@ -146,4 +146,5 @@ urlpatterns = [
     path('<int:question_id>/upload_csv_choices/', views.upload_csv_choices, name='upload_csv_choices'),
     re_path(r'^(?P<question_id>[0-9]+)/delete_items/$', views.delete_items, name='delete_items'),
     path('<int:question_id>/upload_bulk_images/', views.upload_bulk_images, name='upload_bulk_images'),
+    re_path(r'^(?P<question_id>[0-9]+)/upload_single_image/$', views.upload_single_image, name='upload_single_image'),
 ]

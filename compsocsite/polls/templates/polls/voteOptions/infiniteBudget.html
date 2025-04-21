@@ -29,11 +29,12 @@
                     <!-- Your preferences header -->
                     <div class="panel-heading" >
                         <h4>Your preferences:
+                            {% include "polls/voteOptions/_courses_dropdown.html" %}
                             {% if not request.flavour == "mobile" %}
                                 <button id="submitbutton-IBUI" type="submit" 
                                 onclick="VoteUtil.submitPref(this);"
                                 class = "submit_button" 
-                                style="">
+                                style="float: right; margin-left: 10px;">
                                     Submit
                                 </button>
                                 <button id="submitting-IBUI" type="button" class="submitting btn btn-default" style="visibility:hidden;position:absolute;z-index:1;">
@@ -70,7 +71,12 @@
                                 {% if item.imageURL != Null %}
                                     <img class="item" src='{{ item.imageURL }}' style="margin: 8px;"/>
                                 {% endif %}
-                            {{ item.item_text }}
+                                <!-- Display option text -->
+                                <strong>{{ item.item_text }}</strong> : 
+								{% if item.item_description %}
+                                    <div style="display:inline-block;"><span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden" >
+                                    </span></div>
+                                {% endif %}
                             <div style="display: flex;">
                                 <input class = "infinite_budget_ui_pref_box" data-option="item{{ item.item_text }}" 
                                 type="text" id="item{{ item.item_text }}" type="{{ forloop.counter }}" 

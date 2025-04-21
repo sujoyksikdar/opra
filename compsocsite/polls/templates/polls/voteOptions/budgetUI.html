@@ -31,12 +31,13 @@
                     <!-- Your preferences header -->
                     <div class="panel-heading" >
                         <h4>Your preferences:
+                            {% include "polls/voteOptions/_courses_dropdown.html" %}
                             {% if not request.flavour == "mobile" %}
                             <!-- <button id="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum();" class="submitbutton btn btn-success">
                                 Submit
                             </button> -->
                             <button id ="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum();" 
-                            class = "submit_button"> Submit </button>
+                            class = "submit_button" style="float: right; margin-left: 10px;" > Submit </button>
                             <button id="submitting-slider-BUI" type="button" class="submitting btn btn-default" style="visibility:hidden;position:absolute;z-index:1;">
                                 Submitting...
                             </button>

@@ -4015,8 +4015,8 @@ def upload_csv_choices(request, question_id):
             for row in rows_to_process:
                 if row and row[0].strip():
                     item_name = row[0].strip()
-                    item_description = row[1].strip() if len(row) > 1 else ""
-                    item_reference = row[2].strip() if len(row) > 2 else ""
+                    item_description = row[1].strip() if len(row) > 1 and row[1].strip() else "No description"
+                    item_reference = row[2].strip() if len(row) > 2 and row[2].strip() else ""
                     
                     # check duplicates
                     if not question.item_set.filter(item_text=item_name).exists():
@@ -4045,8 +4045,8 @@ def upload_csv_choices(request, question_id):
                     continue
                     
                 item_name = row[0].strip()
-                item_description = row[1].strip() if len(row) > 1 else ""
-                item_reference = row[2].strip() if len(row) > 2 else ""
+                item_description = row[1].strip() if len(row) > 1 and row[1].strip() else "No description"
+                item_reference = row[2].strip() if len(row) > 2 and row[2].strip() else ""
                 
                 # check duplicates
                 if question.item_set.filter(item_text=item_name).exists():
@@ -4145,6 +4145,54 @@ def upload_bulk_images(request, question_id):
                 
         except Exception as e:
             messages.error(request, f"Error processing image files: {str(e)}")
+    
+    request.session['setting'] = 0
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+def upload_single_image(request, question_id):
+    """
+    Handle single image upload for an existing item.
+    Updates the image for an existing item instead of creating a new one.
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can modify items.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST' and 'image' in request.FILES:
+        try:
+            image_file = request.FILES['image']
+            item_id = request.POST.get('item_id', None)
+            
+            if not item_id:
+                messages.error(request, "No item selected. Please select an item to update.")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            
+            # Get the item to update
+            try:
+                item = Item.objects.get(pk=item_id, question=question)
+                
+                # Remove any existing image (optional)
+                if item.image:
+                    try:
+                        old_image_path = item.image.path
+                        if os.path.exists(old_image_path):
+                            os.remove(old_image_path)
+                    except:
+                        pass  # Ignore errors in removing old image
+                
+                # Update the image
+                item.image = image_file
+                item.save()
+                
+                messages.success(request, f"Successfully updated image for '{item.item_text}'.")
+            except Item.DoesNotExist:
+                messages.error(request, "The specified item was not found.")
+                
+        except Exception as e:
+            messages.error(request, f"Error processing image file: {str(e)}")
     
     request.session['setting'] = 0
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))

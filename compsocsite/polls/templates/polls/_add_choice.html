@@ -24,7 +24,7 @@
     <div class="modal fade" id="csvUploadModal" tabindex="-1" role="dialog" aria-labelledby="csvUploadModalLabel">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header">x
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -105,26 +105,39 @@ Item D,                       , image4.png</pre>
                 <div class="row" data-toggle="collapse" data-target="#iteminfo{{item.id}}">
                     <div class="form-group col-xs-1">
                         <input type="checkbox" class="item-checkbox" value="{{item.id}}" onclick="event.stopPropagation();">
+
+                        <div class="form-group col-xs-1 pull-right">
+                            <button type="button" class="btn btn-default" 
+                                    onclick="document.getElementById('itemFile{{ item.id }}').click();" 
+                                    title="Upload/Replace Image">
+                              <span class="glyphicon glyphicon-plus"></span>
+                            </button>
+                            <input id="itemFile{{ item.id }}" type="file" name="image" accept="image/*" style="display:none;" onchange="uploadSingleImage(this, {{ item.id }});">
+                          </div>
+                          
                     </div>
-                    <div class="form-group col-xs-1 pull-right" style="text-align: right;">
-                        <span class="caret" style="color:#377BB5;"></span>
-                    </div>                   
+                    <div class="form-group col-xs-1"   >
+                        <span class="caret" style="color:#1b06ff;"></span>
+                    </div>
                     {% if item.image %}
                         <div class="col-xs-1">
                         <img src='/{{ item.image }}' width="40px"/>
                         </div>
                     {% endif %}
+
                     {% if item.imageURL != Null %}
                         <div class="col-xs-1">
                         <img src='{{ item.imageURL }}' width="40px"/>
                         </div>
                     {% endif %}
+
                     <div class="form-group col-xs-7">
                         {% if question.status == 1 or item.recently_added %}
                         <input type="text" class="form-control input-sm auto_submit" name="item{{item.id}}" value="{{ item }}">
                         {% else %}
                         {{item}}
                         {% endif %}
+
                     </div>
                     {% if question.status == 1 or item.recently_added %}
                     <!-- <div class="form-group {% if item.image or item.imageURL != Null %} col-xs-3 {% else %} col-xs-4 {% endif %}">
@@ -152,19 +165,19 @@ Item D,                       , image4.png</pre>
                         <br />
                         </div>
                     </div>
-						{% if question.status == 1 or item.recently_added %}
+                    {% if question.status == 1 or item.recently_added %}
                         <div class="row">
                             <div class="form-group col-xs-1">
                             </div>
-                        <div class="form-group col-xs-9">
-                        <input type="hidden" class="form-control auto_submit" name="imageURL{{item.id}}" value="{% if item.imageURL %}{{item.imageURL}}{% endif %}" size="50" placeholder="Paste Image URL"/>
+                            <div class="form-group col-xs-9">
+                                <input type="hidden" class="form-control auto_submit" name="imageURL{{item.id}}" value="{% if item.imageURL %}{{item.imageURL}}{% endif %}" size="50" placeholder="Paste Image URL"/>
+                            </div>
+                            <div class="form-group col-xs-2">
+                                <label for="image{{item.id}}" class="btn btn-default"><span class="glyphicon glyphicon-camera"></span></label>
+                                <input style="display:none" id="image{{item.id}}" type="file" name="docfile{{item.id}}" accept="image/*">
+                            </div>
                         </div>
-                        <div class="form-group col-xs-2">
-                        <label for="image{{item.id}}" class="btn btn-default"><span class="glyphicon glyphicon-camera"></span></label>
-                        <input style="display:none" id="image{{item.id}}" type="file" name="docfile{{item.id}}" accept="image/*">
-                        </div>
-                        </div>
-						{% endif %}
+                    {% endif %}
                 </div>
             </li>
     {% endfor %}
@@ -200,18 +213,53 @@ Item D,                       , image4.png</pre>
                 $("#choiceform").submit();
 					});
 				});
-        $("#choiceform").submit(function(event){
+            $("#choiceform").submit(function(event){
                 event.preventDefault();
+                var formData = new FormData(this);
+                
                 $.ajax({
-                    type:'post',
-                    url:'{% url 'polls:editchoice' question.id %}',
-                    data: $('#choiceform').serialize(),
-                    success: function(event){
-                        $("#choicesetting").load();
+                    type: 'post',
+                    url: '{% url "polls:editchoice" question.id %}',
+                    data: formData,
+                    processData: false,  // Don't process the data
+                    contentType: false,  // Don't set content type
+                    cache: false,
+                    success: function(response){
+                        window.location.reload();  // Refresh page to show uploaded image
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error:", error);
+                        alert("An error occurred during upload. Please try again.");
                     }
                 });
             });
 
+// Function to handle single image upload
+function uploadSingleImage(input, itemId) {
+    if (input.files && input.files[0]) {
+      var formData = new FormData();
+      formData.append('image', input.files[0]);
+      formData.append('item_id', itemId);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      
+      $.ajax({
+        url: '{% url "polls:upload_single_image" question.id %}',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+          // Reload the page to display the uploaded image
+          window.location.reload();
+        },
+        error: function(xhr, status, error) {
+          console.error("Error uploading image:", error);
+          alert("Failed to upload image. Please try again.");
+        }
+      });
+    }
+  }
+        
 // delete selected
 function deleteSelected() {
     var selectedItems = [];

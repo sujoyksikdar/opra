@@ -31,11 +31,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = eval(env('DEBUG'))
 
 # SECURITY WARNING: allow only specific domains to access the site
-ALLOWED_HOSTS = [
-    'opra.cs.binghamton.edu',
-    '127.0.0.1',
-    'localhost'
-]
+ALLOWED_HOSTS = ['*', 'kudremukh.cs.binghamton.edu']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://opra.cs.binghamton.edu',

@@ -3,6 +3,17 @@
 {% load static %}
 
 {% block content %}
+{% if selected_alloc_res_tables_sum == 0 %}
+<div class="alert alert-info" style="margin-top: 40px; margin-bottom: 20px;">
+    <h3 style="margin-bottom: 20px;">Nothing to show here.</h3>
+    <p>This is likely due to two possible reasons:</p>
+    <ul>
+        <li>The administrator of this instance has disabled access to results</li>
+        <li>The results are still being computed at this time.<br>We are waiting on all users to submit preferences</li>
+    </ul>
+    <p style="margin-top: 15px;">Please visit again later.</p>
+</div>
+{% else %}
 <p>sum of alloc: {{selected_alloc_res_tables_sum }}</p>
 <div class="col-md-12">
     <!-- results header with current algorithm + dropdown -->
@@ -17,8 +28,7 @@
                     <option value="">switch allocation method</option>
                     {% for mechanism in available_mechanisms %}
                     <!-- mechanism is a tuple (bit, label) -->
-                    <option value="{{ mechanism.0 }}"
-                            {% if mechanism.0 == current_mechanism_id %} selected {% endif %}>
+                    <option value="{{ mechanism.0 }}" {% if mechanism.0==current_mechanism_id %} selected {% endif %}>
                         {{ mechanism.1 }}
                     </option>
                     {% endfor %}
@@ -38,11 +48,22 @@
                         <th>Item</th>
                         <th>Value</th>
                     </tr>
-                    {% for item in curr_user_pref %}
+                    {% for item in items_obj %}
                     <tr>
-                        <td>{{ item }}</td>
-                        <td>{{ curr_user_pref_values|index:forloop.counter0 }}</td>
+                        <td>{{ item.item_text }}</td>
+                        <td>0</td>
                     </tr>
+                    {% endfor %}
+
+                    {% for item in curr_user_pref %}
+                    <script>
+                        // Find and update the item value in the table
+                        document.querySelectorAll('table tr td:first-child').forEach(function (cell, index) {
+                            if (cell.textContent.trim() === "{{ item }}") {
+                                cell.nextElementSibling.textContent = "{{ curr_user_pref_values|index:forloop.counter0 }}";
+                            }
+                        });
+                    </script>
                     {% endfor %}
                 </table>
             </div>
@@ -63,7 +84,7 @@
                     <td>{{ username }}</td>
                     <td>
                         {% for item in prefs %}
-                            <span class="label label-info">{{ item }}</span>
+                        <span class="label label-info">{{ item }}</span>
                         {% endfor %}
                     </td>
                 </tr>
@@ -72,7 +93,7 @@
         </div>
     </div>
     {% endif %}
-    
+
     {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading">Allocated Items Bundle:</div>
@@ -131,7 +152,7 @@
                         <td>
                             <div>
                                 <img src="{{ profile_pics|index:forloop.counter0 }}"
-                                     style="height: 40px; width: 40px;" />
+                                    style="height: 40px; width: 40px;" />
                                 {{ candidates|index:forloop.counter0 }}
                             </div>
                         </td>
@@ -173,7 +194,7 @@
                         <th style="text-align: center;">
                             <div>
                                 <img src="{{ profile_pics|index:forloop.counter0 }}"
-                                     style="height: 40px; width: 40px;" />
+                                    style="height: 40px; width: 40px;" />
                                 {{ candidate }}
                             </div>
                         </th>
@@ -184,7 +205,7 @@
                         <td>
                             <div>
                                 <img src="{{ profile_pics|index:forloop.counter0 }}"
-                                     style="height: 40px; width: 40px;" />
+                                    style="height: 40px; width: 40px;" />
                                 {{ candidates|index:forloop.counter0 }}
                             </div>
                         </td>
@@ -272,53 +293,53 @@
 </div>
 
 <style>
-.results-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
 
-.allocation-mechanism {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
+    .allocation-mechanism {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
 
-#mechanism-dropdown {
-    padding: 5px 10px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-}
+    #mechanism-dropdown {
+        padding: 5px 10px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
 
-.options-container {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    background-color: #f0f8ff;
-    padding: 10px;
-    width: fit-content;
-    margin-right: 5px;
-    margin-bottom: 5px;
-}
+    .options-container {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        background-color: #f0f8ff;
+        padding: 10px;
+        width: fit-content;
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
 
-.options-container img {
-    width: 40px;
-    height: 40px;
-    margin-right: 10px;
-}
+    .options-container img {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+    }
 
-.options-container span {
-    font-size: 16px;
-    color: #333;
-}
+    .options-container span {
+        font-size: 16px;
+        color: #333;
+    }
 
-td,
-th {
-    height: 7px;
-    width: 20px;
-}
+    td,
+    th {
+        height: 7px;
+        width: 20px;
+    }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -335,7 +356,7 @@ th {
         }
         window.location.href = url.toString();
     }
-    
+
     document.addEventListener('DOMContentLoaded', function () {
         // chart code
         if (document.getElementById('first-choices-chart')) {
@@ -346,7 +367,7 @@ th {
             // const ctx = document.getElementById('fractional-share-chart').getContext('2d');
             // new Chart(ctx, { ... });
         }
-    
+
         // color envy matrix
         const envyCells = document.querySelectorAll('#envy_matrix .table-data');
         envyCells.forEach(cell => {
@@ -364,23 +385,24 @@ th {
     const firstChoicesChart = new Chart(ctxFC, {
         type: 'bar',
         data: {
-            labels: {{ candidates|safe }},  // from context
-            datasets: [{
-                label: 'First-choice Items',
-                data: {{ first_choices_data|safe }},
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
+            labels: {{ candidates| safe }},  // from context
+    datasets: [{
+        label: 'First-choice Items',
+        data: {{ first_choices_data| safe }},
+        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
             }]
         },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true,
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
                     stepSize: 1
-                }
             }
         }
+    }
     });
-    </script>    
+</script>
+{% endif %}
 {% endblock %}
