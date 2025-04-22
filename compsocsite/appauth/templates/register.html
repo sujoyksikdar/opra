@@ -32,11 +32,11 @@
     <br/>
 
     <!-- <a title="Google" href="/accounts/google/login/?process=login">Sign up with Google</a> -->
-    <form method="post" action="/accounts/google/login/">
+    <form method="post" action="/accounts/google/login/?next={{ request.GET.next }}">
         <input type="hidden">
         {% csrf_token %}
         <button type="submit" class="btn btn-dark">
-            Using Google
+            Authenticate via Google
         </button>
     </form>
 </div>
