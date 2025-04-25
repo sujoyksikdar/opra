@@ -242,6 +242,11 @@ class DemoView(views.generic.DetailView):
         default_order = self.get_random_order(ctx)
         return default_order
     
+    def get_num_courses(self, ctx) -> int:
+        """Get the number of courses to display."""
+        # Default to 3 courses for demo if not set
+        return ctx.get('num_courses', 3)
+
     def get_context_data(self, **kwargs):
         print('in DemoView get_context_data')
         ctx = super(DemoView, self).get_context_data(**kwargs)
@@ -277,6 +282,8 @@ class DemoView(views.generic.DetailView):
             else:
                 # load choices in the default order
                 ctx['items'] = self.object.item_set.all()
+                # For demo, set a default number of courses
+                ctx['num_courses'] = 3
             return ctx
 
         # Get the responses for the current logged-in user from latest to earliest
@@ -284,9 +291,16 @@ class DemoView(views.generic.DetailView):
 
         if len(currentUserResponses) > 0:
             latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except:
+                ctx['num_courses'] = 3  # Default for demo
             ctx['submitted_ranking'] = latest_response.behavior_data
             if currentUserResponses[0].comment:
                 ctx['lastcomment'] = currentUserResponses[0].comment
+        else:
+            # For demo, set a default number of courses
+            ctx['num_courses'] = 3
         
         # reset button
         if isPrefReset(self.request):
@@ -306,6 +320,7 @@ class DemoView(views.generic.DetailView):
                 for item in ctx['unrankedCandidates']:
                     items.append(item)
             ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
         else:
             # no history so display the list of choices
             ctx['items'] = self.get_order(ctx)
@@ -4113,6 +4128,7 @@ class DemoView(views.generic.DetailView):
                 for item in ctx['unrankedCandidates']:
                     items.append(item)
             ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
         else:
             # no history so display the list of choices
             ctx['items'] = self.get_order(ctx)
@@ -4149,6 +4165,11 @@ class CourseMatchDemoView(views.generic.DetailView):
         default_order = self.get_random_order(ctx)
         return default_order
     
+    def get_num_courses(self, ctx) -> int:
+        """Get the number of courses to display."""
+        # Default to 3 courses for demo if not set
+        return ctx.get('num_courses', 3)
+
     def get_context_data(self, **kwargs):
         print('in CourseMatchDemoView get_context_data')
         ctx = super(CourseMatchDemoView, self).get_context_data(**kwargs)
@@ -4184,6 +4205,8 @@ class CourseMatchDemoView(views.generic.DetailView):
             else:
                 # load choices in the default order
                 ctx['items'] = self.object.item_set.all()
+                # For demo, set a default number of courses
+                ctx['num_courses'] = 3
             return ctx
 
         # Get the responses for the current logged-in user from latest to earliest
@@ -4191,9 +4214,16 @@ class CourseMatchDemoView(views.generic.DetailView):
 
         if len(currentUserResponses) > 0:
             latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except:
+                ctx['num_courses'] = 3  # Default for demo
             ctx['submitted_ranking'] = latest_response.behavior_data
             if currentUserResponses[0].comment:
                 ctx['lastcomment'] = currentUserResponses[0].comment
+        else:
+            # For demo, set a default number of courses
+            ctx['num_courses'] = 3
         
         # reset button
         if isPrefReset(self.request):
@@ -4213,6 +4243,7 @@ class CourseMatchDemoView(views.generic.DetailView):
                 for item in ctx['unrankedCandidates']:
                     items.append(item)
             ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
         else:
             # no history so display the list of choices
             ctx['items'] = self.get_order(ctx)

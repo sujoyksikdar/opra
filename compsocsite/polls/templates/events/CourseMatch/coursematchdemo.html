@@ -92,8 +92,22 @@
             </div>
         </div>
     </div>
+    
+    <div class="panel panel-default">    
+        <div class="panel-heading">
+            <h4>Number of Courses</h4>
+        </div>
+        <div class="row">
+            <center>
+                <label data-step="1" data-intro="First, select the number of courses you wish to be enrolled in"> 
+                    Enter the number of courses you wish to be enrolled in for Fall 2025: 
+                    <input name="num-courses" type="number" step="any" id="num-courses" value="{{ num_courses }}" min="1" max="5" style="text-align:right;"/>
+                </label>
+            </center>
+        </div>
+    </div>
 
-    <div id="tabs" class="row" data-step="1" data-intro="Rank your course preferences using the interface below">
+    <div id="tabs" class="row" data-step="2" data-intro="Then, rank your course preferences using the interface below">
         {% if not question.ui_number == 1%}
         <ul>
             {% if question.twocol_enabled %}<li><a href="#twoColSection" onclick="changeMethod(1);">Two Columns</a></li> {% endif %}
@@ -135,6 +149,7 @@
     //set the webpage for ajax to report user behavior
     submissionURL="{% url 'polls:record' question.id%}";
     var previouslySubmitted = {{ submitted_ranking|default:"null" |safe }};
+    var previouslySubmitted_num_courses = {{ num_courses|default:3 |safe }};
     
     $(function(){
         $(document).ready(function() {
@@ -143,8 +158,9 @@
             var imagesWithClass = document.getElementsByClassName('item');
             for (var i = 0; i < imagesWithClass.length; i++) {
                 var staticIndex = imagesWithClass[i].src.indexOf('static');
-                if (staticIndex > 1 && imagesWithClass[i].src[staticIndex-1] === '/' && imagesWithClass[i].src[staticIndex-2] === '/') {
-                    imagesWithClass[i].src = imagesWithClass[i].src.substring(0, staticIndex-1) + imagesWithClass[i].src.substring(staticIndex);
+                if(imagesWithClass[i].src[staticIndex-1] === '/' && imagesWithClass[i].src[staticIndex-2] === '/' ) {
+                    imagesWithClass[i].src = imagesWithClass[i].src.slice(0,[staticIndex-1]) 
+                    + imagesWithClass[i].src.slice([staticIndex])
                 }
             }
 
