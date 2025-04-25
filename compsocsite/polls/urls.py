@@ -49,7 +49,7 @@ urlpatterns = [
     # vote
     # course match
     re_path(r'^(?P<pk>1)/$', views.CourseMatchView.as_view(), name='coursematch'),
-    re_path(r'^(?P<pk>1)/demo$', views.DemoView.as_view(), name='coursematch_demo'),
+    re_path(r'^(?P<pk>1)/demo$', views.CourseMatchDemoView.as_view(), name='coursematch_demo'),
     re_path(r'^(?P<question_id>1+)/vote/$', views.coursematch_vote, name='vote'),
 
     # usual business
