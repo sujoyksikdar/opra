@@ -440,7 +440,7 @@ function twoColSort( order ){
 		html += "<ul class=\"choice1\"> <div class=\"tier two\"> #" + tier + "</div>"; 
 		$.each(value, function(i, v){
 			html += "<li class=\"list-element\" id=\"" + v.name + "\" type=\"" + v.name + "\">";
-			html += $("#" + v.name).html();
+			html += $("#" + CSS.escape(v.name)).html();
 			html += "</li>";
     });
     html += "</ul>";
@@ -462,9 +462,10 @@ function oneColSort( order ){
 	$.each(order, function(index, value){
 		html += "<ul class=\"choice1\"><div class=\"tier one\">#" + tier + "</div>"; 
 		$.each(value, function(i, v){
-			html += "<li class=\"list-element\" id=\"" + $("#oneColSection .list-element[type='" + v.toString() + "']").attr('id') + "\" title=\""+ $("#oneColSection .list-element[type='" + v.toString() + "']").attr('title') +"\" type=" + v.toString() + ">";
-			html += $("#oneColSection .list-element[type='" + v.toString() + "']").html();
+			html += "<li class=\"list-element\" id=\"" + v.name + "\" type=\"" + v.name + "\">";
+			html += $("#" + CSS.escape(v.name)).html();
 			html += "</li>";
+
     });
     html += "</ul>";
     tier ++;
@@ -578,6 +579,25 @@ function yesNoZeroSort( order ){
 			$(".checkbox[type='" + v.toString() + "']").css('border-width', '1px');
 			$(".checkbox[type='" + v.toString() + "']").css('margin-top', '5px');
 			$(".checkbox[type='" + v.toString() + "']").css('margin-bottom', '9px');
+		});
+	});
+}
+function listUISort(prefOrder) {
+	if (!Array.isArray(prefOrder)) return;
+	prefOrder.forEach(group => {
+		group.forEach(item => {
+			const input = document.querySelector(`.list_ui_pref_box[id="${item.name}"]`);
+			if (input) input.value = item.score;
+		});
+	});
+}
+
+function infiniteBudgetUISort(prefOrder) {
+	if (!Array.isArray(prefOrder)) return;
+	prefOrder.forEach(group => {
+		group.forEach(item => {
+			const input = document.querySelector(`.infinite_budget_ui_pref_box[id="${item.name}"]`);
+			if (input) input.value = item.score;
 		});
 	});
 }
@@ -1371,6 +1391,9 @@ $( document ).ready(function() {
 		try { sliderSort(prefOrder); } catch (e) {}
 		try { starSort(prefOrder); } catch (e) {}
 		try { sliderBUIRestore(prefOrder); } catch (e) {}
+		try { listUISort(prefOrder); } catch (e) {}
+		try { infiniteBudgetUISort(prefOrder); } catch (e) {}
+
 	}
 	
 	
