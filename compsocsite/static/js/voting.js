@@ -739,6 +739,7 @@ var VoteUtil = (function () {
 	    };
 	    temp_data["time"] = [d];
 	    temp_data["rank"] = [dictCol(1)];
+		console.log(temp_data);
 	    if (method == 1) {
 	        var tier = $("#right-sortable").children().size()+1;
 	        // move the left items over to the right side
@@ -748,6 +749,7 @@ var VoteUtil = (function () {
 	                    var temp = $("#right-sortable").html();
 	                    //$(this).attr("onclick")="VoteUtil.moveToPref(this)"; 
 	                    if (!$(this).hasClass("tier")) {
+							console.log($(this)[0].outerHTML);
 	                        $("#right-sortable").html(
 	                            temp + "<ul class=\"choice2\" onclick =\"VoteUtil.moveToPref(this)\">" + "<div class=\"tier two\"> #" + tier.toString() + "</div>" + $(this)[0].outerHTML + "</ul>");
 	                        tier++;

@@ -370,20 +370,23 @@ class CourseMatchView(views.generic.DetailView):
         default_order = list(ctx['object'].item_set.all())
         random.shuffle(default_order)
         return default_order
+
+    def get_items_dict(self, ctx) -> dict:
+        """Get a dictionary of items with their text as keys."""
+        
+        items_dict = {item.item_text.replace('\ufeff', ''): item for item in ctx['object'].item_set.all()}
+        return items_dict
     
     def get_order(self, ctx) -> list:
         """Define the initial order to be displayed on the page."""
         
         # default_order = list(ctx['object'].item_set.all())
         user_email = self.request.user.email
-        items_dict = {item.item_text: item for item in ctx['object'].item_set.all()}
-        print(f'items_dict length {len(items_dict.keys())}')
-        print('items_dict.keys()', items_dict.keys())
+        items_dict = self.get_items_dict(ctx)
+        print('in CourseMatchView get_order', items_dict.keys())
         default_order = []
         if self.is_student(user_email):
             seed_order = self.get_order_from_email(user_email)
-            print(f'seed order length {len(seed_order)}')
-            print('seed_order', seed_order)
             if seed_order == []:
                 default_order = self.get_random_order(ctx)
             else:
@@ -393,8 +396,6 @@ class CourseMatchView(views.generic.DetailView):
                         default_order.append(items_dict[item_text])
         else:
             default_order = self.get_random_order(ctx)
-        print(f'default order length {len(default_order)}')
-        print('default_order', default_order)
         return default_order
     
     def get_num_courses(self, ctx) -> int:
