@@ -216,6 +216,7 @@ def interpretSliderStar(record):
     return (slider)
     
 def downloadRecord(request, question_id):
+    print('in downloadRecord')
     response = HttpResponse(content_type='text/csv')
     question = get_object_or_404(Question,pk=question_id)
     records = question.uservoterecord_set.all()
@@ -227,6 +228,7 @@ def downloadRecord(request, question_id):
     return response
 
 def downloadAllRecord(request, user_id):
+    print('in downloadAllRecord')
     user = get_object_or_404(User,pk=user_id)
     response = HttpResponse(content_type='text/csv')
     records = []
@@ -254,7 +256,21 @@ def downloadAllRecord1(request, user_id):
                 writer.writerow(r)
             writer.writerow([])
     return response
-            
+
+def downloadLatestVotes(request, question_id):
+    response = HttpResponse(content_type='text/json')
+    question = get_object_or_404(Question,pk=question_id)
+    response_set = question.response_set.filter(active=1).order_by('-timestamp')
+    records = []
+    for r in response_set:
+        record = {}
+        record["username"] = r.user.username
+        record["email"] = r.user.email
+        record["question_id"] = r.question.id
+        record["timestamp"] = str(r.timestamp)
+        record["behavior_data"] = r.behavior_data
+        records.append(record)
+    return JsonResponse(records, safe=False)
 
 class RecordView(generic.DetailView):
     model = Question
@@ -361,6 +377,7 @@ def downloadPolls(request):
     return JsonResponse(result, safe=False)
     
 def downloadRecords(request):
+    print('in downloadRecords')
     all_record = UserVoteRecord.objects.all()
     result = []
     for record in all_record:
