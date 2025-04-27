@@ -34,6 +34,7 @@
 {% endblock %}
 
 {% block content %}
+
 <div class="container">
     {% if error_message %}
     <p>
@@ -83,12 +84,15 @@
 
         <!-- Display the description in the panel body (initially hidden) -->
         <div id="collapse_des" class="panel-collapse collapse in">
-            <div class="panel-body">
-                Created by {{ question.question_owner }}.
-                <br>
-                Description: {% if question.question_desc %}
-                <span {% if request.flavour == "mobile" %} style="width:70%" {% endif %}> {{ question.question_desc }} </span>
-                {% endif %}
+            <div id="description" margin-left="10px" style="margin-left:10px;">
+                <p>
+                    Get assigned to the courses you want to take in Fall 2025! Enter your preferences and the number of courses you'd like to be enrolled in, and we will assign you to the courses that best match your preferences.
+                </p>
+                <p>Created by {{ question.question_owner }}.</p>
+                <br />
+                    {% if question.question_desc %}
+                        <span {% if request.flavour == "mobile" %} style="width:70%" {% endif %}> {{ question.question_desc|safe }} </span>
+                    {% endif %}
             </div>
         </div>
     </div>

@@ -125,13 +125,16 @@
         </div>
 
         <!-- Display the description in the panel body (initially hidden) -->
-        <div id="collapse_des" class="panel-collapse collapse">
-        	<div class ="panel-body">
-        		Created by {{ question.question_owner }}.
-        		<br>
-            Description: {% if question.question_desc %}
-            <span {% if request.flavour == "mobile" %} style="width:70%" {% endif %}> {{ question.question_desc }} </span>
-            {% endif %}
+        <div id="collapse_des" class="panel-collapse collapse in">
+            <div id="description" margin-left="10px" style="margin-left:10px;">
+                <p>
+                    Get assigned to the courses you want to take in Fall 2025! Enter your preferences and the number of courses you'd like to be enrolled in, and we will assign you to the courses that best match your preferences.
+                </p>
+                <p>Created by {{ question.question_owner }}.</p>
+                <br />
+                {% if question.question_desc %}
+                    <span {% if request.flavour == "mobile" %} style="width:70%" {% endif %}> {{ question.question_desc|safe }} </span>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -286,6 +289,34 @@
 			}
 		});
 });
+
+    // tooltip toggle (Popover function for hints)
+    $(document).on('click',"#toggle-button",function () {
+     toggle(document.querySelectorAll('.hint'));
+   });
+
+//Toggle: hide/show hints
+function toggle (elements, specifiedDisplay) {
+  var element, index;
+  elements = elements.length ? elements : [elements];
+  for (index = 0; index < elements.length; index++) {
+    element = elements[index];
+
+    if (isElementHidden(element)) {
+      element.style.visibility = '';
+
+      // If the element is still hidden after removing the inline display
+      if (isElementHidden(element)) {
+        element.style.visibility = specifiedDisplay || 'visible';
+      }
+    } else {
+      element.style.visibility = 'visible';
+    }
+  }
+  function isElementHidden (element) {
+    return window.getComputedStyle(element, null).getPropertyValue('visibility') === 'hidden';
+  }
+}
 
 </script>
 
