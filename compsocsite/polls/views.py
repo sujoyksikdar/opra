@@ -248,7 +248,6 @@ class DemoView(views.generic.DetailView):
         return ctx.get('num_courses', 3)
 
     def get_context_data(self, **kwargs):
-        print('in DemoView get_context_data')
         ctx = super(DemoView, self).get_context_data(**kwargs)
         ctx['lastcomment'] = ""
         ctx['demo_message'] = "This is a demo of the CourseMatchView functionality."
@@ -351,7 +350,6 @@ class CourseMatchView(views.generic.DetailView):
     """Define course match preference submission page view."""
     
     def is_student(self, email: str) -> bool:
-        print(os.listdir('./'))
         with open('compsocsite/coursematch/StudentEmails.csv', 'r') as f:
             email_list = pd.read_csv(f)['Email Address'].tolist()
             if email in email_list:
@@ -383,7 +381,6 @@ class CourseMatchView(views.generic.DetailView):
         # default_order = list(ctx['object'].item_set.all())
         user_email = self.request.user.email
         items_dict = self.get_items_dict(ctx)
-        print('in CourseMatchView get_order', items_dict.keys())
         default_order = []
         if self.is_student(user_email):
             seed_order = self.get_order_from_email(user_email)
@@ -401,12 +398,9 @@ class CourseMatchView(views.generic.DetailView):
     def get_num_courses(self, ctx) -> int:
         """Get the number of courses to display."""
         
-        print('in CourseMatchView get_num_courses', ctx['num_courses'])
         return ctx['num_courses']
 
     def get_context_data(self, **kwargs):
-        print('in CourseMatchView get_context_data')
-        print(self.request)
         ctx = super(CourseMatchView, self).get_context_data(**kwargs)
         ctx['lastcomment'] = ""
 
@@ -471,7 +465,6 @@ class CourseMatchView(views.generic.DetailView):
                     items.append(item)
             ctx['items'] = items
             ctx['num_courses'] = self.get_num_courses(ctx)    
-            print(ctx['num_courses'])
 
         else:
             # no history so display the list of choices
@@ -1076,7 +1069,6 @@ class DetailView(views.generic.DetailView):
         return default_order
 
     def get_context_data(self, **kwargs):
-        print(self.request)
         ctx = super(DetailView, self).get_context_data(**kwargs)
         ctx['lastcomment'] = ""
 
@@ -1223,8 +1215,7 @@ class PollInfoView(views.generic.DetailView):
         ctx['bools'] = self.object.vote_rule
 
         # display this user's history
-        currentUserResponses = self.object.response_set.filter(user=self.request.user,
-                                                               active=1).order_by('-timestamp')
+        currentUserResponses = self.object.response_set.filter(user=self.request.user,active=1).order_by('-timestamp')
         if len(currentUserResponses) > 0:
             ctx['user_latest_responses'] = getSelectionList([currentUserResponses[0]])
             if(curr_question.question_type == 2): ctx['user_latest_responses'] = addPreferenceValueToResp(ctx['user_latest_responses'])
@@ -2067,6 +2058,8 @@ def getSelectionList(responseList):
 # List<Response> all_responses
 # return (List<Response> latest_responses, List<Response> previous_responses)
 def categorizeResponses(all_responses):
+    print("Categorizing responses")
+    print(f'all_responses: {all_responses}')
     latest_responses = []
     previous_responses = []
 
@@ -2103,7 +2096,8 @@ def categorizeResponses(all_responses):
             #this is the most recent vote
             if add:
                 latest_responses.append(response1)
-
+    print(f'latest_responses: {latest_responses}')
+    print(f'previous_responses: {previous_responses}')
     return (latest_responses, previous_responses)
 
 # get a list of options for this poll
@@ -3010,8 +3004,11 @@ def duplicatePoll(request, question_id):
     #return HttpResponseRedirect(reverse('polls:regular_polls'))
 
 def deleteUserVotes(request, response_id):
+    print('deleteUserVotes')
     response = get_object_or_404(Response, pk=response_id)
+    print(f'response: {response}')
     user = response.user
+    print(f'user: {user}')
     question = response.question
     if user: 
         question.response_set.filter(user=user).update(active=0)
@@ -3367,7 +3364,6 @@ def coursematch_vote(request, question_id):
 
 # function to process student submission for course match
 def vote(request, question_id):
-    print(f'in vote(), request {request}, question id {question_id}')
     question = get_object_or_404(Question, pk=question_id)
 
     prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
@@ -4057,7 +4053,6 @@ class DemoView(views.generic.DetailView):
         return ctx.get('num_courses', 3)
 
     def get_context_data(self, **kwargs):
-        print('in DemoView get_context_data')
         ctx = super(DemoView, self).get_context_data(**kwargs)
         ctx['lastcomment'] = ""
         ctx['demo_message'] = "This is a demo of the CourseMatchView functionality."
@@ -4172,7 +4167,6 @@ class CourseMatchDemoView(views.generic.DetailView):
         return ctx.get('num_courses', 3)
 
     def get_context_data(self, **kwargs):
-        print('in CourseMatchDemoView get_context_data')
         ctx = super(CourseMatchDemoView, self).get_context_data(**kwargs)
         ctx['lastcomment'] = ""
         ctx['demo_message'] = "This is a demo of the CourseMatchView functionality."
