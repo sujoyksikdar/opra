@@ -47,7 +47,7 @@ def setupEmail(question):
     emailInvite = Email.objects.filter(question=question, type=1)
     if not emailInvite.exists():
         emailInvite = Email(question=question, type=1,
-            subject="You have been invited to vote on " + title,
+            subject="",
             message='Hello [user_name],\n\n' + creator
                     + ' has invited you to vote on a poll. Please login at [url] to check it out.\n\nSincerely,\nOPRA Staff')
         emailInvite.save()
@@ -248,41 +248,38 @@ class EmailThread(threading.Thread):
 
 
     def run(self):
-        try:
-            options = ''
-            if self.type == 'invite-csv':
-                if self.voters[0] == 'None': return
-                for voter in self.voters:
-                    name, uname = voter, voter
-                    url = self.request.build_absolute_uri(reverse('appauth:login')+'?name='+uname)
-                    mail.send_mail(translateEmail(self.email[0], name, url),
-                        translateEmail(self.email[1], name, url),
-                        'opra@cs.binghamton.edu',[voter],
-                        html_message=translateHTML(self.email[1], name, url, options))
-                return 
-                    
-
+        options = ''
+        if self.type == 'invite-csv':
+            if self.voters[0] == 'None': return
             for voter in self.voters:
-                if self.type == 'invite' or self.type == 'remove' or self.type == 'invite-group' or self.type == 'remove-group':
-                    voter = get_object_or_404(User, username=voter)
-                name = voter.username
-                uname = voter.username
-                # if self.question.poll_algorithm == 1 and self.type == 'start':
-                #     items = Item.objects.all().filter(question=self.question)
-                #     item_array = getOptions(items)
-                #     options = ''
-                #     for i in items:
-                #         rand = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(20))
-                #         response = EmailResponse(item=i, user=voter, identity=rand)
-                #         response.save()
-                #         options += '<p><a href=\'' + self.request.build_absolute_uri(reverse('polls:index') + str(response.pk) + "/" + rand + "/voteEmail/") + '\'>' + i.item_text + '</a></p>'
-                if voter.first_name != "":
-                    name = voter.first_name + " " + voter.last_name
+                name, uname = voter, voter
                 url = self.request.build_absolute_uri(reverse('appauth:login')+'?name='+uname)
                 mail.send_mail(translateEmail(self.email[0], name, url),
                     translateEmail(self.email[1], name, url),
-                    'opra@cs.binghamton.edu',[voter.email],
+                    'opra@cs.binghamton.edu',[voter],
                     html_message=translateHTML(self.email[1], name, url, options))
-        except Exception as e:
-            print(e)
+            return 
+                
+
+        for voter in self.voters:
+            if self.type == 'invite' or self.type == 'remove' or self.type == 'invite-group' or self.type == 'remove-group':
+                voter = get_object_or_404(User, username=voter)
+            name = voter.username
+            uname = voter.username
+            # if self.question.poll_algorithm == 1 and self.type == 'start':
+            #     items = Item.objects.all().filter(question=self.question)
+            #     item_array = getOptions(items)
+            #     options = ''
+            #     for i in items:
+            #         rand = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(20))
+            #         response = EmailResponse(item=i, user=voter, identity=rand)
+            #         response.save()
+            #         options += '<p><a href=\'' + self.request.build_absolute_uri(reverse('polls:index') + str(response.pk) + "/" + rand + "/voteEmail/") + '\'>' + i.item_text + '</a></p>'
+            if voter.first_name != "":
+                name = voter.first_name + " " + voter.last_name
+            url = self.request.build_absolute_uri(reverse('appauth:login')+'?name='+uname)
+            mail.send_mail(translateEmail(self.email[0], name, url),
+                translateEmail(self.email[1], name, url),
+                'opra@cs.binghamton.edu',[voter.email],
+                html_message=translateHTML(self.email[1], name, url, options))
         return 
