@@ -47,7 +47,7 @@
 {% if question.status == 2 %}
     {% if question.open == 0 and request.user.username == "" %}
         <!-- Poll is not open for anonymous voting and the current user isn't logged in -->
-        You have no permission to vote on this poll.
+        You do not seem to have acquired the right permissions. Try logging in.
     {% elif question.open == 2 and request.user.username == "" %}
         <!-- Poll is not open for anonymous voting and the current user isn't logged in -->
 
@@ -94,7 +94,7 @@
 	
     {% elif question.open == 0 and request.user not in question.question_voters.all %}
         <!-- Poll is not open for anonymous voting and the current user isn't invited -->
-        You are not invited to this poll.
+        Sorry, you do not seem to be invited to participate, and an invitation seems necessary. Please contact the administrator of this poll or assignment instance.
     {% else %}
 
     <!-- Title panel -->
