@@ -149,9 +149,9 @@ class Response(models.Model):
     behavior_data = models.TextField(default="")
     def __str__(self):
         if self.user:
-            return "Response of user " + self.user.username + "\nfor question " + self.question.question_text
+            return "Response of user " + self.user.username + "\nfor question " + self.question.question_text + "\nat timestamp " + self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         else:
-            return "Response of user " + self.anonymous_voter + "\nfor question " + self.question.question_text
+            return "Response of user " + self.anonymous_voter + "\nfor question " + self.question.question_text + "\nat timestamp " + self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
     class Meta:
         ordering = ['timestamp']
 

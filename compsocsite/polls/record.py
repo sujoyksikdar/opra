@@ -264,8 +264,12 @@ def downloadLatestVotes(request, question_id):
     records = []
     for r in response_set:
         record = {}
-        record["username"] = r.user.username
-        record["email"] = r.user.email
+        if None == r.user:
+            record["username"] = None
+            record["email"] = None
+        else:
+            record["username"] = r.user.username
+            record["email"] = r.user.email
         record["question_id"] = r.question.id
         record["timestamp"] = str(r.timestamp)
         record["behavior_data"] = r.behavior_data

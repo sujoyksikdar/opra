@@ -344,13 +344,13 @@ class CourseMatchListView(views.generic.ListView):
         return ctx
 
 class CourseMatchView(views.generic.DetailView):
+    """Define course match preference submission page view."""
+
     model = Question
     template_name = 'events/CourseMatch/soccoursematchdetail.html'
-    
-    """Define course match preference submission page view."""
-    
+        
     def is_student(self, email: str) -> bool:
-        with open('compsocsite/coursematch/StudentEmails.csv', 'r') as f:
+        with open('compsocsite/coursematch/StudentIDEmails.csv', 'r') as f:
             email_list = pd.read_csv(f)['Email Address'].tolist()
             if email in email_list:
                 return True
@@ -365,6 +365,8 @@ class CourseMatchView(views.generic.DetailView):
                 return []
     
     def get_random_order(self, ctx) -> list:
+        """Generate a random ordering over the items"""
+        
         default_order = list(ctx['object'].item_set.all())
         random.shuffle(default_order)
         return default_order

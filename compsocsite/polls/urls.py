@@ -48,8 +48,8 @@ urlpatterns = [
     
     # vote
     # course match
-    re_path(r'^(?P<pk>1)/$', views.CourseMatchView.as_view(), name='coursematch'),
-    re_path(r'^(?P<pk>1)/demo$', views.CourseMatchDemoView.as_view(), name='coursematch_demo'),
+    re_path(r'^(?P<pk>[0-9])/$', views.CourseMatchView.as_view(), name='coursematch'),
+    re_path(r'^(?P<pk>[0-9])/demo$', views.CourseMatchDemoView.as_view(), name='coursematch_demo'),
     re_path(r'^(?P<question_id>1+)/vote/$', views.coursematch_vote, name='vote'),
 
     # usual business
@@ -96,6 +96,7 @@ urlpatterns = [
     # user records
     re_path(r'^(?P<question_id>[0-9]+)/record/$', record.writeUserAction, name='record'),
     re_path(r'^(?P<pk>[0-9]+)/recordView/$', record.RecordView.as_view(), name='recordView'),
+    re_path(r'^(?P<question_id>[0-9]+)/downloadlatestvotes/$', record.downloadLatestVotes, name='downloadlatestvotes'),
     re_path(r'^(?P<question_id>[0-9]+)/downloadrecord/$', record.downloadRecord, name='downloadrecord'),
     re_path(r'^(?P<user_id>[0-9]+)/downloadallrecord/$', record.downloadAllRecord, name='downloadallrecord'),
     re_path(r'^downloadpolls/$', record.downloadPolls, name='downloadpolls'),
@@ -103,7 +104,7 @@ urlpatterns = [
     re_path(r'^downloadparticipants/$', record.downloadParticipants, name='downloadparticipants'),
     re_path(r'^downloadallrecords/$', record.downloadRecords, name='downloadallrecords'),
     re_path(r'^downloadspecrecords/$', record.downloadSpecificRecords, name='downloadspecrecords'),
-
+    
     # API
     re_path(r'^API/mixtures/$', views.mixtureAPI, name='mixture_api'),
     re_path(r'^api/get_polls/', views.get_polls, name='get_polls'),

@@ -126,7 +126,7 @@ def sendEmail(toEmails, mailSubject, mailBody):
     mail.send_mail(mailSubject,
                     mailBody,
                     'opra@cs.binghamton.edu',
-                    ['mukhil1140@gmail.com'], # toEmails
+                    toEmails, # toEmails
                     html_message='')
     return
 
