@@ -108,10 +108,8 @@
                                             <!-- Display option text -->
                                             {{ item.item_text }}
                                             <!-- Display tooltip for option description -->
-                                            {% if item.item_description %}
-                                                <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden">
-                                                </span>
-                                            {% endif %}
+                                            <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden">
+                                            </span>
                                         </li>
                                     </ul>
                             {% endfor %}
@@ -134,10 +132,8 @@
                                                 <!-- Display option text -->
                                                 {{ item.item_text }}
                                                 <!-- Display tooltip for option description -->
-                                                {% if item.item_description %}
-                                                    <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden">
-                                                    </span>
-                                                {% endif %}
+                                                <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden">
+                                                </span>
                                             </li>
                                         </ul>
                                 {% endfor %}

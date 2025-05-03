@@ -152,10 +152,8 @@
                            <!-- Display option text -->
                            {{ item.item_text }}
                            <!-- Display tooltip for option description -->
-                           {% if item.item_description %}
-                           <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden">
+                           <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden">
                            </span>
-                           {% endif %}
                         </li>
                      </ul>
                   {% endfor %}
@@ -178,10 +176,8 @@
                            <!-- Display option text -->
                            {{ item.item_text }}
                            <!-- Display tooltip for option description -->
-                           {% if item.item_description %}
-                           <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden">
+                           <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden">
                            </span>
-                           {% endif %}
                         </li>
                      </ul>
                   {% endfor %}
@@ -203,10 +199,29 @@
 <script>
 $(function(){
    // initialize tooltips
-   $('[data-toggle="tooltip"]').tooltip();
+   $('[data-toggle="tooltip"]').tooltip({
+      trigger: 'hover',
+      html: true
+   });
    
    $(document).ready(function() {
-      //
+      // Re-initialize tooltips when the DOM is ready
+      setTimeout(function() {
+         $('[data-toggle="tooltip"]').tooltip('dispose');
+         $('[data-toggle="tooltip"]').tooltip({
+            trigger: 'hover',
+            html: true
+         });
+      }, 500);
+   });
+   
+   // Extra function to ensure tooltips work on dynamically added content
+   $(document).on('mouseenter', '[data-toggle="tooltip"]', function() {
+      $(this).tooltip('show');
+   });
+   
+   $(document).on('mouseleave', '[data-toggle="tooltip"]', function() {
+      $(this).tooltip('hide');
    });
 });
 </script>

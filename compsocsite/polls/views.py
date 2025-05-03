@@ -364,6 +364,7 @@ class CourseMatchView(views.generic.DetailView):
             else:
                 return []
     
+    
     def get_random_order(self, ctx) -> list:
         """Generate a random ordering over the items"""
         
@@ -438,20 +439,26 @@ class CourseMatchView(views.generic.DetailView):
                     # set number of courses to display            
             return ctx
 
-        # Get the responses for the current logged-in user from latest to earliest
-        currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
+            # Get the responses for the current logged-in user from latest to earliest
+            currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
 
-        if len(currentUserResponses) > 0:
-            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
-            ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
-            ctx['submitted_ranking'] = latest_response.behavior_data
-            if currentUserResponses[0].comment:
-                ctx['lastcomment'] = currentUserResponses[0].comment
-        
-        # reset button
-        if isPrefReset(self.request):
-            ctx['items'] = self.get_order(ctx)
-            return ctx
+            # Set default num_courses
+            ctx['num_courses'] = 3
+
+            if len(currentUserResponses) > 0:
+                latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+                try:
+                    ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+                except (KeyError, json.JSONDecodeError):
+                    pass  # Keep default value if error
+                ctx['submitted_ranking'] = latest_response.behavior_data
+                if currentUserResponses[0].comment:
+                    ctx['lastcomment'] = currentUserResponses[0].comment
+            
+            # reset button
+            if isPrefReset(self.request):
+                ctx['items'] = self.get_order(ctx)
+                return ctx
 
         # check if the user submitted a vote earlier and display that for modification
         if len(currentUserResponses) > 0 and self.request.user.get_username() != "":

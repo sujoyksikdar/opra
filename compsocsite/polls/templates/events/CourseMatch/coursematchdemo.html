@@ -170,7 +170,11 @@
 
             $(".dropdown-toggle").dropdown();
 
-            $('[data-toggle="tooltip"]').tooltip();
+            // Initialize tooltips properly
+            $('[data-toggle="tooltip"]').tooltip({
+                trigger: 'hover',
+                html: true
+            });
 
             $('[data-toggle="popover"]').popover({
                 title : '<span class="text-info"><strong>Hint</strong></span>',
@@ -193,6 +197,15 @@
             {% if question.ListUI_enabled %} changeMethod(8);{% endif %}
             {% if question.infiniteBudgetUI_enabled %} changeMethod(9);{% endif %}
             method = 1;
+            
+            // Re-initialize tooltips after changing method
+            setTimeout(function() {
+                $('[data-toggle="tooltip"]').tooltip('dispose');
+                $('[data-toggle="tooltip"]').tooltip({
+                    trigger: 'hover',
+                    html: true
+                });
+            }, 500);
 
             //alert(method);
 
@@ -265,6 +278,15 @@
             return window.getComputedStyle(element, null).getPropertyValue('visibility') === 'hidden';
         }
     }
+    
+    // Extra function to ensure tooltips work on dynamically added content
+    $(document).on('mouseenter', '[data-toggle="tooltip"]', function() {
+        $(this).tooltip('show');
+    });
+    
+    $(document).on('mouseleave', '[data-toggle="tooltip"]', function() {
+        $(this).tooltip('hide');
+    });
 </script>
 
 {% endblock %} 

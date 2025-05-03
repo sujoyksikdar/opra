@@ -66,10 +66,9 @@
                                     {% endif %}
                                     <!-- Display option text -->
                                     <strong>{{ item.item_text }}</strong> : 
-									{% if item.item_description %}
-                                        <div style="display:inline-block;"><span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden" >
-                                        </span></div>
-                                    {% endif %}<div id="scoreSlideI{{forloop.counter}}">0</div>
+                                    <div style="display:inline-block;"><span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden" >
+                                    </span></div>
+                                    <div id="scoreSlideI{{forloop.counter}}">0</div>
                                     <!-- Display tooltip for option description -->
                                     
                                     <div class="slide" id="SlideI{{ forloop.counter }}" type="{{ forloop.counter }}"></div>
