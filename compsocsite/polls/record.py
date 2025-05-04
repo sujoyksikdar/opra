@@ -285,7 +285,19 @@ class RecordView(generic.DetailView):
         records = self.object.response_set.all()
         interpreted_records = []
         for r in records:
-            interpreted_records.append(r.behavior_data)
+            try:
+                record_data = json.loads(r.behavior_data)
+                # Format the JSON data for better display
+                if isinstance(record_data, dict):
+                    # Add more metadata for display purposes
+                    if hasattr(r, 'user') and r.user:
+                        record_data['user'] = r.user.username
+                    record_data['timestamp'] = str(r.timestamp)
+                    record_data['device'] = r.device if hasattr(r, 'device') else 'Unknown'
+                interpreted_records.append(json.dumps(record_data, indent=4))
+            except (ValueError, TypeError):
+                # If the behavior_data is not valid JSON or is empty, just add it as is
+                interpreted_records.append(r.behavior_data)
         ctx['user_records'] = interpreted_records
         return ctx
 
