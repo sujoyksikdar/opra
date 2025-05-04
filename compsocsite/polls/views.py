@@ -350,19 +350,27 @@ class CourseMatchView(views.generic.DetailView):
     template_name = 'events/CourseMatch/soccoursematchdetail.html'
         
     def is_student(self, email: str) -> bool:
-        with open('compsocsite/coursematch/StudentIDEmails.csv', 'r') as f:
-            email_list = pd.read_csv(f)['Email Address'].tolist()
-            if email in email_list:
-                return True
-        return False
+        try:
+            with open('compsocsite/coursematch/StudentIDEmails.csv', 'r') as f:
+                email_list = pd.read_csv(f)['Email Address'].tolist()
+                if email in email_list:
+                    return True
+            return False
+        except FileNotFoundError:
+            # File not found, consider everyone a student in this case
+            return True
     
     def get_order_from_email(self, email: str) -> list:
-        with open('compsocsite/coursematch/SeedStudentPreferences.json', 'r') as f:
-            seed_prefs = json.load(f)
-            if email in seed_prefs:
-                return seed_prefs[email]
-            else:
-                return []
+        try:
+            with open('compsocsite/coursematch/SeedStudentPreferences.json', 'r') as f:
+                seed_prefs = json.load(f)
+                if email in seed_prefs:
+                    return seed_prefs[email]
+                else:
+                    return []
+        except (FileNotFoundError, json.JSONDecodeError):
+            # File not found or invalid JSON, return empty list
+            return []
     
     
     def get_random_order(self, ctx) -> list:
@@ -407,6 +415,13 @@ class CourseMatchView(views.generic.DetailView):
         ctx = super(CourseMatchView, self).get_context_data(**kwargs)
         ctx['lastcomment'] = ""
 
+        # Get the responses for the current logged-in user from latest to earliest
+        # Only filter by user if the user is authenticated
+        if self.request.user.is_authenticated:
+            currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
+        else:
+            currentUserResponses = []
+
         #Case for anonymous user
         if self.request.user.get_username() == "":
             if isPrefReset(self.request):
@@ -436,29 +451,26 @@ class CourseMatchView(views.generic.DetailView):
             else:
                 # load choices in the default order
                 ctx['items'] = self.object.item_set.all()
-                    # set number of courses to display            
+                # set number of courses to display            
             return ctx
 
-            # Get the responses for the current logged-in user from latest to earliest
-            currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
+        # Set default num_courses
+        ctx['num_courses'] = 3
 
-            # Set default num_courses
-            ctx['num_courses'] = 3
-
-            if len(currentUserResponses) > 0:
-                latest_response = currentUserResponses[0] #storing last submission to fetch after submit
-                try:
-                    ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
-                except (KeyError, json.JSONDecodeError):
-                    pass  # Keep default value if error
-                ctx['submitted_ranking'] = latest_response.behavior_data
-                if currentUserResponses[0].comment:
-                    ctx['lastcomment'] = currentUserResponses[0].comment
-            
-            # reset button
-            if isPrefReset(self.request):
-                ctx['items'] = self.get_order(ctx)
-                return ctx
+        if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except (KeyError, json.JSONDecodeError):
+                pass  # Keep default value if error
+            ctx['submitted_ranking'] = latest_response.behavior_data
+            if currentUserResponses[0].comment:
+                ctx['lastcomment'] = currentUserResponses[0].comment
+        
+        # reset button
+        if isPrefReset(self.request):
+            ctx['items'] = self.get_order(ctx)
+            return ctx
 
         # check if the user submitted a vote earlier and display that for modification
         if len(currentUserResponses) > 0 and self.request.user.get_username() != "":
