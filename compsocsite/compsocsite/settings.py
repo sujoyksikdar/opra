@@ -231,3 +231,36 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 LOGOUT_REDIRECT_URL = '/'
+
+# Add to production.py
+ADMINS = [('OPRA', 'opra.binghamton@gmail.com')]
+
+LOGGING = {
+  'version': 1,
+  'disable_existing_loggers': False,
+  'formatters': {
+	  'verbose': {
+		  'format': '{levelname} {asctime} {module} {message}',
+		  'style': '{',
+	  },
+  },
+  'handlers': {
+	  'file': {
+		  'level': 'DEBUG',
+		  'class': 'logging.FileHandler',
+		  'filename': '/home/opra/opra/logs/django_error.log',
+		  'formatter': 'verbose',
+	  },
+	  'mail_admins': {
+		  'level': 'ERROR',
+		  'class': 'django.utils.log.AdminEmailHandler',
+	  },
+  },
+  'loggers': {
+	  'django': {
+		  'handlers': ['file', 'mail_admins'],
+		  'level': 'ERROR',
+		  'propagate': True,
+	  },
+  },
+}
