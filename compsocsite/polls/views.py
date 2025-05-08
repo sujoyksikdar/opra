@@ -2501,6 +2501,7 @@ def addVoters(request, question_id):
     mailBody = request.POST.get('mailNotificationBody1')
 
     newVoters = request.POST.getlist('voters')
+    all_new_usernames = list(newVoters)
     if newVoters: 
         try:
             for voter in newVoters:
@@ -2531,8 +2532,9 @@ def addVoters(request, question_id):
             groupObj = Group.objects.get(name=group)
             voters = groupObj.members.all()
             question.question_voters.add(*voters)
-            votersEmailIDsInGroups = votersEmailIDsInGroups + [voter.username for voter in voters] 
-        
+            group_usernames = [voter.username for voter in voters]
+            votersEmailIDsInGroups.extend(group_usernames)
+            all_new_usernames.extend(group_usernames)        
         for mailID in votersEmailIDsInGroups:
             if mailID in newVoters:
                 votersEmailIDsInGroups.remove(mailID)
@@ -2553,6 +2555,9 @@ def addVoters(request, question_id):
     # if email:
     #     email_class = EmailThread(request, question_id, 'invite')
     #     email_class.start()
+    existing_emails = question.recentCSVText.split(",") if question.recentCSVText else []
+    updated_list = list(set(existing_emails + all_new_usernames))
+    question.recentCSVText = ",".join(updated_list)
     question.save()
     emailSettings(request, question_id)
     messages.success(request, "Selected users have been addedd to "+ question.question_text)
@@ -2569,7 +2574,7 @@ def saveLatestCSV(request, question_id):
     try:
         question.recentCSVText = recentCSVText
         question.save();
-        addUsersAndSendEmailInvite(request, question_id)
+        addUsersFromCSV(request, question_id)
     except Exception as e:
         print(e)
     request.session['setting'] = 1
@@ -2596,6 +2601,72 @@ def getRegAndUnRegUsers(userIDsFromCSV):
             UnregUsers.append(userID)
 
     return regUsers, UnregUsers
+#add users with csv
+def addUsersFromCSV(request: HttpRequest, question_id: int) -> None:
+    question = get_object_or_404(Question, pk=question_id)
+    recentCSVText = question.recentCSVText
+    if recentCSVText is None:
+        return
+
+    userIDsFromCSV = recentCSVText.split(",")
+    userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
+    registers_users_of_current_poll, UnRegistered_users_of_current_poll = getRegAndUnRegUsers(userIDsFromCSV)
+
+    # Add registered users to the poll
+    for voter in registers_users_of_current_poll:
+        voterObj = User.objects.get(username=voter)
+        question.question_voters.add(voterObj.id)
+
+    # Handle unregistered users
+    for email in UnRegistered_users_of_current_poll:
+        try:
+            voter_obj = UnregisteredUser.objects.get(email=email)
+            voter_obj.polls_invited.add(question)
+        except UnregisteredUser.DoesNotExist:
+            voter_obj = UnregisteredUser.objects.create(email=email)
+            voter_obj.save()
+            question.save()
+            voter_obj.polls_invited.add(question)
+
+def send_email_invites(request: HttpRequest, question_id: int):
+    question = get_object_or_404(Question, pk=question_id)
+
+    recepients = request.POST.get('recepients')
+    mailSubject = request.POST.get('mailSubject') or None
+    mailBody = request.POST.get('mailBody') or None
+    csvEmails = request.POST.get('textAreaForCustomMails', '')
+    customEmails = [email.strip() for email in csvEmails.split(',') if email.strip()]
+
+    recentCSVText = question.recentCSVText
+    userIDsFromCSV = [userID.strip() for userID in recentCSVText.split(",")] if recentCSVText else []
+
+    if not userIDsFromCSV and not customEmails:
+        messages.error(request, "No recipients found to send email.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    reg_users, unreg_users = getRegAndUnRegUsers(userIDsFromCSV)
+
+    users_to_email = []
+    match recepients:
+        case "regVotersOnly":
+            users_to_email = reg_users
+        case "unregVotersOnly":
+            users_to_email = unreg_users
+        case "customEmails":
+            users_to_email = customEmails
+        case "allVoters":
+            users_to_email = userIDsFromCSV
+
+    email_class = EmailThread(
+        request, question_id, 'invite-csv',
+        users_to_email, mail_sub=mailSubject, mail_body=mailBody
+    )
+    email_class.start()
+
+    messages.success(request, "The Email has been sent to the recepients!")
+    emailSettings(request, question_id)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
 
 # Send email invite to Registered and Non registered Participants
 # added using csv

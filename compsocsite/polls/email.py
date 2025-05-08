@@ -48,13 +48,15 @@ def setupEmail(question):
     if not emailInvite.exists():
         emailInvite = Email(question=question, type=1,
             subject="",
-            message='Hello [user_name],\n\n' + creator
-                    + ' has invited you to vote on a poll. Please login at [url] to check it out.\n\nSincerely,\nOPRA Staff')
+            message="<p>Hello [user_name],</p>"
+                    f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
+                    "<p>Sincerely,<br>OPRA Staff</p>")
         emailInvite.save()
     else:
         emailInvite.update(subject="You have been invited to vote on " + title,
-            message='Hello [user_name],\n\n' + creator
-                    + ' has invited you to vote on a poll. Please login at [url] to check it out.\n\nSincerely,\nOPRA Staff')
+            message="<p>Hello [user_name],</p>"
+                    f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
+                    "<p>Sincerely,<br>OPRA Staff</p>")
         
     # Setup/Update the Email subject and body for removing users
     emailRemove = Email.objects.filter(question=question, type=2)
@@ -100,16 +102,15 @@ def setupEmail(question):
     if not emailInviteCSV.exists():
         emailInviteCSV = Email(question=question, type=5,
             subject="You have been invited to vote on " + title,
-            message='Hello [user_name],\n\n' + creator
-                    + ' has invited you to vote on a poll. Please login at [url] to check it out.'
-                    +' \n\nSincerely,\nOPRA Staff')
+            message="<p>Hello [user_name],</p>"
+                    f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
+                    "<p>Sincerely,<br>OPRA Staff</p>")
         emailInviteCSV.save()
     else:
         emailInviteCSV.update(subject="You have been invited to vote on " + title,
-            message='Hello [user_name],\n\n' + creator
-                    + ' has invited you to vote on a poll. Please login at [url] to check it out.'
-                    +' \n\nSincerely,\nOPRA Staff')
-
+            message="<p>Hello [user_name],</p>"
+                    f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
+                    "<p>Sincerely,<br>OPRA Staff</p>")
 
 
 def emailSettings(request, question_id):

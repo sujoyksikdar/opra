@@ -91,7 +91,16 @@
         return true;
     }
 
+    function switchAddTab(tabId) {
+        document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('show'));
+        document.getElementById(tabId).classList.add('show');
+    }
+    function switchViewTab(tabId) {
+        document.querySelectorAll('.tab-section-view').forEach(sec => sec.classList.remove('show'));
+        document.getElementById(tabId).classList.add('show');
+    }
 
+   
     $(window).load(function(){
         function toggleSelectAll(selectAllCheckbox, multiSelect) {
         const options = multiSelect.options;
@@ -187,197 +196,165 @@
 .show{
     display: block;
 }
+.tab-btn {
+    margin-right: 10px;
+}
+.tab-section, .tab-section-view{
+    display: none;
+}
+.tab-section.show ,.tab-section-view.show{
+    display: block;
+}
+trix-editor {
+    min-height: 200px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 10px;
+}
+/*hide uplaod file option in toolbar-> not supported */
+trix-toolbar .trix-button-group--file-tools {
+    display: none;
+}
+
 
 </style>
 
 <div class="panel panel-default">
-    <div class="panel-heading"><h4>Add Multiple Pre-Registered Users/Groups:<h4></div>
+    <div class="panel-heading"><h4>Add Users:<h4></div>
     <div class="panel-body">
-        <div class = "row">
-        <div class="col-md-6">
-            
-            <form action="{% url 'polls:delvoter' question.id %}" method="post">
-                <div style="display: flex; width: 100%;">
-                    <div style="width: 70%;">
-                        <label>Users added to the instance: </label> 
-                    </div> 
-                    {% if question.status == 1 %}
-                    <div style="width: 30%;">
-                        <div style="float: right;">
-                            <label for="selectAll" style="margin-right: 5px;">Select all</label> 
-                            <input type="checkbox" id="selectAll">
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% csrf_token %}
-                <select id="currentVoters" name="voters" class="form-control"  multiple style="height: 163px;">
-                    {% for user in question.question_voters.all %}
-                        <option value="{{ user.username }}">{{ user.username }}</option>
-                    {% endfor %}
-                </select>
-                <br />
-                {% if question.status == 1 %}
-                    <label for="emailNotificationToRemove">Email announcement</label>
-                    <input type="checkbox" name="email" id="emailNotificationToRemove" value="email" {% if question.emailDelete == True %} checked {% endif %} >
-                    <!-- {% if question.emailDelete == True or question.emailDelete == None %} checked {% endif %} -->
-                {% endif %}
-                    <br />
-                    <div id="mailNotificationDivToRemove" class="{% if question.emailDelete == True %} show {% else %} hide {% endif %}">
-                        <input type="text" id="mailNotificationSubject" name="mailNotificationSubject" class="form-control" placeholder="Subject of the Mail" value="{{emailDelete.subject}}">
-                        <br>
-                        <textarea class="form-control" id="mailNotificationBody" name="mailNotificationBody" rows="9" placeholder="Content of the E-mail..." >{{emailDelete.message}}</textarea>
-                        <br>
-                    </div>
-                    {% if question.status == 1 %}
-                    <input type="submit" class="btn btn-danger" value="Remove Participants">
-                    {% endif %}
-                
-            </form> 
-        </div>     
-        <div class="col-md-6">
-            <form id = "addUsersForm" action="{% url 'polls:addvoters' question.id %}" method="post">
-                <div>
+        <div class="row">
+
+            <div style="margin-bottom: 15px;">
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addRegistered')">Add Registered Users</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaGroups')">Add via Groups</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaCSV')">Add via CSV</button>
+            </div>
+
+            <!-- Add Registered -->
+            <div id="addRegistered" class="tab-section show col-md-6">
+                <form id="addUsersForm" action="{% url 'polls:addvoters' question.id %}" method="post">
                     <label style="width: 100%;">Add users registered with OPRA: </label>
                     {% csrf_token %}
-                    <select name="voters" class="form-control multiple-select"  style="width: 100%;" multiple>
+                    <select name="voters" class="form-control multiple-select" style="width: 100%;" multiple>
                         {% for user in users %}
                             <option value="{{ user.username }}">{{ user.username }}</option>
                         {% endfor %}
                     </select>
                     <br>
                     <input type="submit" value="Add Users" class="btn btn-success" style="margin-top: 15px;">
-                </div>
-                
-                <br>
+                </form>
+            </div>
 
-                <div>
+            <!-- Add via Groups -->
+            <div id="addViaGroups" class="tab-section col-md-6">
+                <form action="{% url 'polls:addvoters' question.id %}" method="post">
                     <label style="width: 100%;">Add{% if question.status == 1 %}/Remove{% endif %} groups of users registered with OPRA: </label>
-                    <select name="groups" class="form-control multiple-select" style="width: 100%;" multiple >
+                    {% csrf_token %}
+                    <select name="groups" class="form-control multiple-select" style="width: 100%;" multiple>
                         {% for group in groups %}
                             {% if group.owner == request.user %}
-                                <option value="{{ group.name }}">{{group.name}}</option>
+                                <option value="{{ group.name }}">{{ group.name }}</option>
                             {% endif %}
                         {% endfor %}
                     </select>
                     <br>
-                    <input type="submit" class="btn btn-success" value="Add" style="margin-top: 15px;"/>
+                    <input type="submit" class="btn btn-success" value="Add" style="margin-top: 15px;" />
                     {% if question.status == 1 %}
                         <input type="submit" class="btn btn-danger" value="Remove" style="margin-top: 15px;" formaction="{% url 'groups:removegroupvoters' question.id %}">
                     {% endif %}
-                </div>
-                <br>
-                <label for="email">Email announcement</label>
-                <input type="checkbox" name="email" id="emailNotification" value="email" {% if question.emailInvite == True %} checked {% endif %}>
-                <!-- {% if question.emailInvite == True or question.emailInvite == None %} checked {% endif %} -->
-                <br>
-                
-                <div id="mailNotificationDiv" class="{% if question.emailInvite == True %} show {% else %} hide {% endif %}">
+                </form>
+            </div>
 
-                    {% if question.status == 1 %}
-                    <div class="alert alert-danger">
-                        <p><strong>Note:</strong> The text for this E-mail is pre-populated for adding users into the instance. 
-                            Please modify the text accordingly if you decide to remove the users from the instance.
+            <!-- Add via CSV -->
+            <div id="addViaCSV" class="tab-section col-md-6">
+                <form id="csvTextAreaForm" action="{% url 'polls:savelatestcsv' question.id %}" method="post" onsubmit="return validateCSV()">
+                    {% csrf_token %}
+                    <label>Enter CSV Email List:</label>
+                    <textarea class="form-control" id="csvTextArea" name="votersCSVText" rows="5" style="height: 221px;">{{ recentCSVText }}</textarea>
+                    <br>
+                    <div id="csv_error" style="color: #ff4d4d;"></div>
+                    <div class="alert alert-info">
+                        <p><strong>Note:</strong> 
+                            Input email addresses as CSV as shown in below example. Need not worry about white spaces!<br> 
+                            Example: user1@gmail.com,user2@gmail.com,user3@gmail.com<br> 
                         </p>
                     </div>
-                    {% endif %}
-
-                    <input type="text" id="mailNotificationSubject1" name="mailNotificationSubject1" class="form-control" placeholder="Subject of the Mail" value="{{emailInvite.subject}}">
-                    <br>
-                    <textarea class="form-control" id="mailNotificationBody1" name="mailNotificationBody1" rows="9" placeholder="Content of the E-mail..." >{{emailInvite.message}}</textarea>
-                    <br>
-                </div>
-            </form>
-            
-        
-        </div>
-        
+                    <input type="submit" value="Submit CSV" class="btn btn-primary" style="margin-top: 10px;">
+                </form>
+            </div>
         </div>
     </div>
 </div>
-<br><br>
-
+<!--View Users -->
 <div class="panel panel-default">
-    
-    <div class="panel-heading">Add Users with CSV:</div>
+    <div class="panel-heading"><h4>View Users</h4></div>
     <div class="panel-body">
-        <form id="csvTextAreaForm" action="{% url 'polls:savelatestcsv' question.id %}" method="post" onsubmit="return validateCSV()">
-            <div class="row">
-                <div class="col-md-6">
-                        {% csrf_token %}
-                        <div class="form-group">
-                            <label for="csvTextArea">Enter the comma seperated email-IDs to add/invite users:</label>
-                            <textarea class="form-control" id="csvTextArea" name="votersCSVText" rows="9" style="height: 221px;">{{ recentCSVText }}</textarea>
-                        </div>
+        <div style="margin-bottom: 15px;">
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewAllUsers')">View All</button>
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewRegistered')">Registered</button>
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewUnregistered')">Unregistered</button>
+        </div>
 
-                        <div id="csv_error" style="color: #ff4d4d;"></div>
+        <!-- All Added Users -->
+        <div id="viewAllUsers" class="tab-section-view show">
+            <form action="{% url 'polls:delvoter' question.id %}" method="post">
+                {% csrf_token %}
+                <label>Users added to the instance:</label>
+                <select id="currentVoters" name="voters" class="form-control" multiple style="height: 163px;">
+                    {% for user in question.question_voters.all %}
+                        <option value="{{ user.username }}">{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
 
-                        <div class="alert alert-info">
-                            <p><strong>Note:</strong> 
-                                Input email addresses as CSV as shown in below example. Need not worry about white spaces!<br> 
-                                Example: user1@gmail.com,user2@gmail.com,user3@gmail.com<br> 
-                            </p>
-                        </div>
+        <!-- Registered Users -->
+        <div id="viewRegistered" class="tab-section-view">
+            <label>Users registered with OPRA:</label>
+            <select id="registeredVoters" name="registeredVoters" class="form-control" multiple>
+                {% for username in registeredUsers %}
+                    <option value="{{ username }}">{{ username }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-                        <div>
-                            <label for="email2">Email announcement</label>
-                            <input type="checkbox" name="email" id="emailNotificationToInvite" value="email" {% if question.emailInviteCSV == True %} checked {% endif %}>
-                            <!-- {% if question.emailDelete == True or question.emailDelete == None %} checked {% endif %} onchange="this.form.submit()" -->
-                            <br />
-                        </div>
-                        <input type="submit" value="Submit CSV" class="btn btn-primary" style="margin-top: 0px;">
+        <!-- Unregistered Users -->
+        <div id="viewUnregistered" class="tab-section-view">
+            <label>Users not registered with OPRA:</label>
+            <select id="unregisteredVoters" name="unregisteredVoters" class="form-control" multiple>
+                {% for username in unRegisteredUsers %}
+                    <option value="{{ username }}">{{ username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
 
-                    
-                </div>
-                <div class="col-md-6">
-                    <label>Users registered with OPRA: </label>
-                    <select id="registeredVoters" name="registeredVoters" class="form-control" multiple>
-                        {% for username in registeredUsers %}
-                            <option value="{{ username }}">{{ username }}</option>
-                        {% endfor %}
-                    </select>
-                    <br>
-                    <label>Users not registered with OPRA: </label>
-                    <select id="unregisteredVoters" name="unregisteredVoters" class="form-control" multiple>
-                        {% for username in unRegisteredUsers %}
-                            <option value="{{ username }}">{{ username }}</option>
-                        {% endfor %}
-                    </select>
-                </div> 
+<!-- Section 3: Email -->
+<div class="panel panel-default" style="margin-top: 30px;">
+    <div class="panel-heading">Send E-mail to users:</div>
+    <div class="panel-body">
+        <form action="{% url 'polls:send_email_invites' question.id %}" method="post">
+            {% csrf_token %}
+            <label>Recipients:</label>
+            <div style="margin-left: 15px;">
+                <input type="radio" name="recepients" value="regVotersOnly"> Users registered with OPRA
+                <input type="radio" name="recepients" value="unregVotersOnly"> Users not registered with OPRA
+                <input type="radio" name="recepients" value="allVoters" checked> Both
+                <input type="radio" name="recepients" value="customEmails" id="customEmailsRadioButton"> Custom
             </div>
 
+            <textarea id="textAreaForCustomMails" name="textAreaForCustomMails" class="form-control hide" placeholder="Emails separated by commas" style="margin-top: 15px;"></textarea>
             <br>
-
-            <div class="panel panel-default {% if question.emailInviteCSV == True %} show {% else %} hide {% endif %}" id="emailDivForInvite" style="width: 90%; margin:auto; margin-bottom: 15px;">
-                <div class="panel-heading">Send E-mail to added/invited users: </div>
-                <div class="panel-body">      
-                    <div class="row">
-                        <div class="col-md-12">
-                                {% csrf_token %}
-                                <br>
-                                <label>Recepients:</label> 
-                                <input type="radio" name="recepients" value="regVotersOnly" style="margin-left: 15px;"> Users registered with OPRA
-                                <input type="radio" name="recepients" value="unregVotersOnly" style="margin-left: 15px;"> Users not registered with OPRA 
-                                <input type="radio" name="recepients" value="allVoters" style="margin-left: 15px;" checked> Both 
-                                <input type="radio" name="recepients" value="customEmails" id = "customEmailsRadioButton" style="margin-left: 15px;"> Custom 
-                                <br>
-                                <textarea id="textAreaForCustomMails" name="textAreaForCustomMails" class="form-control hide" placeholder="Emails sepereated by comma" style="height: 100px; margin-top: 20px;"></textarea>
-                                <br>
-                                <input type="text" id="mailSubject" name="mailSubject" class="form-control" placeholder="Subject of the Mail" required value="{{emailInviteCSV.subject}}">
-                                <br>
-                                <textarea class="form-control" id="mailBody" name="mailBody" rows="9" placeholder="Content of the E-mail..." required>{{emailInviteCSV.message}}</textarea>
-                                <br>
-                                <!-- <input type="submit" value="Send E-mail" class="btn btn-primary"> -->
-                            
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <input type="text" id="mailSubject" name="mailSubject" class="form-control" placeholder="Subject of the Mail" required value="{{ emailInviteCSV.subject }}">
+            <br>
+            <input class="form-control" type="hidden" id="mailBody" name="mailBody" rows="9" placeholder="Content of the E-mail..." required value="{{ emailInviteCSV.message|safe}}">
+            <trix-editor input="mailBody"></trix-editor>
+            <br>
+            <input type="submit" value="Send Email" class="btn btn-primary">
         </form>
     </div>
-    
-</div>
-
+</div>  
 <br><br><br>
 
 
