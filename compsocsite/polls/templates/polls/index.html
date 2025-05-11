@@ -22,40 +22,37 @@
     height: 100%;
     line-height: 1.8;
     }
-   
 
     img {margin-bottom: -8px;}
     
 </style>
 
 
-    <!-- Header -->
+<!-- Header -->
 
-<header class="bgimg-1 w3-display-container"  id="home">
+<header class="bgimg w3-display-container"  id="home">
   <!-- <img class="w3-image" src="/static/img/bg.jpg" style="opacity: 0.45;"> -->
   <div class="w3-display-middle w3-margin-top w3-center">
-     <div><img src="/static/img/oprafullname.png" style="width:50%"></div>
-     <br>
-     <a href="{% url 'polls:coursematch' 1 %}" class="w3-button w3-red w3-padding-large w3-large w3-margin-top">
-      Report Preferences
-    </a>
-     <!--
-     <div><h3 style="color:black">	Supported by <a href="http://www.cs.rpi.edu/~xial" style="color: rgb(191,7,17); "> Lirong Xia's group </a> at RPI</h3></div>
-     -->       
-    <br>
+    <div class="w3-display-middle" style="white-space:nowrap; background-color:rgba(255, 255, 255, 0.9); padding:16px 16px 16px 16px;">
+      <div>
+        <h4 class="w3-xxlarge bu-text-green"><b>Fair. Efficient. Secure.</b></h4>
+      </div> 
+      <br>
+      <div><img src="/static/img/oprafullname.png" style="width:100%"></div>
+      <br>
+      <div>
+        <h3 class="w3-xxlarge rpi-text-red"><b>Make Informed Decisions</b></h3>
+      </div>
+      <br>
+      <div><p style="color:black">	Supported by:
+        <br> <a href="https://people.cs.rutgers.edu/~lirong.xia/" style="color: rgb(191,7,17); "> Lirong Xia's group </a> at Rutgers University 
+        <br> and
+        <br> <a href="https://cs.binghamton.edu/~sikdar/" style="color: rgb(0,93,64); "> Sujoy Sikdar's group </a> at Binghamton University
+      </p></div>
+      </span>
+    </div>
   </div>
 </header>
-
-
-
-<!-- Tutorial Section -->
-<div class="w3-padding-64 w3-center w3-white">
-  
-  <p class="w3-large">OPRA is the perfect place to learn preferences and make informed decisions.</p>
-  <p><a href="/user_docs/" target="_blank">Click here to open the OPRA user guide.</a> </p>
-  
-</div>
-
 
 <!-- Single Poll Section -->
 <div class="w3-padding-64 w3-light-grey"  style="padding:128px 16px">
@@ -123,7 +120,7 @@
     </div>
     <div class="w3-col s3">
       <i class="fa fa-shield w3-text-blue w3-jumbo"></i>
-      <p>Stabile</p>
+      <p>Stable</p>
     </div>
     <div class="w3-col s3">
       <i class="fa fa-wifi w3-text-grey w3-jumbo"></i>

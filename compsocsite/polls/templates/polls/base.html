@@ -20,12 +20,14 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" type="text/css" href="/static/css/stylish-portfolio.css" />
-	<link rel="stylesheet" type="text/css" href="/static/css/shared.css"/>
-	<link rel="stylesheet" type="text/css" href="/static/css/introjs.css"/>
-	<link rel="stylesheet" type="text/css" href="/static/css/font-awesome.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/shared.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/introjs.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/font-awesome.min.css"/>
+
     <!-- Custom Fonts -->
     <link href="/static/fonts/sanc.css" rel="stylesheet" type="text/css" />     
     <link rel="stylesheet" href="/static/fonts/lato.css">
+    
     <!-- W3 -->
     <link rel="stylesheet" href="/static/css/w3.css">
 
@@ -79,12 +81,12 @@
       .rpi-text-red{
             color:rgb(191,7,17)
         }
-        .bgimg-1 {
-            background-position: center;
-            background-size: cover;
-            background-image: url({% static 'img/BUcampus2.png' %});
-            min-height: 100%;
-        }
+      .bgimg{
+          background-position: center;
+          background-size: cover;
+          background-image: url({% static 'img/bubg-watson.jpg' %});
+          min-height: 100%;
+      }
       .bu-green{
             background-color:rgb(0, 93, 64);
             color: #fff
@@ -142,77 +144,78 @@
 		</div>
       </button>
     </div>
-   
           
-          <!-- Welcome Part-->
-         
-            
-            
-        <!-- nav bar-->
-        <div class="collapse navbar-collapse row" id="bs-example-navbar-collapse-1">
-          <!-- <p>{{ user.is_authenticated }} {{ user.get_username }}</p> -->
-					{% if user.is_authenticated %}
-					<ul class="nav navbar-nav">
-						{% if not request.flavour == "mobile" %}
-						<li>
-                            <a class="navbar-brand" href="/">
-						       	<img alt="O" src="/static/img/oprafulllogowhitenolink.png" style="width:60px;">
-                            </a>
-						</li>
-						{% endif %}
-						<li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
-            <li><a href="{% url 'polls:allocation_tab' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
-            <!-- <li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li> -->
+        <!-- Welcome Part-->
+          
+          
+      <!-- nav bar-->
+      <div class="collapse navbar-collapse row" id="bs-example-navbar-collapse-1">
+        <!-- <p>{{ user.is_authenticated }} {{ user.get_username }}</p> -->
+        {% if user.is_authenticated %}
+        <ul class="nav navbar-nav">
+          {% if not request.flavour == "mobile" %}
+          <li>
+            <a class="navbar-brand" href="/">
+              <img alt="O" src="/static/img/oprafulllogowhitenolink.png" style="width:60px;">
+            </a>
+          </li>
+          {% endif %}
+          <li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+          <li><a href="{% url 'polls:allocation_tab' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
+          <!-- <li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li> -->
 
 
-						<!-- <li><a href="{% url 'polls:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li> -->
-            <!-- <li><a href="#"><span class="fa fa-object-group"></span>Classes</a></li> -->
-						
-            {% if not request.flavour == "mobile" %}
-						{% endif %}
-					</ul>
-					<ul class="nav navbar-nav navbar-right">
-                    <!-- Dropdown Setting Icon-->
-						<li class="dropdown">
-							<a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="color:black;"> <span class="glyphicon glyphicon-cog"> </span> <span class="caret"></span> </a>
-							<ul class="dropdown-menu" style="font-size:100%; ">
-								<li class="disabled">
-									<a href="#" >Signed in as {{ request.user.username }}</a>
-								</li>
-								<li role="separator" class="divider"></li>
-								<li >
-									<a href="{% url 'appauth:settings' %}" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}"><span >Settings</span></a>
-								</li>
-								<li>
-									<a href="/auth/logout/" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}">Logout</a>
-								</li>
-							</ul>
-						</li> <!-- end of Dropdown setting icon-->
-					</ul>
-					{% else %}
-					{% if not request.flavour == "mobile" %}
-					<ul class="nav navbar-nav">
-					<li><a class="navbar-brand" href="/">
-						       	 <img alt ="O" src="/static/img/oprafulllogowhitenolink.png" style = "width:60px;" >
-						      </a>
-						</li>
-            <li>
-              <a class="nav navbar-nav" href="/user_docs/" target="_blank"> 
-                <span class="glyphicon glyphicon-book"></span> OPRA User Guide
-              </a>
-            </li>
-						
-					</ul>
-					{% endif %}
-					<ul class="nav navbar-nav navbar-right pull-right">
-						<li>
-							<a href={% url 'appauth:socialSignup' %}?next={{ request.path }}> <span class="glyphicon glyphicon-log-in"></span> Login </a>
-						</li>
-					</ul>
-					
-					{% endif %}
-        </div> <!-- end of nav bar-->
-			</div><!--/.container-fluid -->
+          <!-- <li><a href="{% url 'polls:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li> -->
+          <!-- <li><a href="#"><span class="fa fa-object-group"></span>Classes</a></li> -->
+          
+          {% if not request.flavour == "mobile" %}
+          {% endif %}
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li>
+            <a class="nav navbar-nav" href="/user_docs/" target="_blank"> 
+              <span class="glyphicon glyphicon-book"></span> OPRA User Guide
+            </a>
+          </li>
+          <!-- Dropdown Setting Icon-->
+          <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="color:black;"> <span class="glyphicon glyphicon-cog"> </span> <span class="caret"></span> </a>
+            <ul class="dropdown-menu" style="font-size:100%; ">
+              <li class="disabled">
+                <a href="#" >Signed in as {{ request.user.username }}</a>
+              </li>
+              <li role="separator" class="divider"></li>
+              <li >
+                <a href="{% url 'appauth:settings' %}" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}"><span >Settings</span></a>
+              </li>
+              <li>
+                <a href="/auth/logout/" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}">Logout</a>
+              </li>
+            </ul>
+          </li> <!-- end of Dropdown setting icon-->
+        </ul>
+        {% else %}
+        {% if not request.flavour == "mobile" %}
+        <ul class="nav navbar-nav">
+          <li><a class="navbar-brand" href="/">
+            <img alt ="O" src="/static/img/oprafulllogowhitenolink.png" style = "width:60px;" >
+          </a></li>						
+        </ul>
+        {% endif %}
+        <ul class="nav navbar-nav navbar-right pull-right">
+          <li>
+            <a class="nav navbar-nav" href="/user_docs/" target="_blank"> 
+              <span class="glyphicon glyphicon-book"></span> OPRA User Guide
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'appauth:socialSignup' %}?next={{ request.path }}"> <span class="glyphicon glyphicon-log-in"></span> Login </a>
+          </li>
+        </ul>
+        
+        {% endif %}
+      </div> <!-- end of nav bar-->
+    </div><!--/.container-fluid -->
 </nav>
 
 {% if request.flavour == "mobile" %}
