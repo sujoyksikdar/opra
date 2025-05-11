@@ -248,7 +248,7 @@ LOGGING = {
 	    'file': {
 		    'level': 'DEBUG',
 		    'class': 'logging.FileHandler',
-		    'filename': f'{os.environ('HOME')}/opra/logs/django_error.log',
+		    'filename': f'{os.getenv('HOME')}/opra/logs/django_error.log',
 		    'formatter': 'verbose',
 	    },
 	    'mail_admins': {
