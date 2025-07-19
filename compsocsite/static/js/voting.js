@@ -226,58 +226,53 @@ function getOrderFromInfiniteBudgetUI(){
 
 
 function dictSlideStar(str){
+	//alert("dictSlideStar called with: "+ str);
 	var arr = [];
 	var values = [];
 	var item_type = ".list-element";
 	var type = "";
 	$('.' + str).each(function(i, obj){
+		var score=0;
 		if(str == 'slide'){ 
-			var score = $( this ).slider("option", "value");
+			score = $( obj ).slider("option", "value");
 			item_type = ".slider_item";
-			type = $( this ).attr('type');
+			type = $( obj ).attr('type');
 		}
 		else if(str == 'slide_BUI') {
-			var score = parseInt(this.value);
+			score = parseInt(obj.value);
 			item_type = ".slider_item";
-			type = this.dataset.type;
+			type = "";
 		}
 		else if(str == 'star'){ 
-			var score = parseFloat($( this ).rateYo("option", "rating")); 
+			score = parseFloat($( obj ).rateYo("option", "rating")); 
 			item_type = ".star_item";
-			type = $( this ).attr('type');
+			type = $( obj ).attr('type');
 		}else if(str == 'list_ui_pref_box'){ 
-			var score = parseFloat(this.value); 
+			score = parseFloat(obj.value); 
 			item_type = ".list_ui_pref_box";
-			type = $( this ).attr('data-option');
+			type = $( obj ).attr('data-option');
 		}else if(str == 'infinite_budget_ui_pref_box'){ 
-			var score = parseFloat(this.value); 
+			score = parseFloat(obj.value); 
 			item_type = ".infinite_budget_ui_pref_box";
-			type = $( this ).attr('data-option');
+			type = $( obj ).attr('data-option');
 		}
 		else{ return false; }
 		var bool = 0;
 		//console.log($(item_type + "[type='" + type + "']").attr('id'));
-		$.each(values, function( index, value ){
-			if(value < score){
+		$.each(values, function(index, value){
+			if(score > value){
 				var temp = {};
-				if(item_type === ".list_ui_pref_box" || item_type === ".infinite_budget_ui_pref_box"){
-					temp["name"] = $(item_type + "[data-option='" + type + "']").attr('id');
-				} else {
-					temp["name"] = $(item_type + "[type='" + type + "']").attr('id');
-				}
+				temp["name"] = obj.id;
 				temp["score"] = score;
 				temp["ranked"] = 0;
 				values.splice(index, 0, score);
 				arr.splice(index, 0, [temp]);
 				bool = 1;
 				return false;
-			}else if(value == score){
+			}
+			else if(score === value){
 				var temp = {};
-				if(item_type === ".list_ui_pref_box" || item_type === ".infinite_budget_ui_pref_box"){
-					temp["name"] = $(item_type + "[data-option='" + type + "']").attr('id');
-				} else {
-					temp["name"] = $(item_type + "[type='" + type + "']").attr('id');
-				}
+				temp["name"] = obj.id;
 				temp["score"] = score;
 				temp["ranked"] = 0;
 				arr[index].push(temp);
@@ -287,11 +282,7 @@ function dictSlideStar(str){
 		});
 		if(bool == 0){ 
 			var temp = {};
-			if(item_type === ".list_ui_pref_box" || item_type === ".infinite_budget_ui_pref_box"){
-				temp["name"] = $(item_type + "[data-option='" + type + "']").attr('id');
-			} else {
-				temp["name"] = $(item_type + "[type='" + type + "']").attr('id');
-			}
+			temp["name"] = obj.id;
 			temp["score"] = score;
 			temp["ranked"] = 0;
 			values.push(score); 
@@ -305,6 +296,7 @@ function dictSlideStar(str){
 			arr[i][j]["tier"] = i+1;
 		}
 	}
+	//alert("Parsed pref array:"+JSON.stringify(arr));
 	return arr;
 }
 
@@ -440,7 +432,7 @@ function twoColSort( order ){
 		html += "<ul class=\"choice1\"> <div class=\"tier two\"> #" + tier + "</div>"; 
 		$.each(value, function(i, v){
 			html += "<li class=\"list-element\" id=\"" + v.name + "\" type=\"" + v.name + "\">";
-			html += $("#" + v.name).html();
+			html += $("#" + CSS.escape(v.name)).html();
 			html += "</li>";
     });
     html += "</ul>";
@@ -462,8 +454,8 @@ function oneColSort( order ){
 	$.each(order, function(index, value){
 		html += "<ul class=\"choice1\"><div class=\"tier one\">#" + tier + "</div>"; 
 		$.each(value, function(i, v){
-			html += "<li class=\"list-element\" id=\"" + $("#oneColSection .list-element[type='" + v.toString() + "']").attr('id') + "\" title=\""+ $("#oneColSection .list-element[type='" + v.toString() + "']").attr('title') +"\" type=" + v.toString() + ">";
-			html += $("#oneColSection .list-element[type='" + v.toString() + "']").html();
+			html += "<li class=\"list-element\" id=\"" + v.name + "\" type=\"" + v.name + "\">";
+			html += $("#" + CSS.escape(v.name)).html();
 			html += "</li>";
     });
     html += "</ul>";
@@ -578,6 +570,25 @@ function yesNoZeroSort( order ){
 			$(".checkbox[type='" + v.toString() + "']").css('border-width', '1px');
 			$(".checkbox[type='" + v.toString() + "']").css('margin-top', '5px');
 			$(".checkbox[type='" + v.toString() + "']").css('margin-bottom', '9px');
+		});
+	});
+}
+function listUISort(prefOrder) {
+	if (!Array.isArray(prefOrder)) return;
+	prefOrder.forEach(group => {
+		group.forEach(item => {
+			const input = document.querySelector(`.list_ui_pref_box[id="${item.name}"]`);
+			if (input) input.value = item.score;
+		});
+	});
+}
+
+function infiniteBudgetUISort(prefOrder) {
+	if (!Array.isArray(prefOrder)) return;
+	prefOrder.forEach(group => {
+		group.forEach(item => {
+			const input = document.querySelector(`.infinite_budget_ui_pref_box[id="${item.name}"]`);
+			if (input) input.value = item.score;
 		});
 	});
 }
@@ -845,8 +856,8 @@ var VoteUtil = (function () {
 		else{
 			record_data["initial_ranking"] = [];
 		}
-		num_courses = document.getElementById("num-courses").value; 
-		record_data["num_courses"] = num_courses;
+		// num_courses = document.getElementById("num-courses").value; 
+		// record_data["num_courses"] = num_courses;
 		record_data["time_submission"] = d;
 		record_data["platform"] = flavor;
 		console.log(record_data);
@@ -869,7 +880,7 @@ var VoteUtil = (function () {
 		*/
 		$('.submitbutton').css( "visibility","hidden");
 		$('.submitting').css("visibility","visible");
-		$('#pref_order').submit();
+		document.querySelector('form').submit();
 	};
 	
 	// moves preference item obj from the right side to the bottom of the left side
@@ -1377,6 +1388,8 @@ $( document ).ready(function() {
 		try { sliderSort(prefOrder); } catch (e) {}
 		try { starSort(prefOrder); } catch (e) {}
 		try { sliderBUIRestore(prefOrder); } catch (e) {}
+		try { listUISort(prefOrder); } catch (e) {}
+		try { infiniteBudgetUISort(prefOrder); } catch (e) {}
 	}
 	
 	function restoreNumCourses(numCourses) {
@@ -1387,8 +1400,8 @@ $( document ).ready(function() {
 		restoreAllUIScores(previouslySubmitted.submitted_ranking);
 	}
 
-	if (previouslySubmitted_num_courses) {
-		restoreNumCourses(previouslySubmitted_num_courses);
-	}
+	// if (previouslySubmitted_num_courses) {
+	// 	restoreNumCourses(previouslySubmitted_num_courses);
+	// }
 	
 });

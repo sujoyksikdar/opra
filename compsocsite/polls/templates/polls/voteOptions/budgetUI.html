@@ -23,7 +23,7 @@
                 <div class="panel panel-default" >
 				{% if request.flavour == "mobile" %}
 				<div class = "row col-xs-12" style="padding:0%;margin:0%;margin-bottom: 4%;">
-						<button id="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum();" class="submitbutton reset-button-mobile" style = "height:2.7em;padding:0%;margin:0%;background:darkgreen;">
+						<button id="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum(event);" class="submitbutton reset-button-mobile" style = "height:2.7em;padding:0%;margin:0%;background:darkgreen;">
                             <span class="glyphicon glyphicon-upload" style="font-size:140%;color:white;margin:0%;">Submit</span>
                         </button> 
                 </div>
@@ -35,7 +35,7 @@
                             <!-- <button id="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum();" class="submitbutton btn btn-success">
                                 Submit
                             </button> -->
-                            <button id ="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum();" 
+                            <button id ="submitbutton-slider-BUI" type="submit" onclick="return checkSliderSum(event);" 
                             class = "submit_button" style="float: right; margin-left: 10px;" > Submit </button>
                             <button id="submitting-slider-BUI" type="button" class="submitting btn btn-default" style="visibility:hidden;position:absolute;z-index:1;">
                                 Submitting...
@@ -147,15 +147,17 @@
         return sum;
     }
     
-    function checkSliderSum() {
+    function checkSliderSum(event) {
         sliders = document.querySelectorAll('.slide_BUI');
         var total = computeSliderTotal(sliders);
         if(total!=BUDGET){
             alert("The sum of all the preferences should be equal to "+BUDGET+". ");
             return false;
         } else {
-            VoteUtil.submitPref();    
-            return true;
+            event.preventDefault();
+            VoteUtil.submitPref();
+            document.getElementById("budget").submit();    
+            return false;
         }
     }
     

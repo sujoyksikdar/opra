@@ -1354,7 +1354,13 @@ class AllocateResultsView(views.generic.DetailView):
         allocated_items_transformed = [["" for j in range(len(allocated_items[i]))] for i in range(len(allocated_items))]
         for i in range(len(allocated_items)):
             for j in range(len(allocated_items[i])):
-                allocated_items_transformed[i][j] = allocated_items[i][j][4:]
+                item_obj = allocated_items[i][j]
+            if isinstance(item_obj, str):
+                allocated_items_transformed[i][j] = item_obj[4:]  # "itemcake" → "cake"
+            elif hasattr(item_obj, 'item_text'):
+                allocated_items_transformed[i][j] = item_obj.item_text
+            else:
+                allocated_items_transformed[i][j] = str(item_obj)
         return allocated_items_transformed
     
     def getSumOfAllocatedItems(self, allocated_items, submitted_rankings):
@@ -1424,6 +1430,8 @@ class AllocateResultsView(views.generic.DetailView):
 
         # cand 1 sum
         sum1 = 0
+        print("allocated_items1:", allocated_items1)
+
         for item,val in allocated_items1:
             sum1+=val
 
@@ -1544,26 +1552,113 @@ class AllocateResultsView(views.generic.DetailView):
             egalitarian_welfare = min(sum_values)
             ctx["utilitarian_welfare"] = utilitarian_welfare
             ctx["egalitarian_welfare"] = egalitarian_welfare
+        
+        # Compute envy matrix and add to context
+        if allocation_result.get('allocated_items') and user_data.get('preferences'):
+            preferences_with_values = self.getPrefWithValues(user_data['submitted_rankings'])
 
-        # First-choice analysis
-        first_choices_data = []
+            allocated_items_with_values, _ = self.getSumOfAllocatedItems(
+                self.transformAllocatedItems(allocation_result['allocated_items']),
+                user_data['submitted_rankings']
+            )
+            envy_matrix = self.computeEnvyUptoEF1(
+                user_data['preferences'],
+                allocated_items_with_values,
+                preferences_with_values
+            )
+            ctx['envy_matrix'] = envy_matrix
+            #allocation bundle
+            allocated_items = allocation_result.get("allocated_items", [])
+            items_obj = allocation_result.get("items_obj", [])
+            sorted_user_ids = user_data["sorted_user_ids"]
+            item_texts = [item.item_text for item in items_obj]
+
+            if current_user_id in sorted_user_ids:
+                current_user_index = sorted_user_ids.index(current_user_id)
+                user_alloc_items = allocated_items[current_user_index] if current_user_index < len(allocated_items) else []
+
+                ctx["curr_user_bundle"] = user_alloc_items
+
+            if current_user_index < len(user_data['preferences']):
+                raw_ranking = user_data['submitted_rankings'].get(sorted_user_ids[current_user_index], [])
+                ranking_dict = {}
+                for entry in raw_ranking:
+                    if entry and isinstance(entry[0], dict):
+                        name = entry[0].get('name', '')
+                        if name.startswith("item"):
+                            item_text = name[4:]  # Strip prefix
+                            score = entry[0].get('score', 0)
+                            ranking_dict[item_text] = score
+
+                total_value = 0
+                for item in user_alloc_items:
+                    score = ranking_dict.get(item.item_text, 0)
+                    total_value += score
+
+                ctx["curr_user_bundle_sum"] = total_value
+            else:
+                ctx["curr_user_bundle_sum"] = 0 #preference ordering for firrst choice
+        # # First-choice analysis
+        # first_choices_data = []
+        # if allocation_result.get('allocation_matrix') is not None:
+        #     allocation_matrix = allocation_result['allocation_matrix']
+        #     preferences = user_data['preferences']
+        #     user_rankings = user_data['submitted_rankings']
+        #     for i, row in enumerate(allocation_matrix):  # For each agent
+        #         user_id = sorted_user_ids[i]
+        #         raw_pref = user_rankings.get(user_id, [])
+        #         # Create {item_text: score} map
+        #         item_val_map = {}
+        #         for entry in raw_pref:
+        #             if isinstance(entry[0], dict):
+        #                 name = entry[0].get("name", "")[4:]  # Remove "item" prefix
+        #                 score = entry[0].get("score", 0)
+        #                 item_val_map[name] = score
+        #         aligned_valuations = [item_val_map.get(item, 0) for item in item_texts]
+        #         # Get that agent's valuation vector
+        #         print(f"✅ User {i}: {aligned_valuations} | Alloc: {row} | Max: {max(aligned_valuations)}")
+        #         max_val = max(aligned_valuations)  # Their most preferred item's value
+        #         count = 0
+        #         for j, alloc in enumerate(row):  # Loop through their allocated items
+        #             if alloc == 1 and aligned_valuations[j] == max_val:
+        #                 count += 1
+        #         first_choices_data.append(count)
+
+        # ctx["first_choices_data"] = first_choices_data
+
+        rank_histogram = [0] * len(item_texts)  # Ranks 1 to N
         if allocation_result.get('allocation_matrix') is not None:
             allocation_matrix = allocation_result['allocation_matrix']
             preferences = user_data['preferences']
-            for i, row in enumerate(allocation_matrix):  # For each agent
-                # Get that agent's valuation vector
-                valuations = preferences[i]
-                max_val = max(valuations)  # Their most preferred item's value
-                count = 0
-                for j, alloc in enumerate(row):  # Loop through their allocated items
-                    if alloc == 1 and valuations[j] == max_val:
-                        count += 1
-                first_choices_data.append(count)
+            user_rankings = user_data['submitted_rankings']
+            for i, row in enumerate(allocation_matrix):  # For each user
+                user_id = sorted_user_ids[i]
+                raw_pref = user_rankings.get(user_id, [])
 
-        ctx["first_choices_data"] = first_choices_data
+                # Map item_text -> score
+                ranked_items = []
+                for entry in raw_pref:
+                    if isinstance(entry[0], dict):
+                        name = entry[0].get("name", "")[4:]  # Remove "item" prefix
+                        score = entry[0].get("score", 0)
+                        ranked_items.append((name, score))
 
+                # Sort items in descending preference (highest score = rank 1)
+                ranked_items.sort(key=lambda x: -x[1])
+                item_to_rank = {name: rank for rank, (name, _) in enumerate(ranked_items)}  # 0-based
+
+                # Go through user's allocated items
+                for j, alloc in enumerate(row):
+                    if alloc == 1:
+                        item_name = item_texts[j]
+                        if item_name in item_to_rank:
+                            rank = item_to_rank[item_name]
+                            rank_histogram[rank] += 1
+        
+        ctx["rank_histogram"] = rank_histogram
+        
         return ctx
-
+    
     def _prepare_mechanism_info(self, question):
         """Prepare mechanism selection information"""
         # question model
@@ -1765,7 +1860,7 @@ class AllocateResultsView(views.generic.DetailView):
 
     def _get_allocation_result(self, context_data, mechanism_class, mechanism_label):
         """Get cached allocation or compute a new one"""
-        # Try to get from cache
+        # # Try to get from cache
         cached_result, is_hit = AllocationCache.get_cached_result(context_data)
         
         if is_hit:
@@ -1848,7 +1943,6 @@ class AllocateResultsView(views.generic.DetailView):
         
         # Store items_obj reference
         cached_result['items_obj'] = items
-        
         # Convert dictionary items back to Item objects
         if 'allocated_items' in cached_result:
             for i, agent_items in enumerate(cached_result['allocated_items']):
@@ -3317,8 +3411,9 @@ def getPrefOrder(orderStr, question):
 
     return final_order
 
-# function to process student submission
+# # function to process student submission
 def vote(request, question_id):
+    print(">>> VOTE FUNCTION CALLED <<<")
     question = get_object_or_404(Question, pk=question_id)
 
     prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
@@ -3330,15 +3425,19 @@ def vote(request, question_id):
     if prefOrder == None:
         # the user must rank all preferences
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
     # make Response object to store data
     comment = request.POST['comment']
     response = Response(question=question, user=request.user, timestamp=timezone.now(),
-                        resp_str=orderStr, behavior_data=behavior_string)
+                        resp_str=orderStr, behavior_data=behavior_string, active=1)
+    print("Received POST:")
+    print("request.POST['pref_order'] =", request.POST.get('pref_order'))
+    print("request.POST['record_data'] =", request.POST.get('record_data'))
     
     if comment != "":
         response.comment = comment
+    print("About to save Response with:", response.__dict__)
     response.save()
+    print("Saved response with active =", response.active)
 
     if question.related_class != None and request.user not in question.related_class.students.all():
         question.related_class.students.add(request.user)
@@ -3369,111 +3468,113 @@ def vote(request, question_id):
 
     return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
 
-def coursematch_vote(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+# def coursematch_vote(request, question_id):
+#     question = get_object_or_404(Question, pk=question_id)
 
-    prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
-    # get the preference order
+#     prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
+#     # get the preference order
 
-    orderStr = request.POST["pref_order"]
-    prefOrder = getPrefOrder(orderStr, question)
-    behavior_string = request.POST["record_data"]
-    if prefOrder == None:
-        # the user must rank all preferences
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+#     orderStr = request.POST["pref_order"]
+#     prefOrder = getPrefOrder(orderStr, question)
+#     behavior_string = request.POST["record_data"]
+#     if prefOrder == None:
+#         # the user must rank all preferences
+#         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-    # make Response object to store data
-    comment = request.POST['comment']
-    response = Response(question=question, user=request.user, timestamp=timezone.now(),
-                        resp_str=orderStr, behavior_data=behavior_string)
+#     # make Response object to store data
+#     comment = request.POST['comment']
+#     response = Response(question=question, user=request.user, timestamp=timezone.now(),
+#                         resp_str=orderStr, behavior_data=behavior_string)
     
-    if comment != "":
-        response.comment = comment
-    response.save()
+#     if comment != "":
+#         response.comment = comment
+#     response.save()
 
-    if question.related_class != None and request.user not in question.related_class.students.all():
-        question.related_class.students.add(request.user)
+#     if question.related_class != None and request.user not in question.related_class.students.all():
+#         question.related_class.students.add(request.user)
 
-    if question.related_class != None and request.user == question.related_class.teacher:
-        formatted_order = sorted([i[4:] for i in prefOrder[0]])
-        question.correct_answer = json.dumps(formatted_order)
-        question.save()
+#     if question.related_class != None and request.user == question.related_class.teacher:
+#         formatted_order = sorted([i[4:] for i in prefOrder[0]])
+#         question.correct_answer = json.dumps(formatted_order)
+#         question.save()
     
-    question.num_courses = json.loads(request.POST["record_data"])["num_courses"]
-    question.save()
+#     question.num_courses = json.loads(request.POST["record_data"])["num_courses"]
+#     question.save()
 
-    #enqueue
-    #enqueue(getCurrentResult(question))
+#     #enqueue
+#     #enqueue(getCurrentResult(question))
 
-    #get current winner
-    old_winner = OldWinner(question=question, response=response)
-    old_winner.save()
-    # notify the user that the vote has been saved/updated
-    if prevResponseCount == 0:
-        messages.success(request, 'Saved!')
-    else:
-        messages.success(request, 'Updated!')
+#     #get current winner
+#     old_winner = OldWinner(question=question, response=response)
+#     old_winner.save()
+#     # notify the user that the vote has been saved/updated
+#     if prevResponseCount == 0:
+#         messages.success(request, 'Saved!')
+#     else:
+#         messages.success(request, 'Updated!')
 
-    if question.open == 2 and request.user not in question.question_voters.all():
-        question.question_voters.add(request.user.id)
+#     if question.open == 2 and request.user not in question.question_voters.all():
+#         question.question_voters.add(request.user.id)
 
-    if not question.new_vote:
-        question.new_vote = True
-        question.save()
+#     if not question.new_vote:
+#         question.new_vote = True
+#         question.save()
 
-    return HttpResponseRedirect(reverse('polls:coursematch', args=(question.id,)))
+#     return HttpResponseRedirect(reverse('polls:coursematch', args=(question.id,)))
 
-# function to process student submission for course match
-def vote(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+# # function to process student submission for course match
+# def vote(request, question_id):
+#     question = get_object_or_404(Question, pk=question_id)
 
-    prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
-    # get the preference order
+#     prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
+#     # get the preference order
 
-    orderStr = request.POST["pref_order"]
-    prefOrder = getPrefOrder(orderStr, question)
-    behavior_string = request.POST["record_data"]
-    if prefOrder == None:
-        # the user must rank all preferences
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+#     orderStr = request.POST["pref_order"]
+#     prefOrder = getPrefOrder(orderStr, question)
+#     behavior_string = request.POST["record_data"]
+#     if prefOrder == None:
+#         # the user must rank all preferences
+#         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-    # make Response object to store data
-    comment = request.POST['comment']
-    response = Response(question=question, user=request.user, timestamp=timezone.now(),
-                        resp_str=orderStr, behavior_data=behavior_string)
+#     # make Response object to store data
+#     comment = request.POST['comment']
+#     response = Response(question=question, user=request.user, timestamp=timezone.now(),
+#                         resp_str=orderStr, behavior_data=behavior_string, active=1)
     
-    if comment != "":
-        response.comment = comment
-    response.save()
+#     if comment != "":
+#         response.comment = comment
+#     response.save()
+    # print("Saved response with active =", response.active)
 
-    if question.related_class != None and request.user not in question.related_class.students.all():
-        question.related_class.students.add(request.user)
 
-    if question.related_class != None and request.user == question.related_class.teacher:
-        formatted_order = sorted([i[4:] for i in prefOrder[0]])
-        question.correct_answer = json.dumps(formatted_order)
-        question.save()
+#     if question.related_class != None and request.user not in question.related_class.students.all():
+#         question.related_class.students.add(request.user)
 
-    #enqueue
-    #enqueue(getCurrentResult(question))
+#     if question.related_class != None and request.user == question.related_class.teacher:
+#         formatted_order = sorted([i[4:] for i in prefOrder[0]])
+#         question.correct_answer = json.dumps(formatted_order)
+#         question.save()
 
-    #get current winner
-    old_winner = OldWinner(question=question, response=response)
-    old_winner.save()
-    # notify the user that the vote has been saved/updated
-    if prevResponseCount == 0:
-        messages.success(request, 'Saved!')
-    else:
-        messages.success(request, 'Updated!')
+#     #enqueue
+#     #enqueue(getCurrentResult(question))
 
-    if question.open == 2 and request.user not in question.question_voters.all():
-        question.question_voters.add(request.user.id)
+#     #get current winner
+#     old_winner = OldWinner(question=question, response=response)
+#     old_winner.save()
+#     # notify the user that the vote has been saved/updated
+#     if prevResponseCount == 0:
+#         messages.success(request, 'Saved!')
+#     else:
+#         messages.success(request, 'Updated!')
 
-    if not question.new_vote:
-        question.new_vote = True
-        question.save()
+#     if question.open == 2 and request.user not in question.question_voters.all():
+#         question.question_voters.add(request.user.id)
 
-    return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+#     if not question.new_vote:
+#         question.new_vote = True
+#         question.save()
+
+#     return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
 
 # create a new dictionary that stores the preferences and rankings
 # Response response
