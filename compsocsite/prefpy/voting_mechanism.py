@@ -259,7 +259,10 @@ class MechanismVeto(MechanismPosScoring):
         for i in range(0, len(rankMaps)):
             rankMap = rankMaps[i]
             rankMapCount = rankMapCounts[i]
-            maxpos = max(rankMap.values())
+            
+            values=list(rankMap.values())
+            maxpos = max(values)
+
             for cand in rankMap.keys():
                 if rankMap[cand] < maxpos:
                     candScoresMap[cand] += rankMapCount

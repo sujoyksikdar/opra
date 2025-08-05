@@ -129,6 +129,9 @@ def MoVSimplifiedBucklin(profile):
             values[i][j - delta] = rankmaps[i][j]
 
     winners = MechanismSimplifiedBucklin().getWinners(profile)  # the winner list
+    if not winners:
+        print("ERROR: No winners found")
+    return float('inf')
     d = winners[0]  # the winner under the numerically tie-breaking rule
     alter = delete(range(delta, m + delta), d - delta)
     # Initialize MoV

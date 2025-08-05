@@ -262,7 +262,7 @@ function dictSlideStar(str){
 		$.each(values, function(index, value){
 			if(score > value){
 				var temp = {};
-				temp["name"] = obj.id;
+				temp["name"] = $(obj).closest(item_type).attr("id"); 
 				temp["score"] = score;
 				temp["ranked"] = 0;
 				values.splice(index, 0, score);
@@ -272,7 +272,7 @@ function dictSlideStar(str){
 			}
 			else if(score === value){
 				var temp = {};
-				temp["name"] = obj.id;
+				temp["name"] = $(obj).closest(item_type).attr("id"); 
 				temp["score"] = score;
 				temp["ranked"] = 0;
 				arr[index].push(temp);
@@ -282,7 +282,7 @@ function dictSlideStar(str){
 		});
 		if(bool == 0){ 
 			var temp = {};
-			temp["name"] = obj.id;
+			temp["name"] = $(obj).closest(item_type).attr("id"); 
 			temp["score"] = score;
 			temp["ranked"] = 0;
 			values.push(score); 
@@ -472,8 +472,10 @@ function oneColSort( order ){
 function sliderSort( order ){
 	$.each(order, function(index, value){
 		$.each(value, function(i, v){
-			$(".slide[type='" + v.toString() + "']").slider("value", Math.round(100 - (100 * index / order.length)));
-			$("#score" + $(".slide[type='" + v.toString() + "']").attr("id")).text(Math.round(100 - (100 * index / order.length)));
+			const wrapper = $(`.slider_item[id='${v.name}']`);
+			const slider = wrapper.find(".slide");
+			slider.slider("value", Math.round(100 - (100 * index / order.length)));
+			$("#score" + slider.attr("id")).text(Math.round(100 - (100 * index / order.length)));
 		});
 	});
 }
@@ -481,8 +483,11 @@ function sliderSort( order ){
 function sliderBUIZeroSort( order ){
 	$.each(order, function(index, value){
 		$.each(value, function(i, v){
-			$(".slide_BUI[type='" + v.toString() + "']").slider("value", 0);
-			$("#score" + $(".slide[type='" + v.toString() + "']").attr("id")).text(0);
+			const wrapper = $(`.slider_item[id='${v.name}']`);
+			const slider = wrapper.find(".slide_BUI");
+			slider.val(0);  // input element
+			const scoreDisplay = document.getElementById("sliderValue" + slider.attr("id").replace("slideBUI", ""));
+			if (scoreDisplay) scoreDisplay.innerText = 0;
 		});
 	});
 }
@@ -512,18 +517,49 @@ function sliderBUIRestore(prefOrder) {
 function sliderZeroSort( order ){
 	$.each(order, function(index, value){
 		$.each(value, function(i, v){
-			$(".slide[type='" + v.toString() + "']").slider("value", 0);
-			$("#score" + $(".slide[type='" + v.toString() + "']").attr("id")).text(0);
+			const wrapper = $(`.slider_item[id='${v.name}']`);
+			const slider = wrapper.find(".slide");
+
+			slider.slider("value", 0);
+			$("#score" + slider.attr("id")).text(0);
 		});
 	});
 }
 
 function starSort( order ){
 	init_star = true;
-	$.each(order, function(index, value){
-		$.each(value, function(i, v){
-			if(index >= 10){ $(".star[type='" + v.toString() + "']").rateYo("option", "rating", 0); }
-			else{ $(".star[type='" + v.toString() + "']").rateYo("option", "rating", Math.round(10 - (10 * index / Math.min(order.length, 10))) / 2); }
+	$.each(order, function(index, group) {
+		$.each(group, function(i, item) {
+			var score = parseFloat(item.score);
+			var selector = ".star[type='" + item.name + "']";
+			if ($(selector).length === 0) {
+				return;
+			}
+			if (!$(selector).data("rateYo")) {
+				console.log("rateYo not initialized for", selector);
+				$(selector).rateYo({
+					numStars: 10,
+					fullStar: true,
+					ratedFill: "gold",
+					rating: Math.max(0, Math.min(score, 10)),
+					onSet: function (rating, rateYoInstance) {
+						if (init_star === false) {
+							var d = (Date.now() - startTime).toString();
+							var temp_data = {
+								"item": $(this).parent().attr("id"),
+								"time": [d],
+								"rank": [dictSlideStar("star")]
+							};
+							var temp = JSON.parse(record);
+							temp.push(temp_data);
+							record = JSON.stringify(temp);
+						}
+					}
+				});
+			} else {
+				$(selector).rateYo("option", "ratedFill", "gold");
+				$(selector).rateYo("option", "rating", Math.max(0, Math.min(score, 10)));
+			}
 		});
 	});
 	init_star = false;
@@ -535,25 +571,26 @@ function yesNoSort( num, order ){
 			var cb;
 			if(num == 5){ cb = ".checkbox[type='"; }
 			if(num == 6){ cb = ".checkbox_single[type='"; }
+			let selector = `.checkbox[id='${v.name}']`;
 			if(index == 0){
-				$($(cb + v.toString() + "']").children()[0]).attr('checked', 'checked');
-				$($(cb + v.toString() + "']").children()[1]).removeClass('glyphicon-unchecked');
-				$($(cb + v.toString() + "']").children()[1]).addClass('glyphicon-check');
-				$($(cb + v.toString() + "']").children()[1]).css('color', "green");
-				$(cb + v.toString() + "']").css('border-color', 'green');
-				$(cb + v.toString() + "']").css('border-width', '5px');
-				$(cb + v.toString() + "']").css('margin-top', '1px');
-				$(cb + v.toString() + "']").css('margin-bottom', '1px');
+				$($(selector).children()[0]).prop('checked', true).trigger('change');
+				$($(selector).children()[1]).removeClass('glyphicon-unchecked');
+				$($(selector).children()[1]).addClass('glyphicon-check');
+				$($(selector).children()[1]).css('color', "green");
+				$(selector).css('border-color', 'green');
+				$(selector).css('border-width', '5px');
+				$(selector).css('margin-top', '1px');
+				$(selector).css('margin-bottom', '1px');
 			}
 			else{
-				$($(cb + v.toString() + "']").children()[0]).removeAttr('checked');
-				$($(cb + v.toString() + "']").children()[1]).removeClass('glyphicon-check');
-				$($(cb + v.toString() + "']").children()[1]).addClass('glyphicon-unchecked');
-				$($(cb + v.toString() + "']").children()[1]).css('color', "grey");
-				$(cb + v.toString() + "']").css('border-color', 'grey');
-				$(cb + v.toString() + "']").css('border-width', '1px');
-				$(cb + v.toString() + "']").css('margin-top', '5px');
-				$(cb + v.toString() + "']").css('margin-bottom', '9px');
+				$($(selector).children()[0]).prop('checked', false).trigger('change');
+				$($(selector).children()[1]).removeClass('glyphicon-check');
+				$($(selector).children()[1]).addClass('glyphicon-unchecked');
+				$($(selector).children()[1]).css('color', "grey");
+				$(selector).css('border-color', 'grey');
+				$(selector).css('border-width', '1px');
+				$(selector).css('margin-top', '5px');
+				$(selector).css('margin-bottom', '9px');
 			}
 		});
 	});
@@ -721,6 +758,7 @@ function changeMethod(value) {
 	}
 	else if (method == 5 || method == 6) {
 		order = cachedOrders[method] || orderYesNo(method);
+		console.log("order to yesNoSort", JSON.stringify(order));
 		yesNoSort(method, order);
 	}
 };
@@ -1317,16 +1355,20 @@ $( document ).ready(function() {
 		});
 	});
 	$(".star").each(function(){
-		$(this).rateYo({
+		if (!$(this).data("rateYo")) {
+			$(this).rateYo({
 			numStars: 10,
 			fullStar: true,
+			ratedFill:"gold",
 			onSet: function (rating, rateYoInstance) {
 				if(init_star == false)
 				{
 					var d = (Date.now() - startTime).toString();
-					temp_data = {"item":$(this).parent().attr("id")};
-					temp_data["time"] = [d];
-					temp_data["rank"] = [dictSlideStar("star")];
+					var temp_data = {
+						"item": $(this).parent().attr("id"),
+						"time": [d],
+						"rank": [dictSlideStar("star")]
+					};
 					var temp = JSON.parse(record);
 					temp.push(temp_data);
 					//temp["star"].push({"time":d, "action":"set", "value":rating.toString(), "item":$(this).parent().attr("id") });
@@ -1334,6 +1376,7 @@ $( document ).ready(function() {
 				}
 			}
 		});
+	}
 	});
 	var t = 1
 	$("#twoColSection .list-element").each(function(){
@@ -1378,6 +1421,8 @@ $( document ).ready(function() {
 		cachedOrders[2] = prefOrder; // One-column
 		cachedOrders[3] = prefOrder; // Slider
 		cachedOrders[4] = prefOrder; // Star
+		cachedOrders[5] = prefOrder;
+		cachedOrders[6] = prefOrder;
 		cachedOrders[7] = prefOrder; // Budget UI
 		cachedOrders[8] = prefOrder; // List UI
 		cachedOrders[9] = prefOrder; // Infinite Budget
@@ -1387,6 +1432,8 @@ $( document ).ready(function() {
 		try { oneColSort(prefOrder); } catch (e) {}
 		try { sliderSort(prefOrder); } catch (e) {}
 		try { starSort(prefOrder); } catch (e) {}
+		try { yesNoSort(5,prefOrder); } catch (e) {}
+		try { yesNoSort(6,prefOrder); } catch (e) {}
 		try { sliderBUIRestore(prefOrder); } catch (e) {}
 		try { listUISort(prefOrder); } catch (e) {}
 		try { infiniteBudgetUISort(prefOrder); } catch (e) {}

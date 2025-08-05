@@ -35,11 +35,13 @@ ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://opra.cs.binghamton.edu',
+    'http://kudremukh.cs.binghamton.edu',
+    'https://kudremukh.cs.binghamton.edu'
 ]
 
 X_FRAME_OPTIONS = env('X_FRAME_OPTIONS') # has been taken care by middleware
 SESSION_COOKIE_SECURE = eval(env('SESSION_COOKIE_SECURE'))
-CSRF_COOKIE_SECURE = eval(env('CSRF_COOKIE_SECURE'))
+CSRF_COOKIE_SECURE = False
 SECURE_HSTS_SECONDS = int(env('SECURE_HSTS_SECONDS'))
 SECURE_SSL_REDIRECT = eval(env('SECURE_SSL_REDIRECT'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = eval(env('SECURE_HSTS_INCLUDE_SUBDOMAINS'))
