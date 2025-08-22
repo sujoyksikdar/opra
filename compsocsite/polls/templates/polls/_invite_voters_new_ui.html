@@ -228,6 +228,7 @@ trix-toolbar .trix-button-group--file-tools {
                 <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addRegistered')">Add Registered Users</button>
                 <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaGroups')">Add via Groups</button>
                 <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaCSV')">Add via CSV</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addCode')">Add Codes</button>
             </div>
 
             <!-- Add Registered -->
@@ -282,6 +283,18 @@ trix-toolbar .trix-button-group--file-tools {
                     <input type="submit" value="Submit CSV" class="btn btn-primary" style="margin-top: 10px;">
                 </form>
             </div>
+            <div id="addCode" class="tab-section col-md-6">
+            <form method="post" action="{% url 'polls:addcodes' question.id %}" style="display:inline-block; margin-left:10px;">
+            {% csrf_token %}
+            <label style="width: 100%;">Add Login Codes: </label>
+            <select name="count" class="form-control" style="width:auto; display:inline-block;">
+                <option value="25">25 Codes</option>
+                <option value="50">50 Codes</option>
+                <option value="100">100 Codes</option>
+                </select>
+            <button type="submit" class="btn btn-info">Add Codes</button>
+            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -306,6 +319,20 @@ trix-toolbar .trix-button-group--file-tools {
                     {% endfor %}
                 </select>
             </form>
+             <hr>
+  <!-- <h5>Generated Login Codes</h5>
+  <div style="max-height:160px; overflow:auto; border:1px solid #eee; padding:8px; border-radius:4px; margin-bottom:10px;">
+    <ul class="list-unstyled" style="margin:0;">
+      {% for c in question.login_codes.all %}
+        <li>{{ c.code }}</li>
+      {% empty %}
+        <li><em>No codes generated yet.</em></li>
+      {% endfor %}
+    </ul>
+  </div> -->
+  <a class="btn btn-warning" href="{% url 'polls:exportcodes' question.id %}">
+    Export Codes (CSV)
+  </a>
         </div>
 
         <!-- Registered Users -->
@@ -327,6 +354,7 @@ trix-toolbar .trix-button-group--file-tools {
                 {% endfor %}
             </select>
         </div>
+        
     </div>
 </div>
 

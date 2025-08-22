@@ -185,12 +185,12 @@
                 <a href="#" >Signed in as {{ request.user.username }}</a>
               </li>
               <li role="separator" class="divider"></li>
-              <li >
+                <li >
                 <a href="{% url 'appauth:settings' %}" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}"><span >Settings</span></a>
-              </li>
-              <li>
+                </li>
+                <li>
                 <a href="/auth/logout/" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}">Logout</a>
-              </li>
+                </li>
             </ul>
           </li> <!-- end of Dropdown setting icon-->
         </ul>
@@ -209,7 +209,7 @@
             </a>
           </li>
           <li>
-            <a href="{% url 'appauth:socialSignup' %}?next={{ request.path }}"> <span class="glyphicon glyphicon-log-in"></span> Login </a>
+            <a href="{% url 'appauth:login' %}?next={{ request.path }}"> <span class="glyphicon glyphicon-log-in"></span> Login </a>
           </li>
         </ul>
         

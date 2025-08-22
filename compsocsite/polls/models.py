@@ -87,6 +87,15 @@ class Question(models.Model):
     def get_voters(self):
         return ",".join([str(voter) for voter in self.question_voters.all()])
 
+@python_2_unicode_compatible
+class LoginCode(models.Model):
+    question   = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='login_codes')
+    code       = models.CharField(max_length=64, unique=True, db_index=True)
+    user       = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='login_codes')  # NEW
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.code
 
 class UnregisteredUser(models.Model):
     email = models.EmailField(unique=True)

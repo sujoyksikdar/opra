@@ -4,6 +4,7 @@ import random
 import uuid
 import json
 import numpy as np
+import secrets
 
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponseRedirect, HttpResponse
@@ -14,6 +15,7 @@ from django.core import mail
 
 
 from .models import *
+from polls.models import *
 
 from django.utils import timezone
 from django.template import RequestContext
@@ -23,6 +25,7 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import validate_email
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth import get_user_model
+from django.contrib import messages
 
 from polls.models import Message, Question, RandomUtilityPool, UnregisteredUser
 from polls import opra_crypto
@@ -46,10 +49,10 @@ def register(request):
         # If the two forms are valid...
         if user_form.is_valid():
                 # Save the user's form data to the database.
-            user = user_form.save()
+            user = user_form.save(commit=False)
             
             # Hash the password with the set_password method
-            user = user_form.save(commit=False)
+            # user = user_form.save(commit=False)
             # user.set_password(user_form.cleaned_data['password'])
             # user.password = user_form.cleaned_data['password']
 
@@ -75,24 +78,28 @@ def register(request):
             user.save()
             profile = UserProfile(user=user, displayPref = 1, time_creation=timezone.now(), salt = salt.decode('utf-8'))
             profile.save()
-            
-            # htmlstr =  "<p><a href='http://127.0.0.1:9083/auth/register/confirm/"+opra_crypto.encrypt(user.id)+"'>Click This Link To Activate Your Account</a></p>"
-            # mail.send_mail("OPRA Confirmation","Please confirm your account registration.", from_email='oprahprogramtest@gmail.com', auth_user='oprahprogramtest@gmail.com', auth_password='ThisIsJustATestProgram' ,recipient_list = [user.email],html_message=htmlstr)
-            htmlstr = "You have been successfully registered to OPRA."
-            mail.send_mail("OPRA Registration Successful!","You have been successfully registered to OPRA." ,
-                           from_email= "opra@cs.binghamton.edu",
-                           recipient_list = [user.email])
 
-            # Update our variable to tell the template registration was successful.
-            registered = True
+            #otp
+            otp_code = f"{secrets.randbelow(1000000):06d}"   # 6 digits, zero-padded
+            otp_expires_at = int(time.time()) + 10 * 60      # 10 minutes from now
 
-            # user = authenticate(username=username, password=password)
-            # login(request, user)
+            request.session['otp_user_id'] = user.id
+            request.session['otp_code'] = otp_code
+            request.session['otp_expires'] = otp_expires_at
 
-            print("Registration successful") # use logging
-        #else    print (user_form.errors)
+            subject = "Your OPRA verification code"
+            msg = (
+                f"Hi {user.username},\n\n"
+                f"Your verification code is: {otp_code}\n"
+                f"This code expires in 10 minutes.\n\n"
+                "— OPRA"
+            )
+            mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+
+            messages.info(request, "We emailed you a 6-digit code to verify your account.")
+            return HttpResponseRedirect(f"/auth/verify-otp/?uid={user.id}")  
         else:
-            return HttpResponse("The user_form.isValid(), failed OR This email already exists. Please try a different one. <a href='/auth/register'>Return to registration</a>")
+            return render(request, 'register.html', {'user_form': user_form})
 # Not a HTTP POST, so we render our form using two ModelForm instances.
 # These forms will be blank, ready for user input.
     else:
@@ -101,6 +108,64 @@ def register(request):
     return render(request,
                 'register.html',
                 {'user_form': user_form, 'registered': registered})
+
+def verify_otp(request):
+    uid = request.GET.get('uid') or request.POST.get('uid')
+    if not uid:
+        return HttpResponse("Missing uid.")
+
+    sess_uid = request.session.get('otp_user_id')
+    sess_code = request.session.get('otp_code')
+    sess_exp = request.session.get('otp_expires')
+
+    user = get_object_or_404(User, pk=uid)
+
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+
+        # validations
+        now_ts = int(time.time())
+        if not sess_uid or not sess_code or not sess_exp:
+            return render(request, "verify_otp.html", {"uid": user.id, "error": "No code found. Please resend a code."})
+        if int(sess_uid) != int(user.id):
+            return render(request, "verify_otp.html", {"uid": user.id, "error": "Invalid session. Please resend a code."})
+        if now_ts > int(sess_exp):
+            return render(request, "verify_otp.html", {"uid": user.id, "error": "Code expired. Please resend a code."})
+        if code != str(sess_code):
+            return render(request, "verify_otp.html", {"uid": user.id, "error": "Invalid code."})
+
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        login(request, user, backend='appauth.custom_backends.CustomUserModelBackend')
+
+        for k in ('otp_user_id', 'otp_code', 'otp_expires'):
+            request.session.pop(k, None)
+
+        return HttpResponseRedirect('/polls/main')
+
+    return render(request, "verify_otp.html", {"uid": user.id})
+
+def resend_otp(request):
+    uid = request.POST.get('uid')
+    user = get_object_or_404(User, pk=uid)
+
+    otp_code = f"{secrets.randbelow(1000000):06d}"
+    otp_expires_at = int(time.time()) + 10 * 60
+
+    request.session['otp_user_id'] = user.id
+    request.session['otp_code'] = otp_code
+    request.session['otp_expires'] = otp_expires_at
+
+    subject = "Your OPRA verification code"
+    msg = (
+        f"Hi {user.username},\n\n"
+        f"Your verification code is: {otp_code}\n"
+        f"This code expires in 10 minutes.\n\n"
+        "— OPRA"
+    )
+    mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+
+    return HttpResponseRedirect(f"/auth/verify-otp/?uid={user.id}")
 
 def confirm(request, key):
     context = RequestContext(request)
@@ -365,3 +430,30 @@ def resetAllFinish(request):
 # custom handler for Google sign-in/sign-up
 def socialSignup(request):
     return render(request,'register.html', {})
+def login_with_code(request):
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+
+        try:
+            login_code = LoginCode.objects.select_related('user', 'question').get(code=code)
+        except LoginCode.DoesNotExist:
+            return render(request, "login_with_code.html", {"error": "Invalid code"})
+
+        if not login_code.user:
+            uname = f"code_{login_code.question_id}_{secrets.token_hex(4)}"
+            u = User(username=uname, email="")
+            u.set_unusable_password()
+            u.is_active = True
+            u.save()
+            if not hasattr(u, 'userprofile'):
+                UserProfile.objects.create(
+                    user=u, displayPref=1, time_creation=timezone.now(), salt=""
+                )
+            login_code.user = u
+            login_code.save(update_fields=['user'])
+            login_code.question.question_voters.add(u)
+
+        login(request, login_code.user, backend="appauth.custom_backends.CustomUserModelBackend")
+        return HttpResponseRedirect("/polls/main")
+
+    return render(request, "login_with_code.html")

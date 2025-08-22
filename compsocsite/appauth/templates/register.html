@@ -27,18 +27,32 @@
         }
     }
 </script>
-<div class="col-md-6 col-md-offset-3" align="center" style="padding: 60px 20px;">
-    <h3>Log in or Register with OPRA</h3>
-    <br/>
+<div class="container" style="max-width: 500px; margin-top: 50px;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="text-center mb-4">Register with OPRA</h4>
+            <div id="error" class="text-danger text-center mb-3"></div>
 
-    <!-- <a title="Google" href="/accounts/google/login/?process=login">Sign up with Google</a> -->
-    <form method="post" action="/accounts/google/login/?next={{ request.GET.next }}">
-        <input type="hidden">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-dark">
-            Authenticate via Google
-        </button>
-    </form>
+            <form id="user_form" method="post" action="{% url 'appauth:register' %}">
+                {% csrf_token %}
+                
+                <div class="form-group mb-3">
+                    <input type="email" class="form-control" id="reg_email" name="email" placeholder="Email">
+                </div>
+
+                <div class="form-group mb-3">
+                    <input type="password" class="form-control" id="reg_password" name="password" placeholder="Password">
+                </div>
+
+                <div class="form-group mb-4">
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm Password">
+                </div>
+
+                <button type="button" class="btn btn-primary w-100" onclick="register()">Register</button>
+            </form>
+
+        </div>
+    </div>
 </div>
 
 {% endblock %}

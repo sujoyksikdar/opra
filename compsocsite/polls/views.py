@@ -5,6 +5,7 @@ import datetime
 import os
 import time
 import collections
+import csv, io, secrets, string
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseRedirect, HttpResponse, HttpRequest
@@ -2856,6 +2857,76 @@ def addUsersAndSendEmailInvite(request: HttpRequest, question_id: int) -> None:
     emailSettings(request, question_id)
     return 
 
+SPECIALS = "!@#$%^&*()_+[]{}|;:,.<>?"   
+def _generate_strong_code(length=10):
+    upper = secrets.choice(string.ascii_uppercase)
+    lower = secrets.choice(string.ascii_lowercase)
+    digit = secrets.choice(string.digits)
+    special = secrets.choice(SPECIALS)
+    pool = string.ascii_letters + string.digits + SPECIALS
+    rest = ''.join(secrets.choice(pool) for _ in range(length - 4))
+    raw = list(upper + lower + digit + special + rest)
+    secrets.SystemRandom().shuffle(raw)
+    return ''.join(raw)
+
+def add_codes(request, question_id):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    question = get_object_or_404(Question, pk=question_id)
+
+    try:
+        count = int(request.POST.get('count', '25'))
+    except ValueError:
+        count = 25
+    if count not in (25, 50, 100):
+        count = 25
+
+    created = 0
+    attempts = 0
+
+    while created < count and attempts < count * 10:
+        attempts += 1
+        code = _generate_strong_code(10)
+        try:
+            lc = LoginCode.objects.create(question=question, code=code)
+            uname = f"code_{question.id}_{secrets.token_hex(4)}"
+            u = User(username=uname, email="") 
+            u.set_unusable_password()
+            u.is_active = True
+            u.save()
+            if not hasattr(u, 'userprofile'):
+                UserProfile.objects.create(
+                    user=u,
+                    displayPref=1,
+                    time_creation=timezone.now(),
+                    salt=""  
+                )
+            lc.user = u
+            lc.save(update_fields=['user'])
+            question.question_voters.add(u)
+
+            created += 1
+        except IntegrityError:
+            continue
+
+    messages.success(request, f"Created {created} login codes.")
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER') or reverse('polls:regular_polls'))
+
+def export_codes_csv(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    codes = question.login_codes.order_by('created_at').values_list('code', flat=True)
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(['code'])
+    for c in codes:
+        w.writerow([c])
+    buf.seek(0)
+
+    resp = HttpResponse(buf.getvalue(), content_type='text/csv')
+    resp['Content-Disposition'] = f'attachment; filename="opra_q{question_id}_codes.csv"'
+    return resp
 # remove voters from a poll.
 # should only be done before a poll starts
 def removeVoter(request, question_id):

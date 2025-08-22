@@ -46,21 +46,52 @@ window.location = "{% url 'polls:index' %}";
 
 {% endif %}
 
-<div class="col-md-6 col-md-offset-3" align="center" style="padding: 60px 20px;">
-    <h3>Sign in</h3>
-    <br/>
-    <div id="error"></div>
-    <form id="user_form" method="post" action="{% url 'appauth:login' %}">
+<div class="container" style="max-width: 760px; padding: 40px 20px;">
+  <h3 class="text-center">Log in or Register with OPRA</h3>
+  <div id="error" class="text-danger text-center" style="margin-top:8px;"></div>
+
+  <!-- EXISTING USER -->
+  <div class="panel panel-default" style="margin-top:24px;">
+    <div class="panel-heading"><strong>Already a user?</strong></div>
+    <div class="panel-body">
+      <form id="user_form" method="post" action="{% url 'appauth:login' %}">
         {% csrf_token %}
-        
-        <label for="email">Email</label>
-        <input type="text" class="form-control" id="email" name="email" placeholder="Enter Email" value="" size="50" />
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="text" class="form-control" placeholder="Enter Email">
+        </div>
 
-        <label for="password">Password</label> 
-        <input type="password" class="form-control" id="password" name="password" placeholder="Password" value="" size="50" />
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" class="form-control" placeholder="Password">
+        </div>
 
-        <button class="btn btn-primary">Sign in</button>
+        <button class="btn btn-primary">Log in</button>
+        <a class="btn btn-link" href="{% url 'appauth:forgetpasswordview' %}">Forgot password?</a>
+      </form>
+    </div>
+  </div>
+
+  <div class="text-center" style="margin:16px 0;">
+    <span>— or —</span>
+  </div>
+
+  <!--NEW USER -->
+  <div class="panel panel-default">
+    <div class="panel-heading"><strong>New user</strong></div>
+    <div class="panel-body text-center">
+      <a class="btn btn-success" href="{% url 'appauth:register' %}?next={{ request.GET.next|urlencode }}">Register</a>
+	  <form method="post" action="/accounts/google/login/?next={{ request.GET.next|urlencode }}" style="display:inline-block; margin-left:5px;">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-dark">
+        Authenticate Via Google
+      </button>
     </form>
+      <a class="btn btn-default" href="{% url 'appauth:login_with_code' %}">
+      Log in with code
+    </a>
+    </div>
+  </div>
 </div>
-
 {% endblock %}

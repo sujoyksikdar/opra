@@ -1,0 +1,27 @@
+{% extends 'polls/base.html' %}
+
+{% block content %}
+<div class="container" style="max-width: 420px; padding: 40px 20px;">
+  <h3 class="text-center">Verify your email</h3>
+
+  {% if error %}
+    <div class="alert alert-danger" style="margin-top: 10px;">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/auth/verify-otp/">
+    {% csrf_token %}
+    <input type="hidden" name="uid" value="{{ uid }}">
+    <div class="form-group" style="margin-top: 16px;">
+      <label for="code">6-digit code</label>
+      <input id="code" name="code" type="text" class="form-control" placeholder="Enter code">
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:10px;">Verify</button>
+  </form>
+
+  <form method="post" action="/auth/resend-otp/" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="uid" value="{{ uid }}">
+    <button type="submit" class="btn btn-link">Resend code</button>
+  </form>
+</div>
+{% endblock %}

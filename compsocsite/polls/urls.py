@@ -40,6 +40,10 @@ urlpatterns = [
     re_path(r'^(?P<question_id>[0-9]+)/addvoters/$', views.addVoters, name='addvoters'),
     re_path(r'^(?P<question_id>[0-9]+)/delvoter/$', views.removeVoter, name='delvoter'),
 
+    #loginCode
+    re_path(r'^(?P<question_id>\d+)/codes/add/$', views.add_codes, name='addcodes'),
+    re_path(r'^(?P<question_id>\d+)/codes/export/$', views.export_codes_csv, name='exportcodes'),
+
     # save the uploaded csv text
     re_path(r'^(?P<question_id>[0-9]+)/savelatestcsv/$', views.saveLatestCSV, name='savelatestcsv'),
 
