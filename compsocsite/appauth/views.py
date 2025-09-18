@@ -345,7 +345,8 @@ def disableHint(request):
 def user_logout(request):
     # Since we know the user is logged in, we can now just log them out.
     logout(request)
-
+    for k in ("is_code_user", "code_question_id"):
+        request.session.pop(k, None)
     # return HttpResponseRedirect(reverse('appauth:logoutCas'))
     # Take the user back to the homepage.
     return HttpResponseRedirect(reverse('polls:index_guest'))
@@ -454,6 +455,9 @@ def login_with_code(request):
             login_code.question.question_voters.add(u)
 
         login(request, login_code.user, backend="appauth.custom_backends.CustomUserModelBackend")
-        return HttpResponseRedirect("/polls/main")
+
+        request.session["is_code_user"] = True
+        request.session["code_question_id"] = login_code.question_id
+        return HttpResponseRedirect("/polls/regular_polls/code")
 
     return render(request, "login_with_code.html")

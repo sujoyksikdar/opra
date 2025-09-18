@@ -71,6 +71,13 @@ class RegularPollsView(views.generic.ListView):
     
     template_name = 'polls/regular_polls.html'
     context_object_name = 'question_list'
+
+    def dispatch(self, request, *args, **kwargs):
+        """To restrict code based users from changing url and accesing regular poll page"""
+        if request.session.get("is_code_user"):
+            return HttpResponseRedirect("/polls/regular_polls/code")
+        return super(RegularPollsView, self).dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
@@ -116,6 +123,13 @@ class RegularAllocationView(views.generic.ListView):
     
     template_name = 'polls/allocation_tab.html'
     context_object_name = 'question_list'
+
+    def dispatch(self, request, *args, **kwargs):
+        """To restrict code based users from changing url and accesing regular allocation page"""
+        if request.session.get("is_code_user"):
+            return HttpResponseRedirect("/polls/allocation_tab/code")
+        return super(RegularPollsView, self).dispatch(request, *args, **kwargs)
+    
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
@@ -148,6 +162,57 @@ class RegularAllocationView(views.generic.ListView):
                 ctx['polls_created'].remove(poll)
             elif poll in ctx['polls_participated']:
                 ctx['polls_participated'].remove(poll)
+
+        self.request.session['questionType'] = 2
+        return ctx
+
+class CodePollsView(views.generic.ListView):
+    """
+    Polls view for code-based users.
+    Only shows 'participated in' polls.
+    """
+    template_name = 'polls/regular_polls_code.html'
+    context_object_name = 'question_list'
+
+    def get_queryset(self):
+        qid = self.request.session.get('code_question_id')
+        return Question.objects.filter(pk=qid, question_type=1).order_by('-pub_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super(CodePollsView, self).get_context_data(**kwargs)
+        qid = self.request.session.get('code_question_id')
+
+        ctx['folders'] = []
+        ctx['polls_created'] = []  
+        ctx['active_polls'] = list(Question.objects.filter(question_type=1).order_by('-pub_date'))
+        polls = Question.objects.filter(pk=qid, question_type=1)
+        ctx['polls_participated'] = list(polls)
+
+        self.request.session['questionType'] = 1
+        return ctx
+
+
+class CodeAllocationView(views.generic.ListView):
+    """
+    Allocation view for code-based users.
+    Only shows 'participated in' allocations.
+    """
+    template_name = 'polls/allocation_tab_code.html'
+    context_object_name = 'question_list'
+
+    def get_queryset(self):
+        qid = self.request.session.get('code_question_id')
+        return Question.objects.filter(pk=qid, question_type=2).order_by('-pub_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super(CodeAllocationView, self).get_context_data(**kwargs)
+        qid = self.request.session.get('code_question_id')
+
+        ctx['folders'] = []
+        ctx['polls_created'] = []  # no create
+        ctx['active_polls'] = list(Question.objects.filter(question_type=2).order_by('-pub_date'))
+        polls = Question.objects.filter(pk=qid, question_type=2)
+        ctx['polls_participated'] = list(polls)
 
         self.request.session['questionType'] = 2
         return ctx

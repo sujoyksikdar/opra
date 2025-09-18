@@ -17,6 +17,9 @@ urlpatterns = [
     re_path(r'^m_polls$', login_required(views.MultiPollsView.as_view()), name='m_polls'),
     re_path(r'^(?P<pk>[0-9]+)/demo$', views.DemoView.as_view(), name='voting_demo'),
     
+    #code only pages
+    re_path(r'^regular_polls/code$', views.CodePollsView.as_view(), name='regular_polls_code'),
+    re_path(r'^allocation_tab/code$', views.CodeAllocationView.as_view(), name='allocation_tab_code'),
     # Create a new poll
     re_path(r'^add_step1/$', views.AddStep1View, name='AddStep1'), 
     re_path(r'^(?P<pk>[0-9]+)/add_step2/$', views.AddStep2View.as_view(), name='AddStep2'), 

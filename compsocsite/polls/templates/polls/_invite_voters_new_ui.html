@@ -287,11 +287,9 @@ trix-toolbar .trix-button-group--file-tools {
             <form method="post" action="{% url 'polls:addcodes' question.id %}" style="display:inline-block; margin-left:10px;">
             {% csrf_token %}
             <label style="width: 100%;">Add Login Codes: </label>
-            <select name="count" class="form-control" style="width:auto; display:inline-block;">
-                <option value="25">25 Codes</option>
-                <option value="50">50 Codes</option>
-                <option value="100">100 Codes</option>
-                </select>
+            <input type="number" name="count" class="form-control"
+               min="1" max="100" placeholder="Enter number of codes"
+               style="width:250px; display:inline-block;" required>
             <button type="submit" class="btn btn-info">Add Codes</button>
             </form>
             </div>

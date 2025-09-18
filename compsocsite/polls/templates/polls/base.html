@@ -160,9 +160,14 @@
             </a>
           </li>
           {% endif %}
-          <li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
-          <li><a href="{% url 'polls:allocation_tab' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
-          <!-- <li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li> -->
+          {% if request.session.is_code_user %}
+            <li><a href="{% url 'polls:regular_polls_code' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+            <li><a href="{% url 'polls:allocation_tab_code' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
+          {% else %}
+            <li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+            <li><a href="{% url 'polls:allocation_tab' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
+          {% endif %}
+            <!-- <li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li> -->
 
 
           <!-- <li><a href="{% url 'polls:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li> -->
