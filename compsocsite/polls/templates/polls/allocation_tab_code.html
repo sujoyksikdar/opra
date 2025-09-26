@@ -1,4 +1,5 @@
 {% extends 'polls/base.html' %}
+{% load poll_extra %}
 
 {% block content %}
 <div class="container">
@@ -31,7 +32,7 @@
                 <a href="{% url 'polls:detail' question.id %}" class="btn btn-dark" role="button">Enter Preferences</a>
               {% endif %}
 
-              {% if question.status == 3 and question.question_type == 2 %}
+              {% if question.status == 3 and question.question_type == 2 and question|can_show_results %}
                 <!-- allocation finished: show results page -->
                 <a href="{% url 'polls:allocate_results' question.id %}" class="btn btn-dark" role="button" target="_blank">
                   Allocation Results

@@ -75,6 +75,7 @@ class Question(models.Model):
     alloc_algorithms = models.IntegerField(default=0)
     first_tier = models.IntegerField(default=0)
     utility_model = models.IntegerField(default=0)
+    results_visible_after = models.DateTimeField(null=True, blank=True)
 
     related_class = models.ForeignKey(Classes, null=True, on_delete=models.CASCADE)
     correct_answer = models.TextField(default="")

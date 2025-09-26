@@ -25,6 +25,11 @@
     </select>
     
     <br/>
+     <label for="results_visible_after">Make results visible after (optional):</label>
+    <input type="datetime-local" name="results_visible_after" 
+           value="{{ question.results_visible_after|date:'Y-m-d\\TH:i' }}" 
+           class="form-control">
+    <small>Leave empty if you don’t want to schedule release by time.</small>
 
     <br />
     <input type="submit" value="Submit" class="btn btn-success">

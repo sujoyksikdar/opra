@@ -1,9 +1,16 @@
 from django import template
+from django.utils import timezone
 import numpy as np
 from django.template.defaultfilters import stringfilter
 
 register = template.Library()
 
+@register.filter
+def can_show_results(question):
+    if question.results_visible_after and timezone.now() < question.results_visible_after:
+        return False
+    return True
+    
 @register.filter
 def largest(l):
     return max(l)

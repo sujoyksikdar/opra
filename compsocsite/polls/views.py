@@ -12,6 +12,9 @@ from django.http import HttpResponseRedirect, HttpResponse, HttpRequest
 from django.urls import reverse
 from django import views
 from django.db.models import Q
+from django.utils.decorators import method_decorator
+from django.utils.dateparse import parse_datetime
+from functools import wraps
 
 from django.utils import timezone
 from django.core.cache import cache
@@ -61,7 +64,18 @@ class IndexView(views.generic.ListView):
         
         return Question.objects.all().order_by('-pub_date')
 
+def block_code_users(redirect_url="/polls/regular_polls/code"):
+    """To block code-based users from accessing certain views."""
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            if request.session.get("is_code_user"):
+                return redirect(redirect_url)
+            return view_func(request, *args, **kwargs)
+        return _wrapped
+    return decorator
 
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class RegularPollsView(views.generic.ListView):
     """
     Define regular polls view, inheriting ListView class, which specifies a context variable.
@@ -71,12 +85,6 @@ class RegularPollsView(views.generic.ListView):
     
     template_name = 'polls/regular_polls.html'
     context_object_name = 'question_list'
-
-    def dispatch(self, request, *args, **kwargs):
-        """To restrict code based users from changing url and accesing regular poll page"""
-        if request.session.get("is_code_user"):
-            return HttpResponseRedirect("/polls/regular_polls/code")
-        return super(RegularPollsView, self).dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         """Override function in parent class and return all questions."""
@@ -113,7 +121,8 @@ class RegularPollsView(views.generic.ListView):
 
         self.request.session['questionType'] = 1
         return ctx
-    
+
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class RegularAllocationView(views.generic.ListView):
     """
     Define regular polls view, inheriting ListView class, which specifies a context variable.
@@ -123,13 +132,6 @@ class RegularAllocationView(views.generic.ListView):
     
     template_name = 'polls/allocation_tab.html'
     context_object_name = 'question_list'
-
-    def dispatch(self, request, *args, **kwargs):
-        """To restrict code based users from changing url and accesing regular allocation page"""
-        if request.session.get("is_code_user"):
-            return HttpResponseRedirect("/polls/allocation_tab/code")
-        return super(RegularPollsView, self).dispatch(request, *args, **kwargs)
-    
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
@@ -217,6 +219,7 @@ class CodeAllocationView(views.generic.ListView):
         self.request.session['questionType'] = 2
         return ctx
 
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class RegularPollsFolderView(views.generic.DetailView):
     """Define folder view, inheriting DetailView class, which specifies a specific object."""
     
@@ -238,6 +241,7 @@ def reverseListOrder(query):
     list_query.reverse()
     return list_query
 
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class MultiPollsView(views.generic.ListView):
     """Define multi-poll view, inheriting ListView class, which specifies a context variable. """
     template_name = 'polls/m_polls.html'
@@ -564,6 +568,7 @@ class CourseMatchView(views.generic.DetailView):
         """
         return Question.objects.filter(pub_date__lte=timezone.now())
 
+@block_code_users("/polls/regular_polls/code")
 def AddStep1View(request):
     """
     Define the first step in creating poll.
@@ -604,7 +609,7 @@ def AddStep1View(request):
         return HttpResponseRedirect(reverse('polls:AddStep2', args=(question.id,)))
     return render(request,'polls/add_step1.html', {})
 
-
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class AddStep2View(views.generic.DetailView):
     """Define step 2 in creating poll: adding choices."""
     
@@ -617,7 +622,7 @@ class AddStep2View(views.generic.DetailView):
     def get_queryset(self):
         return Question.objects.filter(pub_date__lte=timezone.now())
 
-
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class AddStep3View(views.generic.DetailView):
     """Defind step 3 in creating poll: inviting voters."""
 
@@ -664,7 +669,7 @@ class AddStep3View(views.generic.DetailView):
     def get_queryset(self):
         return Question.objects.filter(pub_date__lte=timezone.now())
 
-
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class AddStep4View(views.generic.DetailView):
     """Define step 4 in creating poll: privacy setting, voting mechanisms, voting UIs, etc."""
     
@@ -1062,8 +1067,6 @@ def getPollWinner(question):
 
     return winnerStr, json.dumps(mixtures_pl1), json.dumps(mixtures_pl2), json.dumps(mixtures_pl3)
 
-
-
 def interpretResult(finalresult):
     """
     Interpret result into strings that can be shown on the result page.
@@ -1140,8 +1143,6 @@ def getUnrankedCandidates(resp):
     if len(array) == 0:
         return None
     return array
-
-
 class DetailView(views.generic.DetailView):
     """Define poll voting page view."""
     
@@ -1257,6 +1258,7 @@ def addPreferenceValueToResp(objs):
     return objs
 
 # view for settings detail
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class PollInfoView(views.generic.DetailView):
     model = Question
     template_name = 'polls/pollinfo.html'
@@ -1356,6 +1358,12 @@ class PollInfoView(views.generic.DetailView):
 class AllocateResultsView(views.generic.DetailView):
     model = Question
     template_name = 'polls/allocationResults/results_page.html'
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.results_visible_after and timezone.now() < self.object.results_visible_after:
+            return redirect("polls:allocation_tab")   #to /polls/allocation_tab/
+        return super().get(request, *args, **kwargs)
 
     def getItemsObjects(self):
         items = [] 
@@ -2032,6 +2040,13 @@ class ConfirmationView(views.generic.DetailView):
 class VoteResultsView(views.generic.DetailView):
     model = Question
     template_name = 'polls/vote_rule.html'
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.results_visible_after and timezone.now() < self.object.results_visible_after:
+            return redirect("polls:regular_polls")   #to /polls/regular_polls/
+        return super().get(request, *args, **kwargs)
+        
     def get_context_data(self, **kwargs):
         ctx = super(VoteResultsView, self).get_context_data(**kwargs)
         #print("page accessed")
@@ -3106,6 +3121,14 @@ def setInitialSettings(request, question_id):
             alg_sum += int(alg_str)
         question.alloc_algorithms = alg_sum
 
+    if "results_visible_after" in request.POST:
+        raw_val = request.POST["results_visible_after"].strip()
+        if raw_val:
+            dt = parse_datetime(raw_val)
+            question.results_visible_after = dt
+        else:
+            question.results_visible_after = None
+    
     # 8) save changes
     question.save()
 
@@ -3195,6 +3218,15 @@ def setVisibilitySettings(request, question_id):
         question.creator_pref = 1
     else:
         question.creator_pref = 2
+    
+    if "results_visible_after" in request.POST:
+        raw_val = request.POST["results_visible_after"].strip()
+        if raw_val:
+            # parse "2025-09-26T14:30"
+            dt = parse_datetime(raw_val)
+            question.results_visible_after = dt
+        else:
+            question.results_visible_after = None
 
 
     question.save()

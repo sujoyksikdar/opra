@@ -199,6 +199,13 @@
                 <option value="2">Creator has the same visibility setting as all users</option>
             </select>
             <br />
+            <div id="result_time">
+    <label for="results_visible_after">Make results visible after (optional):</label>
+    <input type="datetime-local" name="results_visible_after" 
+           value="{{ question.results_visible_after|date:'Y-m-d\\TH:i' }}" 
+           class="form-control">
+    <small>Leave empty if you don’t want to schedule release by time.</small>
+</div>
         </div>
     </div>
 

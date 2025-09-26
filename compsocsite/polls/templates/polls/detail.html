@@ -2,6 +2,7 @@
 {% load mathfilters %}
 {% load static%}
 {% block extra_head %}
+{% load poll_extra %}
 <!-- Google Tag Manager -->
 <noscript>
     <iframe src="//www.googletagmanager.com/ns.html?id=GTM-59SLDM" height="0" width="0" style="display:none;visibility:hidden"></iframe>
@@ -120,11 +121,11 @@
                     <h4 {% if request.flavour == "mobile" %} style="width:70%;display:inline;" {% endif %}><span class="caret" style="color:#377BB5;"></span> 
                     	{{ question.question_text }} 
                             <!-- if currentSelection and question.question_type == 1 -->
-                            {% if question.question_type == 1 %}
+                            {% if question.question_type == 1 and question|can_show_results%}
                                 <a href="{% url 'polls:voteresults' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" >Poll Winners</a>
                             {% endif %}
                         
-                        {% if question.question_type == 2%}
+                        {% if question.question_type == 2 and question|can_show_results%}
                             <a href="{% url 'polls:allocate_results' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" style="margin-right: 5px;">Allocation Results</a>
                         {% endif %}
                         
