@@ -2959,8 +2959,10 @@ def add_codes(request, question_id):
         count = int(request.POST.get('count', '25'))
     except ValueError:
         count = 25
-    if count not in (25, 50, 100):
-        count = 25
+    if count < 1:
+        count = 1
+    elif count> 100:
+        count=100;
 
     created = 0
     attempts = 0
