@@ -6,9 +6,23 @@ The web app is built on Django, and uses an SQLite database. [Click here](https:
 
 ## Installation
 
+VS Code Remote Setup
+
+Before cloning the project, follow these steps to connect to the remote server using VS Code:
+
+- Open VS Code.
+- Press F1 or Ctrl + Shift + P (Windows/Linux) or Cmd + Shift + P (Mac).
+- Select "Connect to Host" → "Add New SSH Host..."
+- Enter the hostname: kudremukh.cs.binghamton.edu
+- Log in using your Linux credentials (provided by your professor).
+- Once connected, open a new VS Code terminal on the remote host.
+
 Note: The installation procedure is modified from the original repository `https://github.com/PrefPy/opra` to accomodate the recent changes.
 
-1. Clone this project and use `dev_test` branch for development, use `master` branch for production.
+1. Clone this project and use `dev_test` branch(or the active branch during the setup) for development, use `master` branch for production.
+  (ask for current working repo)
+  $ git clone https://github.com/PrefPy/opra.git 
+  $ cd opra
 
 2. Create a virtual enviroment using conda with python version 3.12.2 (or try the latest version of python3).
 
@@ -16,17 +30,36 @@ Note: The installation procedure is modified from the original repository `https
 - To list all the virtual environment created using conda: `conda env list`
 - To activate the virtual env : `conda activate env_name`.
 
+  $ git clone https://github.com/PrefPy/opra.git
+  $ cd opra
+  $ conda create --name opra_env python=3.12.2
+  $ conda activate opra_env
+
+
 3. Activate the virtual environment and go into the folder opra install all the dependencies from requirements.txt by running the below command.
 
 - `pip install -r requirements.txt`
 
 4. If you can already find "settings.py" under "compsocsite/compsocsite" and "opra_crypto.py" under "compsocsite/polls", then don't do the next step. If you can't find those files, then follow the next step. 
 
-5. Clone [opra_dependencies] (https://github.com/tomjmwang/opra_dependencies) Github directory to your local machine. Copy settings.py from opra_dependencies to compsocsite/compsocsite. Copy opra_crypto.py from opra_dependencies to compsocsite/polls.
+  $ git clone https://github.com/tomjmwang/opra_dependencies.git
+  $ cp opra_dependencies/settings.py compsocsite/compsocsite/
+  $ cp opra_dependencies/opra_crypto.py compsocsite/polls/
 
-6. Set up the .env file under opra/compsocsite or get the same from the developer who is already working on this project.
+5. Set up the .env file under opra/compsocsite or get the same from the developer who is already working on this project.
 
-7. Open command line (terminal), change to OPRA's directory, and then enter the following commands:
+- Create a .env file inside the compsocsite/ directory.
+  
+  $ touch compsocsite/.env
+
+Install Extra Dependecies
+
+  $ conda install -c gurobi gurobi
+  $ conda install pandas
+  $ pip install "numpy>=1.23.5,<2.3.0"
+
+
+6. Open command line (terminal), change to OPRA's directory, and then enter the following commands:
   
   <code>cd compsocsite</code>
   
@@ -43,20 +76,20 @@ Note: The installation procedure is modified from the original repository `https
   <code>python manage.py runserver port_number</code> <br>
   For example `python manage.py runserver 8000`
 
-8. To view the page, go to your web browser and visit this address:
+7. To view the page, go to your web browser and visit this address:
 
   <code>http://127.0.0.1:8000</code>
 
-9. To run the server and listen to all the public ports in an network, use the below command.
+8. To run the server and listen to all the public ports in an network, use the below command.
 This is particularly useful when deploying in production.
 
   <code>python3 manage.py runserver 0.0.0.0:8080</code>
 
-10. Once the app is up and running, set up your own OAuth client to enable Sign-up/Sign-in using Google account. Follow the steps in the below YouTube video to set up OAuth Client ID and Secret key.<br>
+9. Once the app is up and running, set up your own OAuth client to enable Sign-up/Sign-in using Google account. Follow the steps in the below YouTube video to set up OAuth Client ID and Secret key.<br>
 Video Link: `https://www.youtube.com/watch?v=yO6PP0vEOMc`
 
 
-11. You may want to create a Django super user using the command `python manage.py createsuperuser` to access the admin
+10. You may want to create a Django super user using the command `python manage.py createsuperuser` to access the admin
 site `http://127.0.0.1:8000/admin/login/?next=/admin/`.
 
 
