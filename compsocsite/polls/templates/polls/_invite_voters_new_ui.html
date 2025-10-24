@@ -311,26 +311,61 @@ trix-toolbar .trix-button-group--file-tools {
             <form action="{% url 'polls:delvoter' question.id %}" method="post">
                 {% csrf_token %}
                 <label>Users added to the instance:</label>
-                <select id="currentVoters" name="voters" class="form-control" multiple style="height: 163px;">
-                    {% for user in question.question_voters.all %}
-                        <option value="{{ user.username }}">{{ user.username }}</option>
-                    {% endfor %}
-                </select>
+                <div style="margin-bottom:15px; max-width:400px;">
+                    <input type="text" id="userSearchInput" class="form-control" placeholder="Search users...">
+                </div>             
+                <input type="checkbox" id="selectAllUsers" style="margin-right:5px;">
+                <label for="selectAllUsers">Select All</label>
+               <div id="userListBox" style="max-height:220px; overflow-y:auto; border:1px solid #ddd; border-radius:4px; padding:8px; background:#fff;">
+                {% for user in question.question_voters.all %}
+                <div class="user-item" style="padding:4px 0;">
+                    <input type="checkbox" name="voters" value="{{ user.username }}" class="userCheckbox" style="margin-right:6px;">
+                    <span>{{ user.username }}</span>
+                </div>
+                {% empty %}
+                    <!-- If no registered, skip silently -->
+                {% endfor %}
+                {% for email in unRegisteredUsers %}
+                    {% if email %}
+                    <div class="user-item" style="padding:4px 0;">
+                        <input type="checkbox" name="voters" value="{{ email }}" class="userCheckbox" style="margin-right:6px;">
+                            <span>{{ email }}</span> <small style="color:#999;">(unregistered)</small>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                {% endfor %}
+
+                    {% if question.question_voters.count == 0 and unRegisteredUsers|length == 0 %}
+                        <em>No users added yet.</em>
+                    {% endif %}
+                </div>
+
+                <div style="margin-top:15px;">
+                <button type="submit" class="btn btn-danger">Delete Selected Users</button>
+                <a class="btn btn-warning" href="{% url 'polls:exportcodes' question.id %}">
+                    Export Codes (CSV)
+                </a>
+                </div>
             </form>
+
+            <script>
+                document.getElementById('userSearchInput').addEventListener('keyup', function() {
+                const filter = this.value.toLowerCase().trim();
+                const users = document.querySelectorAll('#userListBox .user-item');
+                users.forEach(div => {
+                    const text = div.innerText.toLowerCase();
+                    div.style.display = text.includes(filter) ? '' : 'none';
+                });
+                });
+
+                const selectAll = document.getElementById('selectAllUsers');
+                selectAll?.addEventListener('change', function() {
+                const allBoxes = document.querySelectorAll('.userCheckbox');
+                allBoxes.forEach(cb => cb.checked = selectAll.checked);
+                });
+            </script>
+          
              <hr>
-  <!-- <h5>Generated Login Codes</h5>
-  <div style="max-height:160px; overflow:auto; border:1px solid #eee; padding:8px; border-radius:4px; margin-bottom:10px;">
-    <ul class="list-unstyled" style="margin:0;">
-      {% for c in question.login_codes.all %}
-        <li>{{ c.code }}</li>
-      {% empty %}
-        <li><em>No codes generated yet.</em></li>
-      {% endfor %}
-    </ul>
-  </div> -->
-  <a class="btn btn-warning" href="{% url 'polls:exportcodes' question.id %}">
-    Export Codes (CSV)
-  </a>
         </div>
 
         <!-- Registered Users -->

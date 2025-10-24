@@ -233,6 +233,9 @@ def user_login(request):
         username = request.POST['email']
         password = request.POST['password']
 
+        if not username or not password:
+            return render(request, "login.html", {"error": "Please enter both email and password."})
+
         User = get_user_model()
         users = User.objects.all()
 
@@ -261,7 +264,7 @@ def user_login(request):
             return HttpResponseRedirect('/polls/main')
             # return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
         else:
-            return HttpResponse("Invalid login details supplied.")
+            return render(request, "login.html", {"error": "Invalid login details supplied."})
 	
 # Display the login form.
     else:
@@ -365,37 +368,52 @@ def forgetPassword(request):
     if email == "" or username == "":
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     user = get_object_or_404(User, email=email, username=username)
-    htmlstr = "<p><a href='http://127.0.0.1:9083/auth/resetpassword/"+opra_crypto.encrypt(user.id) + "'>Click This Link To Reset Password</a></p>"
+    reset_link = request.build_absolute_uri(
+    reverse('appauth:resetpassword', args=[opra_crypto.encrypt(user.id)])
+    )
+    htmlstr = f"<p><a href='{reset_link}'>Click this link to reset your password</a></p>"
     mail.send_mail("OPRA Forget Password","Please click the following link to reset password.",'opra@cs.binghamton.edu',[email], html_message=htmlstr)
     # mail.send_mail("OPRA Forget Password","Please click the following link to reset password.",'opra@cs.binghamton.edu',[email], auth_user="opra@cs.binghamton.edu", html_message=htmlstr)
-    return HttpResponse("An email has been sent to your email account. Please click on the link in that email and reset your password.")
+    return render(request, "forgetpassword.html", {"success": "An email has been sent to your email account. Please click on the link in that email and reset your password."})
     
 def resetPassword(request, key):
     context = RequestContext(request)
     user_id = opra_crypto.decrypt(key)
     user = get_object_or_404(User, pk=user_id)
-    new = request.POST['newpassword']
-    con = request.POST['confirmpassword']
-    if new != "" and new == con:
-        # user.set_password(new)
-        salt = user.userprofile.salt
-        user.password = bcrypt.hashpw(bytes(new,'utf-8'), bytes(salt,'utf-8')).decode('utf-8')
-        user.save()
-        return render(request,'success.html', {})
-    else:
-        return render(request,'resetpassword.html',{'key':key})
+    if request.method == "POST":
+        new = request.POST['newpassword']
+        con = request.POST['confirmpassword']
+        if new != "" and new == con:
+            # user.set_password(new)
+            salt = user.userprofile.salt
+            user.password = bcrypt.hashpw(bytes(new,'utf-8'), bytes(salt,'utf-8')).decode('utf-8')
+            user.save()
+            return render(request,'success.html', {})
+        else:
+            return render(request,'resetpassword.html',{'key':key,'error': 'Passwords do not match.'})
+    return render(request, 'resetpassword.html', {'key': key})
+
 
 @login_required
 def changepassword(request):
     user = request.user
     old = request.POST['oldpassword']
     new = request.POST['newpassword']
-    if user.check_password(old):
-        user.set_password(new)
-        user.save()
-        return HttpResponseRedirect(reverse('polls:index'))
-    else:
-        return HttpResponse("The password you entered is wrong.")
+    confirm = request.POST.get('confirmpassword', '')
+    if new != confirm:
+        return render(request, 'changepassword.html', {'error': 'New password and confirm password do not match.'})
+    
+    salt = getattr(user.userprofile, 'salt', '')
+    #check old password
+    old_hashed = bcrypt.hashpw(bytes(old, 'utf-8'), bytes(salt, 'utf-8')).decode('utf-8')
+    if old_hashed != user.password:
+        return render(request, 'changepassword.html', {'error': 'The password you entered is wrong.'})
+    
+    new_hashed = bcrypt.hashpw(bytes(new, 'utf-8'), bytes(salt, 'utf-8')).decode('utf-8')
+    user.password = new_hashed
+    user.save()
+
+    return render(request, 'changepassword.html', {'success': 'Password changed successfully!'})
 
 def resetAllFinish(request):
     if request.user.username == "opraadmin":
@@ -448,7 +466,7 @@ def login_with_code(request):
             u.save()
             if not hasattr(u, 'userprofile'):
                 UserProfile.objects.create(
-                    user=u, displayPref=1, time_creation=timezone.now(), salt=""
+                    user=u, displayPref=1, time_creation=timezone.now(), salt="",is_code_user=True
                 )
             login_code.user = u
             login_code.save(update_fields=['user'])

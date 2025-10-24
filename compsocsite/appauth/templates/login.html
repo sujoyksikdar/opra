@@ -49,6 +49,11 @@ window.location = "{% url 'polls:index' %}";
 <div class="container" style="max-width: 760px; padding: 40px 20px;">
   <h3 class="text-center">Log in or Register with OPRA</h3>
   <div id="error" class="text-danger text-center" style="margin-top:8px;"></div>
+   {% if error %}
+    <div class="alert alert-danger" role="alert" style="margin-top: 10px;">
+      {{ error }}
+    </div>
+    {% endif %}
 
   <!-- EXISTING USER -->
   <div class="panel panel-default" style="margin-top:24px;">

@@ -647,7 +647,7 @@ class AddStep3View(views.generic.DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super(AddStep3View, self).get_context_data(**kwargs)
-        ctx['users'] = User.objects.all()
+        ctx['users'] = User.objects.filter(userprofile__is_code_user=False)
         ctx['groups'] = Group.objects.all()
         
         curr_question = ctx['question']
@@ -655,6 +655,7 @@ class AddStep3View(views.generic.DetailView):
         registeredUsers, unRegisteredUsers = self.getUsersFromLatestCSV(curr_question.recentCSVText, ctx['users'])
         ctx['registeredUsers'] = registeredUsers
         ctx['unRegisteredUsers'] = unRegisteredUsers
+        ctx['allUsers'] = registeredUsers + unRegisteredUsers  
 
         if Email.objects.filter(question=self.object).count() > 0:
             ctx['emailInvite'] = Email.objects.filter(question=self.object, type=1)[0]
@@ -1292,7 +1293,7 @@ class PollInfoView(views.generic.DetailView):
             ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=4)[0]
             if len(Email.objects.filter(question=self.object, type=5)) > 0:
                 ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=5)[0]
-        ctx['users'] = User.objects.all()
+        ctx['users'] = User.objects.filter(userprofile__is_code_user=False)
         ctx['items'] = self.object.item_set.all()
         ctx['groups'] = Group.objects.all()
         ctx['poll_algorithms'] = getListPollAlgorithms()
@@ -2748,7 +2749,7 @@ def saveLatestCSV(request, question_id):
 
     try:
         question.recentCSVText = recentCSVText
-        question.save();
+        question.save() 
         addUsersFromCSV(request, question_id)
     except Exception as e:
         print(e)
@@ -2843,99 +2844,99 @@ def send_email_invites(request: HttpRequest, question_id: int):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
-# Send email invite to Registered and Non registered Participants
-# added using csv
-def addUsersAndSendEmailInvite(request: HttpRequest, question_id: int) -> None:
-    question = get_object_or_404(Question, pk=question_id)
+# # Send email invite to Registered and Non registered Participants
+# # added using csv
+# def addUsersAndSendEmailInvite(request: HttpRequest, question_id: int) -> None:
+#     question = get_object_or_404(Question, pk=question_id)
     
-    recepients = request.POST.get('recepients')
-    mailSubject = request.POST.get('mailSubject')
-    mailBody = request.POST.get('mailBody')
-    # existingUsers = User.objects.all()
-    # existingUserIDs = [user.username for user in existingUsers]
+#     recepients = request.POST.get('recepients')
+#     mailSubject = request.POST.get('mailSubject')
+#     mailBody = request.POST.get('mailBody')
+#     # existingUsers = User.objects.all()
+#     # existingUserIDs = [user.username for user in existingUsers]
 
-    registers_users_of_current_poll = []
-    UnRegistered_users_of_current_poll = []
+#     registers_users_of_current_poll = []
+#     UnRegistered_users_of_current_poll = []
 
-    email = request.POST.get('email') == 'email'
+#     email = request.POST.get('email') == 'email'
 
-    recentCSVText = question.recentCSVText
-    if(recentCSVText is None):
-        return
+#     recentCSVText = question.recentCSVText
+#     if(recentCSVText is None):
+#         return
     
-    userIDsFromCSV = recentCSVText.split(",")
-    userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
+#     userIDsFromCSV = recentCSVText.split(",")
+#     userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
 
-    # The invited user to this poll might be already registered with OPRA
-    # for userID in userIDsFromCSV:
-    #     if userID in existingUserIDs:
-    #         registers_users_of_current_poll.append(userID)
-    #     else:
-    #         UnRegistered_users_of_current_poll.append(userID)
+#     # The invited user to this poll might be already registered with OPRA
+#     # for userID in userIDsFromCSV:
+#     #     if userID in existingUserIDs:
+#     #         registers_users_of_current_poll.append(userID)
+#     #     else:
+#     #         UnRegistered_users_of_current_poll.append(userID)
 
-    # modified Logic to segregate Reg/Unreg Users
-    registers_users_of_current_poll, UnRegistered_users_of_current_poll = getRegAndUnRegUsers(userIDsFromCSV)
+#     # modified Logic to segregate Reg/Unreg Users
+#     registers_users_of_current_poll, UnRegistered_users_of_current_poll = getRegAndUnRegUsers(userIDsFromCSV)
     
-    # Logic to add registered Voters to poll
-    for voter in registers_users_of_current_poll:
-        voterObj = User.objects.get(username=voter)
-        question.question_voters.add(voterObj.id)
+#     # Logic to add registered Voters to poll
+#     for voter in registers_users_of_current_poll:
+#         voterObj = User.objects.get(username=voter)
+#         question.question_voters.add(voterObj.id)
 
-    '''
-    Logic for adding Unregistered Voters : 
+#     '''
+#     Logic for adding Unregistered Voters : 
 
-    Case 1:
-    Get the list of emails of unregistered users for the current poll, after submitting the csv.
-    Create an UnregisteredUser Object for every email in unregistered users for the current poll.
-    Add the question to the list of polls invited to the newly created UnregisteredUser Object.
+#     Case 1:
+#     Get the list of emails of unregistered users for the current poll, after submitting the csv.
+#     Create an UnregisteredUser Object for every email in unregistered users for the current poll.
+#     Add the question to the list of polls invited to the newly created UnregisteredUser Object.
 
-    Case 2:
-    When the unregistered user has already been invited to registred with OPRA via other polls, 
-    but still the user had not registred with OPRA. In this case, no new object for the UnregisteredUser has to 
-    be created. Just add the question to the list of polls invited of the reterieved UnregisteredUser Object.
+#     Case 2:
+#     When the unregistered user has already been invited to registred with OPRA via other polls, 
+#     but still the user had not registred with OPRA. In this case, no new object for the UnregisteredUser has to 
+#     be created. Just add the question to the list of polls invited of the reterieved UnregisteredUser Object.
 
-    '''
+#     '''
 
-    # UnRegistered_users_of_current_poll - UnRegistered Participants/users of the current poll after submitting csv
-    for email in UnRegistered_users_of_current_poll:
-        # the voter_obj will be retrieved if the user is invited via other polls, 
-        # but not registered with OPRA yet.
-        try:
-            voter_obj = UnregisteredUser.objects.get(email = email)
-            voter_obj.polls_invited.add(question)
+#     # UnRegistered_users_of_current_poll - UnRegistered Participants/users of the current poll after submitting csv
+#     for email in UnRegistered_users_of_current_poll:
+#         # the voter_obj will be retrieved if the user is invited via other polls, 
+#         # but not registered with OPRA yet.
+#         try:
+#             voter_obj = UnregisteredUser.objects.get(email = email)
+#             voter_obj.polls_invited.add(question)
         
-        # the voter_obj will be created if the user is invited to get registered with OPRA for first time
-        except UnregisteredUser.DoesNotExist:
-            voter_obj = UnregisteredUser.objects.create(email=email)
-            voter_obj.save(); question.save();
-            voter_obj.polls_invited.add(question)
+#         # the voter_obj will be created if the user is invited to get registered with OPRA for first time
+#         except UnregisteredUser.DoesNotExist:
+#             voter_obj = UnregisteredUser.objects.create(email=email)
+#             voter_obj.save(); question.save();
+#             voter_obj.polls_invited.add(question)
     
-    csvEmails = request.POST.get('textAreaForCustomMails')
-    customEmails = csvEmails.split(',')
+#     csvEmails = request.POST.get('textAreaForCustomMails')
+#     customEmails = csvEmails.split(',')
     
-    if email:
-        if mailSubject == '':
-            mailSubject = None
-        if mailBody == '':
-            mailBody = None
+#     if email:
+#         if mailSubject == '':
+#             mailSubject = None
+#         if mailBody == '':
+#             mailBody = None
         
-        users_to_email = []
-        match recepients:
-            case "regVotersOnly":
-                users_to_email = registers_users_of_current_poll
-            case "unregVotersOnly":
-                users_to_email = UnRegistered_users_of_current_poll
-            case "customEmails":
-                users_to_email = customEmails
-            case "allVoters":
-                users_to_email = userIDsFromCSV
+#         users_to_email = []
+#         match recepients:
+#             case "regVotersOnly":
+#                 users_to_email = registers_users_of_current_poll
+#             case "unregVotersOnly":
+#                 users_to_email = UnRegistered_users_of_current_poll
+#             case "customEmails":
+#                 users_to_email = customEmails
+#             case "allVoters":
+#                 users_to_email = userIDsFromCSV
             
-        email_class = EmailThread(request, question_id, 'invite-csv', users_to_email, mail_sub=mailSubject, mail_body=mailBody)
-        email_class.start()
+#         email_class = EmailThread(request, question_id, 'invite-csv', users_to_email, mail_sub=mailSubject, mail_body=mailBody)
+#         email_class.start()
         
-        messages.success(request, "The Email has been sent to the recepients!")
-    emailSettings(request, question_id)
-    return 
+#         messages.success(request, "The Email has been sent to the recepients!")
+#     emailSettings(request, question_id)
+#     return 
 
 SPECIALS = "!@#$%^&*()_+[]{}|;:,.<>?"   
 def _generate_strong_code(length=10):
@@ -2962,7 +2963,7 @@ def add_codes(request, question_id):
     if count < 1:
         count = 1
     elif count> 100:
-        count=100;
+        count=100
 
     created = 0
     attempts = 0
@@ -2982,7 +2983,8 @@ def add_codes(request, question_id):
                     user=u,
                     displayPref=1,
                     time_creation=timezone.now(),
-                    salt=""  
+                    salt="",
+                    is_code_user=True
                 )
             lc.user = u
             lc.save(update_fields=['user'])
@@ -3015,7 +3017,18 @@ def removeVoter(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
     newVoters = request.POST.getlist('voters')
+    if not newVoters:
+        messages.warning(request, "No users were selected for removal.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     email = request.POST.get('email') == 'email'
+    # remove voters
+    users_to_remove = User.objects.filter(username__in=newVoters)
+    question.question_voters.remove(*users_to_remove)
+
+    existing_emails = question.recentCSVText.split(",") if question.recentCSVText else []
+    updated_list = [email.strip() for email in existing_emails if email.strip().lower() not in [u.lower() for u in newVoters]]
+    question.recentCSVText = ",".join(updated_list)
+
 
     mailSub = request.POST.get('mailNotificationSubject')
     mailBody = request.POST.get('mailNotificationBody')
