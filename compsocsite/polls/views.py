@@ -678,6 +678,9 @@ class AddStep4View(views.generic.DetailView):
     template_name = 'polls/add_step4.html'
     def get_context_data(self, **kwargs):
         ctx = super(AddStep4View, self).get_context_data(**kwargs)
+        ctx['question'].display_pref = self.request.user.userprofile.displayPref
+        ctx['question'].display_user_info = self.request.user.userprofile.display_user_info
+
         ctx['preference'] = self.request.user.userprofile.displayPref
         ctx['poll_algorithms'] = getListPollAlgorithms()
         ctx['alloc_methods'] = getAllocMethods()
@@ -3016,13 +3019,19 @@ def export_codes_csv(request, question_id):
 def removeVoter(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
+    if question.status != 1:
+        messages.error(request, "Cannot remove voters after the poll is started/paused.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
     newVoters = request.POST.getlist('voters')
     if not newVoters:
         messages.warning(request, "No users were selected for removal.")
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    email = request.POST.get('email') == 'email'
+    email = request.POST.get('email') is not None
     # remove voters
     users_to_remove = User.objects.filter(username__in=newVoters)
+    emails_to_send = [user.email for user in users_to_remove]
+
     question.question_voters.remove(*users_to_remove)
 
     existing_emails = question.recentCSVText.split(",") if question.recentCSVText else []
@@ -3036,7 +3045,7 @@ def removeVoter(request, question_id):
     question.emailDelete = email
     if email:
         # print("Email sending logic to remove user")
-        email_class = EmailThread(request, question_id, 'remove')
+        email_class = EmailThread(request, question_id, 'remove',emails_to_send)
         email_class.start()
         messages.success(request,"The Email has been sent to the removed users!")
     

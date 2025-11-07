@@ -341,6 +341,12 @@ trix-toolbar .trix-button-group--file-tools {
                 </div>
 
                 <div style="margin-top:15px;">
+                    <input type="checkbox" name="email" id="emailCheckbox" style="margin-right:6px;" 
+                    {% if request.user.userprofile.emailDelete %}checked{% endif %}>
+                    <label for="emailCheckbox">Send email notification to removed users</label>
+                </div>
+
+                <div style="margin-top:15px;">
                 <button type="submit" class="btn btn-danger">Delete Selected Users</button>
                 <a class="btn btn-warning" href="{% url 'polls:exportcodes' question.id %}">
                     Export Codes (CSV)
