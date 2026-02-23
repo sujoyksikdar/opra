@@ -7,7 +7,7 @@ Authors: Kevin J. Hwang
 import io
 import math
 import time
-from numpy import *
+import numpy as np
 import itertools
 from .preference import Preference
 from .profile import Profile
@@ -192,13 +192,18 @@ class MechanismPlurality(MechanismPosScoring):
             exit()
 
         # Initialize our dictionary so that all candidates have a score of zero.
+        print("profile.candMap=", profile.candMap)
         candScoresMap = dict()
         for cand in profile.candMap.keys():
             candScoresMap[cand] = 0.0
 
+        print("candScoresMap=", candScoresMap)
         rankMaps = profile.getRankMaps()
+        print("rankMaps=", rankMaps)
         rankMapCounts = profile.getPreferenceCounts()
+        print("rankMapCounts=", rankMapCounts)
         scoringVector = self.getScoringVector(profile)
+        print("scoringVector=", scoringVector)
 
         # Go through the rankMaps of the profile and increment each candidates score appropriately.
         for i in range(0, len(rankMaps)):
@@ -207,7 +212,7 @@ class MechanismPlurality(MechanismPosScoring):
             for cand in rankMap.keys():
                 candScoresMap[cand] += scoringVector[rankMap[cand] - 1] * rankMapCount
 
-        # print("candScoresMap=", candScoresMap)
+        print("candScoresMap=", candScoresMap)
         return candScoresMap
 
     def getScoringVector(self, profile):
@@ -475,8 +480,14 @@ class MechanismMaximin(Mechanism):
         # For each pair of candidates, calculate the number of times each beats the other.
         for cand1, cand2 in itertools.combinations(wmg.keys(), 2):
             if cand2 in wmg[cand1].keys():
-                maximinScores[cand1] = min(maximinScores[cand1], wmg[cand1][cand2])
-                maximinScores[cand2] = min(maximinScores[cand2], wmg[cand2][cand1])
+                # Avoid using min() to prevent shadowing issues with numpy.min
+                score12 = wmg[cand1][cand2]
+                score21 = wmg[cand2][cand1]
+                
+                if score12 < maximinScores[cand1]:
+                    maximinScores[cand1] = score12
+                if score21 < maximinScores[cand2]:
+                    maximinScores[cand2] = score21
 
         return maximinScores
 
@@ -513,8 +524,14 @@ class MechanismMaximin1(Mechanism):
         # For each pair of candidates, calculate the number of times each beats the other.
         for cand1, cand2 in itertools.combinations(wmg.keys(), 2):
             if cand2 in wmg[cand1].keys():
-                maximinScores[cand1] = min(maximinScores[cand1], wmg[cand1][cand2])
-                maximinScores[cand2] = min(maximinScores[cand2], wmg[cand2][cand1])
+                # Avoid using min() to prevent shadowing issues with numpy.min
+                score12 = wmg[cand1][cand2]
+                score21 = wmg[cand2][cand1]
+                
+                if score12 < maximinScores[cand1]:
+                    maximinScores[cand1] = score12
+                if score21 < maximinScores[cand2]:
+                    maximinScores[cand2] = score21
 
         return maximinScores
 
@@ -1697,11 +1714,11 @@ class MechanismChamberlin_Courant():
         j = m + 1
         t = theta
         for k in range(K + 1, 1, -1):
-            z_k_j_t = array(
+            z_k_j_t = np.array(
                 [[z[k - 1][p][u] + self.s(profile, p + 1, j, t - u, {cand[p - 1], cand[j - 1]}, scoringVector)
                   for u in range(0, theta + 1)] for p in range(1, m + 1)])
-            p_ind = where(temp_max == z_k_j_t)[0][0]
-            u_ind = where(temp_max == z_k_j_t)[0][0]
+            p_ind = np.where(temp_max == z_k_j_t)[0][0]
+            u_ind = np.where(temp_max == z_k_j_t)[0][0]
             p0 = list(range(1, m + 1))[p_ind]
             u0 = list(range(0, theta + 1))[u_ind]
             winners.append(p0)
@@ -1722,8 +1739,8 @@ class MechanismChamberlin_Courant():
             s_S.append(max(scoringVector[new_rankmaps[i][x] - 1]
                            if x in new_rankmaps[i].keys() else float("-inf") for x in S))
 
-        ind = (-array(s_S)).argsort()
-        return dot(array(s_S)[ind][0:t], array(new_prefcounts)[ind][0:t])
+        ind = (-np.array(s_S)).argsort()
+        return np.dot(np.array(s_S)[ind][0:t], np.array(new_prefcounts)[ind][0:t])
 
     def V(self, profile, l, j):
         prefcounts = profile.getPreferenceCounts()
@@ -1756,7 +1773,7 @@ class MechanismBordaMean():
         prefcounts = profile.getPreferenceCounts()
         len_prefcounts = len(prefcounts)
         rankmaps = profile.getRankMaps()
-        values = zeros([len_prefcounts, n_candidates], dtype=int)
+        values = np.zeros([len_prefcounts, n_candidates], dtype=int)
         if min(list(rankmaps[0].keys())) == 0:
             delta = 0
         else:
@@ -1769,7 +1786,7 @@ class MechanismBordaMean():
         borda = [0 for i in range(n_candidates)]
         for i in range(n_candidates):
             borda[i] = sum([mat0[i, j] for j in range(n_candidates)])
-        borda_mean = mean(borda)
+        borda_mean = np.mean(borda)
         bin_winners_list = [int(borda[i] >= borda_mean) for i in range(n_candidates)]
         return bin_winners_list
 
@@ -1780,11 +1797,11 @@ class MechanismBordaMean():
         :return: mxm matrix
         """
 
-        mat = zeros((n_candidates, n_candidates))
+        mat = np.zeros((n_candidates, n_candidates))
         for i, j in itertools.combinations(range(n_candidates), 2):
             preference = ranks[:, i] - ranks[:, j]
-            h_ij = dot((preference < 0), prefcounts)  # prefers i to j
-            h_ji = dot((preference > 0), prefcounts)  # prefers j to i
+            h_ij = np.dot((preference < 0), prefcounts)  # prefers i to j
+            h_ji = np.dot((preference > 0), prefcounts)  # prefers j to i
             mat[i, j] = h_ij - h_ji
             mat[j, i] = h_ji - h_ij
         return mat
@@ -1808,7 +1825,7 @@ class MechanismBordaMean():
         prefcounts = profile.getPreferenceCounts()
         len_prefcounts = len(prefcounts)
         rankmaps = profile.getRankMaps()
-        values = zeros([len_prefcounts, n_candidates], dtype=int)
+        values = np.zeros([len_prefcounts, n_candidates], dtype=int)
         if min(list(rankmaps[0].keys())) == 0:
             delta = 0
         else:
@@ -1818,10 +1835,10 @@ class MechanismBordaMean():
                 values[i][j - delta] = rankmaps[i][j]
         approval = list()
         for i in range(n_voters):
-            vote = array([list(values[i, :])])
+            vote = np.array([list(values[i, :])])
             approvals = self.borda_mean(vote)
             approval.append(approvals)
-        return self.approval_rule(array(approval))
+        return self.approval_rule(np.array(approval))
 
     """
     Compute approval rule
@@ -1839,7 +1856,7 @@ class MechanismBordaMean():
             approvals = approval[i, :]
             approval_score = [approval_score[j] + approvals[j] for j in range(n_candidates)]
         max_score = max(approval_score)
-        winners = list((array(approval_score) >= max_score).astype(int))
+        winners = list((np.array(approval_score) >= max_score).astype(int))
         return winners, approval_score
 
     """
@@ -1853,11 +1870,11 @@ class MechanismBordaMean():
 
     def _build_mat_app(self, ranks):
         n_voters, n_candidates = ranks.shape
-        mat = zeros((n_candidates, n_candidates))
+        mat = np.zeros((n_candidates, n_candidates))
         for i, j in itertools.combinations(range(n_candidates), 2):
             preference = ranks[:, i] - ranks[:, j]
-            h_ij = sum(preference < 0)  # prefers i to j
-            h_ji = sum(preference > 0)  # prefers j to i
+            h_ij = np.sum(preference < 0)  # prefers i to j
+            h_ji = np.sum(preference > 0)  # prefers j to i
             mat[i, j] = h_ij - h_ji
             mat[j, i] = h_ji - h_ij
         return mat
@@ -1879,7 +1896,7 @@ class MechanismBordaMean():
         borda = [0 for i in range(n_candidates)]
         for i in range(n_candidates):
             borda[i] = sum([mat[i, j] for j in range(n_candidates)])
-        borda_mean = mean(borda)
+        borda_mean = np.mean(borda)
         winners = [int(borda[i] >= borda_mean) for i in range(n_candidates)]
         return winners
 

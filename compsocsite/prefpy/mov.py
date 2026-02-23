@@ -6,7 +6,7 @@ Authors: Kevin J. Hwang
 import math
 import itertools
 import copy
-from numpy import *
+import numpy as np
 from .profile import Profile
 from .voting_mechanism import *
 from .preference import Preference
@@ -38,10 +38,10 @@ def MoVScoring(profile, scoringVector):
         exit()
 
     # Construct the score matrix--values
-    prefcounts = array(profile.getPreferenceCounts())
+    prefcounts = np.array(profile.getPreferenceCounts())
     rankmaps = profile.getRankMaps()
     len_prefcounts = len(prefcounts)
-    values = zeros([len_prefcounts, m], dtype=int)
+    values = np.zeros([len_prefcounts, m], dtype=int)
 
     if min(list(rankmaps[0].keys())) == 0:
         delta = 0
@@ -53,20 +53,20 @@ def MoVScoring(profile, scoringVector):
             values[i][j - delta] = scoringVector[rankmaps[i][j] - 1]
 
     # Compute the scores of all the candidates
-    score = dot(array(prefcounts), values)
+    score = np.dot(np.array(prefcounts), values)
     # Compute the winner of the original profile
-
-    d = argmax(score, axis=0) + delta
+    
+    d = np.argmax(score, axis=0) + delta
     # print("d=",d)
-    alter = delete(range(delta, m + delta), d - delta)
+    alter = np.delete(range(delta, m + delta), d - delta)
     # Initialize
-    MoV = n * ones(m, dtype=int)
+    MoV = n * np.ones(m, dtype=int)
     # for c in [3]:
     for c in alter:
         # The difference vector of d and c
         difference = values[:, c - delta] - values[:, d - delta]
         # print("dif=", difference)
-        index = argsort(difference, axis=0, kind='mergesort')
+        index = np.argsort(difference, axis=0, kind='mergesort')
         # The vector that each element is the gain in the difference
         # between d and c if the pattern of the vote changed to [c > others > d]
         change = scoringVector[0] - difference
@@ -76,17 +76,17 @@ def MoVScoring(profile, scoringVector):
         # print("total-dif=", total_difference)
         for i in range(len_prefcounts):
             # The number of votes of the first i kinds of patterns
-            temp_sum = sum(prefcounts[index][0:i])
+            temp_sum = np.sum(prefcounts[index][0:i])
             # print("temp_sum=", temp_sum)
 
             # The aggregate gain (of the first i kinds of patterns)
             # in the difference between d and c if changed to [c > others > d]
-            lower_bound = dot(prefcounts[index][0:i], change[index][0:i])
+            lower_bound = np.dot(prefcounts[index][0:i], change[index][0:i])
             # print("lower_bound=", lower_bound)
 
             # The aggregate gain (of the first i+1 kinds of patterns)
             # in the difference between d and c if changed to [c > others > d]
-            upper_bound = dot(prefcounts[index][0:i + 1], change[index][0:i + 1])
+            upper_bound = np.dot(prefcounts[index][0:i + 1], change[index][0:i + 1])
             # print("upper_bound=", upper_bound)
             # if lower_bound < total_difference <= upper_bound:
             if lower_bound <= total_difference < upper_bound:
@@ -119,7 +119,7 @@ def MoVSimplifiedBucklin(profile):
     prefcounts = profile.getPreferenceCounts()
     len_prefcounts = len(prefcounts)
     rankmaps = profile.getRankMaps()
-    values = zeros([len_prefcounts, m], dtype=int)
+    values = np.zeros([len_prefcounts, m], dtype=int)
     if min(list(rankmaps[0].keys())) == 0:
         delta = 0
     else:
@@ -131,18 +131,19 @@ def MoVSimplifiedBucklin(profile):
     winners = MechanismSimplifiedBucklin().getWinners(profile)  # the winner list
     if not winners:
         print("ERROR: No winners found")
-    return float('inf')
+        return float('inf')
+    
     d = winners[0]  # the winner under the numerically tie-breaking rule
-    alter = delete(range(delta, m + delta), d - delta)
+    alter = np.delete(range(delta, m + delta), d - delta)
     # Initialize MoV
-    MoV = n * ones(m, dtype=int)
+    MoV = n * np.ones(m, dtype=int)
     for c in alter:
         for ell in range(1, int(math.floor(float(m) / 2)) + 2):
-            numcond1 = sum(dot(array(prefcounts), logical_and(values[:, c - delta] > ell, values[:, d - delta] <= ell - 1)))
-            numcond2 = sum(dot(array(prefcounts), logical_and(values[:, c - delta] > ell, values[:, d - delta] > ell - 1)))
-            numcond3 = sum(dot(array(prefcounts), logical_and(values[:, c - delta] <= ell, values[:, d - delta] <= ell - 1)))
-            diff_c = half - sum(dot(array(prefcounts), (values[:, c - delta] <= ell)))
-            diff_d = half - sum(dot(array(prefcounts), (values[:, d - delta] <= ell - 1)))
+            numcond1 = np.sum(np.dot(np.array(prefcounts), np.logical_and(values[:, c - delta] > ell, values[:, d - delta] <= ell - 1)))
+            numcond2 = np.sum(np.dot(np.array(prefcounts), np.logical_and(values[:, c - delta] > ell, values[:, d - delta] > ell - 1)))
+            numcond3 = np.sum(np.dot(np.array(prefcounts), np.logical_and(values[:, c - delta] <= ell, values[:, d - delta] <= ell - 1)))
+            diff_c = half - np.sum(np.dot(np.array(prefcounts), (values[:, c - delta] <= ell)))
+            diff_d = half - np.sum(np.dot(np.array(prefcounts), (values[:, d - delta] <= ell - 1)))
             if diff_c < 0:
                 if diff_d < 0 and numcond1 + numcond3 > abs(diff_d):
                     MoV[c - delta] = min(MoV[c - delta], abs(diff_d))
@@ -441,18 +442,18 @@ def AppMoVCopeland(profile, alpha=0.5):
 
     #Compute c* = argmin_c RM(d,c)
     relative_margin = {}
-    alter_without_d = delete(range(1, m + 1), d - 1)
+    alter_without_d = np.delete(range(1, m + 1), d - 1)
     for c in alter_without_d:
         relative_margin[c] = RM(wmgMap, n, m, d, c, alpha)
     c_star = min(relative_margin.items(), key=lambda x: x[1])[0]
 
-    return relative_margin[c_star]*(math.ceil(log(m)) + 1)
+    return relative_margin[c_star]*(math.ceil(np.log(m)) + 1)
 
 
 def RM(wmgMap, n, m, d, c, alpha=0.5):
 
-    alter_without_d = delete(range(1, m + 1), d - 1)
-    alter_without_c = delete(range(1, m + 1), c - 1)
+    alter_without_d = np.delete(range(1, m + 1), d - 1)
+    alter_without_c = np.delete(range(1, m + 1), c - 1)
     for t in range(n):
         # Compute s_-t_d and s_t_c
         s_neg_t_d = 0

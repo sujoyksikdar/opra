@@ -43,6 +43,7 @@ import csv
 import ast
 import hashlib
 import logging
+import traceback
 
 # logger for cache
 logger = logging.getLogger(__name__)
@@ -983,52 +984,72 @@ def getPollWinner(question):
     Parameter: Question object.
     Returns: string containing winner(s), mixture for k = 1, 2, 3.
     """
+    print(f"\n[getPollWinner] STARTING for Question ID: {question.id} ('{question.question_text}')")
+    try:
+        all_responses = question.response_set.filter(active=1).order_by('-timestamp')
+        (latest_responses, previous_responses) = categorizeResponses(all_responses)
+        # Calculate results
+        cand_map = getCandidateMapFromList(list(question.item_set.all()))
+        results = getVoteResults(latest_responses, cand_map)
+        print(f"  - [getPollWinner] getVoteResults finished. results length: {len(results)}")
+        
+        (vote_results, mixtures_pl1, mixtures_pl2, mixtures_pl3) = ([],[],[],[])
+        if(len(results) == 4):
+            (vote_results, mixtures_pl1, mixtures_pl2, mixtures_pl3) = results
+        else : 
+            print("  - [getPollWinner] ERROR: getVoteResults returned wrong number of items.")
+            return "",json.dumps([]),json.dumps([]),json.dumps([])
+        
+        index_vote_results = question.poll_algorithm - 1
+        # Bounds check
+        if index_vote_results < 0 or index_vote_results >= len(vote_results):
+            print(f"  - [getPollWinner] ERROR: index_vote_results {index_vote_results} out of range (size {len(vote_results)})")
+            index_vote_results = 0 # Fallback to Plurality
+            
+        current_result = vote_results[index_vote_results]
+        print(f"  - [getPollWinner] index_vote_results: {index_vote_results}, current_result size: {len(current_result)}")
     
-    all_responses = question.response_set.filter(active=1).order_by('-timestamp')
-    (latest_responses, previous_responses) = categorizeResponses(all_responses)
-    # Calculate results
-    cand_map = getCandidateMapFromList(list(question.item_set.all()))
-    results = getVoteResults(latest_responses, cand_map)
-    (vote_results, mixtures_pl1, mixtures_pl2, mixtures_pl3) = ([],[],[],[])
-    if(len(results) == 4):
-        (vote_results, mixtures_pl1, mixtures_pl2, mixtures_pl3) = results
-    else : 
-        return "",json.dumps([]),json.dumps([]),json.dumps([])
-    
-    index_vote_results = question.poll_algorithm - 1
-    current_result = vote_results[index_vote_results]
+        print(f"  - [getPollWinner] Calculation finished. current_result size: {len(current_result)}")
+        winnerStr = ""
+        
+        # Transform result data into JSON strings and save in database
+        
+        # item_set = getCandidateMap(latest_responses[0])
+        for index, score in current_result.items():
+            # index 5 uses Simplified Bucklin, where score is rank.
+            #   A low score means it has a high rank (e.g. rank 1 > rank 2),
+            #   so the best score is the minimum.
+            # All other indices rank score from highest to lowest, so the best score would be
+            #   the maximum.
+            if ((score == min(current_result.values()) and index_vote_results == 5)
+                    or (score == max(current_result.values()) and index_vote_results != 5)):
+                #add a comma to separate the winners
+                if winnerStr != "":
+                    winnerStr += ", "
+                #add the winner
+                winnerStr += cand_map[index].item_text
+        
+        print(f"  - [getPollWinner] Winners: {winnerStr}")
 
-    winnerStr = ""
-    
-    # Transform result data into JSON strings and save in database
+        if hasattr(question, 'finalresult'):
+            try:
+                print("  - [getPollWinner] Deleting existing finalresult...")
+                question.finalresult.delete()
+            except Exception as e:
+                print(f"  - [getPollWinner] Note: Error deleting finalresult (might not exist): {e}")
 
-    #item_set = getCandidateMap(latest_responses[0])
-    for index, score in current_result.items():
-        # index 5 uses Simplified Bucklin, where score is rank.
-        #   A low score means it has a high rank (e.g. rank 1 > rank 2),
-        #   so the best score is the minimum.
-        # All other indices rank score from highest to lowest, so the best score would be
-        #   the maximum.
-        if ((score == min(current_result.values()) and index_vote_results == 5)
-                or (score == max(current_result.values()) and index_vote_results != 5)):
-            #add a comma to separate the winners
-            if winnerStr != "":
-                winnerStr += ", "
-            #add the winner
-            winnerStr += cand_map[index].item_text
-
-    if hasattr(question, 'finalresult'):
-        question.finalresult.delete()
-    result = FinalResult(question=question, timestamp=timezone.now(),
-                        result_string="", mov_string="", cand_num=question.item_set.all().count(),
-                        node_string="", edge_string="", shade_string="")
-    
-    resultlist = []
-    mov = getMarginOfVictory(latest_responses, cand_map)
-    movlist = [str(i) for i in mov]
-    for x in range(0, len(vote_results)):
-        for key, value in vote_results[x].items():
-            resultlist.append(str(value))
+        result = FinalResult(question=question, timestamp=timezone.now(),
+                            result_string="", mov_string="", cand_num=question.item_set.all().count(),
+                            node_string="", edge_string="", shade_string="")
+        
+        resultlist = []
+        print("  - [getPollWinner] Calling getMarginOfVictory...")
+        mov = getMarginOfVictory(latest_responses, cand_map)
+        print(f"  - [getPollWinner] getMarginOfVictory finished. Size: {len(mov)}")
+        movlist = [str(i) for i in mov]
+        for x in range(0, len(vote_results)):
+            for key, value in vote_results[x].items():
+                resultlist.append(str(value))
             # resultstr += str(value)
             # resultstr += ","
     # for x in range(0, len(mov)):
@@ -1036,7 +1057,7 @@ def getPollWinner(question):
     #     movstr += ","
     # resultstr = resultstr[:-1]
     # movstr = movstr[:-1]
-    (nodes, edges) = parseWmg(latest_responses, cand_map)
+        (nodes, edges) = parseWmg(latest_responses, cand_map)
     # for node in nodes:
     #     for k, v in node.items():
     #         nodestr += k + "," + str(v) + ";"
@@ -1047,29 +1068,36 @@ def getPollWinner(question):
     #         edgestr += k + "," + str(v) + ";"
     #     edgestr += "|"
     # edgestr = edgestr[:-2]
-    shadevalues = getShadeValues(vote_results)
+        shadevalues = getShadeValues(vote_results)
     # for x in shadevalues:
     #     for y in x:
     #         shadestr += y + ";"
     #     shadestr += "|"
     # shadestr = shadestr[:-2]
-    result.result_string = json.dumps(resultlist)
-    result.mov_string = json.dumps(movlist)
-    result.node_string = json.dumps(nodes)
-    result.edge_string = json.dumps(edges)
-    result.shade_string = json.dumps(shadevalues)
-    result.save()
-    
-    # Resets new vote flag so that result is not computed again
-    if question.new_vote:
-        question.new_vote = False
-    question.winner = winnerStr
-    question.mixtures_pl1 = json.dumps(mixtures_pl1)
-    question.mixtures_pl2 = json.dumps(mixtures_pl2)
-    question.mixtures_pl3 = json.dumps(mixtures_pl3)
-    question.save()
+        result.result_string = json.dumps(resultlist)
+        result.mov_string = json.dumps(movlist)
+        result.node_string = json.dumps(nodes)
+        result.edge_string = json.dumps(edges)
+        result.shade_string = json.dumps(shadevalues)
+        print("  - [getPollWinner] Saving FinalResult...")
+        result.save()
+        
+        # Resets new vote flag so that result is not computed again
+        if question.new_vote:
+            question.new_vote = False
+        question.winner = winnerStr
+        question.mixtures_pl1 = json.dumps(mixtures_pl1)
+        question.mixtures_pl2 = json.dumps(mixtures_pl2)
+        question.mixtures_pl3 = json.dumps(mixtures_pl3)
+        print("  - [getPollWinner] Saving Question...")
+        question.save()
 
-    return winnerStr, json.dumps(mixtures_pl1), json.dumps(mixtures_pl2), json.dumps(mixtures_pl3)
+        print("[getPollWinner] SUCCESSFUL completion.")
+        return winnerStr, json.dumps(mixtures_pl1), json.dumps(mixtures_pl2), json.dumps(mixtures_pl3)
+    except Exception as e:
+        print(f"\n!!! [getPollWinner] CRITICAL ERROR: {e}")
+        traceback.print_exc()
+        return "", json.dumps([]), json.dumps([]), json.dumps([])
 
 def interpretResult(finalresult):
     """
@@ -1078,23 +1106,47 @@ def interpretResult(finalresult):
     Parameter: FinalResult object
     Returns: list of list of String containing data used on result page.
     """
-    
+    if finalresult is None:
+        print("  [interpretResult] ERROR: finalresult is None")
+        return [[], [], [], [], []]
+        
+    print(f"  [interpretResult] Processing finalresult ID: {finalresult.id}")
     candnum = finalresult.cand_num
-    resultlist = json.loads(finalresult.result_string)
+    print(f"  [interpretResult] candnum: {candnum}")
+    
+    try:
+        resultlist = json.loads(finalresult.result_string)
+        print(f"  [interpretResult] resultlist loaded. size: {len(resultlist)}")
+    except Exception as e:
+        print(f"  [interpretResult] ERROR loading result_string: {e}")
+        resultlist = []
+        
     tempResults = []
     algonum = len(getListPollAlgorithms())
     if len(resultlist) < candnum*algonum:
+        print(f"  [interpretResult] Result list too short ({len(resultlist)} < {candnum}*{algonum}). Setting algonum to 7.")
         algonum = 7
+        
     if len(resultlist) > 0:
-        for x in range(0, algonum):
-            tempList = []
-            for y in range(x*candnum, (x+1)*candnum):
-                tempList.append(resultlist[y])
-            tempResults.append(tempList)
-    tempMargin = json.loads(finalresult.mov_string)
-    tempShades = json.loads(finalresult.shade_string)
-    temp_nodes = json.loads(finalresult.node_string)
-    tempEdges = json.loads(finalresult.edge_string)
+        try:
+            for x in range(0, algonum):
+                tempList = []
+                for y in range(x*candnum, (x+1)*candnum):
+                    tempList.append(resultlist[y])
+                tempResults.append(tempList)
+        except Exception as e:
+            print(f"  [interpretResult] ERROR during resultlist processing: {e}")
+            
+    try:
+        tempMargin = json.loads(finalresult.mov_string)
+        tempShades = json.loads(finalresult.shade_string)
+        temp_nodes = json.loads(finalresult.node_string)
+        tempEdges = json.loads(finalresult.edge_string)
+        print("  [interpretResult] All JSON fields loaded successfully.")
+    except Exception as e:
+        print(f"  [interpretResult] ERROR loading other JSON fields: {e}")
+        tempMargin, tempShades, temp_nodes, tempEdges = [], [], [], []
+        
     return [tempResults, tempMargin, tempShades, temp_nodes, tempEdges]
 
 
@@ -2047,33 +2099,55 @@ class VoteResultsView(views.generic.DetailView):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
+        print(f"\n[VoteResultsView] GET Request for Poll ID: {self.object.id}")
         if self.object.results_visible_after and timezone.now() < self.object.results_visible_after:
+            print(f"  - Results not yet visible. Current time: {timezone.now()}, Visible after: {self.object.results_visible_after}")
             return redirect("polls:regular_polls")   #to /polls/regular_polls/
         return super().get(request, *args, **kwargs)
         
     def get_context_data(self, **kwargs):
+        print(f"[VoteResultsView] get_context_data called for Poll: {self.object.question_text}")
         ctx = super(VoteResultsView, self).get_context_data(**kwargs)
-        #print("page accessed")
+        
         cand_map = getCandidateMapFromList(list(self.object.item_set.all()))
-        ctx['cand_map'] = cand_map# if (len(latest_responses) > 0) else None
-        if len(list(self.object.response_set.all())) == 0:
+        ctx['cand_map'] = cand_map
+        print(f"  - [get_context_data] cand_map: {cand_map}")
+
+        response_count = list(self.object.response_set.all())
+        print(f"  - Total responses found: {len(response_count)}")
+        if len(response_count) == 0:
             return ctx
+            
         if self.object.status != 4 and self.object.new_vote == True:
+            print("  - [Recompute Trigger] new_vote flag is True. Calling getPollWinner...")
             getPollWinner(self.object)
+            
         final_result = self.object.finalresult
+        print(f"  - final_result timestamp: {final_result.timestamp if final_result else 'None'}")
+
         if self.object.mixtures_pl1 == "":
+            print("  - [Recompute Trigger] Mixtures missing. Calling getPollWinner...")
             getPollWinner(self.object)
+            
         if self.object.mixtures_pl1 != "":
             mixtures_pl1 = json.loads(self.object.mixtures_pl1)
             mixtures_pl2 = json.loads(self.object.mixtures_pl2)
             mixtures_pl3 = json.loads(self.object.mixtures_pl3)
+            print(f"  - Mixtures loaded. pl1 size: {len(mixtures_pl1)}")
         else:
             mixtures_pl1 = [[]]
             mixtures_pl2 = []
             mixtures_pl3 = []
+            print("  - No mixtures available.")
 
-        l = interpretResult(final_result)
-        # print(l[0])
+        print("  - [get_context_data] Calling interpretResult...")
+        try:
+            l = interpretResult(final_result)
+        except Exception as e:
+            print(f"  - [get_context_data] ERROR during interpretResult: {e}")
+            traceback.print_exc()
+            l = [[], [], [], [], []]
+        
         poll_algorithms = []
         algorithm_links = []
         vote_results = []
@@ -2083,6 +2157,8 @@ class VoteResultsView(views.generic.DetailView):
         start_poll_algorithms = getListPollAlgorithms()
         start_algorithm_links = getListAlgorithmLinks()
         to_show = self.object.vote_rule
+        print(f"  - vote_rule bitmask: {to_show}")
+        
         itr = 0
         poll_alg_num = self.object.poll_algorithm
         while to_show > 0:
@@ -2098,6 +2174,9 @@ class VoteResultsView(views.generic.DetailView):
                 poll_alg_num -= 1
             to_show = int(to_show / 2)
             itr += 1
+            
+        print(f"  - Algorithms to display: {poll_algorithms}")
+        
         ctx['poll_algorithms'] = poll_algorithms
         ctx['poll_alg_num'] = poll_alg_num
         ctx['algorithm_links'] = algorithm_links
@@ -2113,34 +2192,42 @@ class VoteResultsView(views.generic.DetailView):
         ctx['mixtures_pl1'] = mixtures_pl1
         ctx['mixtures_pl2'] = mixtures_pl2
         ctx['mixtures_pl3'] = mixtures_pl3
+        
+        # Get previous winners for the history table
         previous_results = self.object.voteresult_set.all()
+        print(f"  - previous_results count: {len(previous_results)}")
         ctx['previous_winners'] = []
         for pw in previous_results:
-            obj = {}
-            obj['title'] = str(pw.timestamp.time())
-            candnum = pw.cand_num
-            resultstr = pw.result_string
-            movstr = pw.mov_string
-            if resultstr == "" and movstr == "":
-                continue
-            resultlist = resultstr.split(",")
-            movlist = movstr.split(",")
-            tempResults = []
-            algonum = len(getListPollAlgorithms())
-            if len(resultlist) < candnum*algonum:
-                algonum = 7
-            if len(resultlist) > 0:
-                for x in range(0, algonum):
-                    tempList = []
-                    for y in range(x*candnum, (x+1)*candnum):
-                        tempList.append(resultlist[y])
-                    tempResults.append(tempList)
-            obj['vote_results'] = tempResults
-            tempMargin = []
-            for margin in movlist:
-                tempMargin.append(margin)
-            obj['margin_victory'] = tempMargin
-            ctx['previous_winners'].append(obj)
+            try:
+                obj = {}
+                obj['title'] = str(pw.timestamp.time())
+                candnum = pw.cand_num
+                resultstr = pw.result_string
+                movstr = pw.mov_string
+                if resultstr == "" and movstr == "":
+                    continue
+                resultlist = resultstr.split(",")
+                movlist = movstr.split(",")
+                tempResults = []
+                algonum = len(getListPollAlgorithms())
+                if len(resultlist) < candnum*algonum:
+                    algonum = 7
+                if len(resultlist) > 0:
+                    for x in range(0, algonum):
+                        tempList = []
+                        for y in range(x*candnum, (x+1)*candnum):
+                            tempList.append(resultlist[y])
+                        tempResults.append(tempList)
+                obj['vote_results'] = tempResults
+                tempMargin = []
+                for margin in movlist:
+                    tempMargin.append(margin)
+                obj['margin_victory'] = tempMargin
+                ctx['previous_winners'].append(obj)
+            except Exception as e:
+                print(f"  - ERROR processing previous result {pw.id}: {e}")
+                
+        print("[VoteResultsView] get_context_data FINISHED successfully.")
         return ctx
 
 # get a list of algorithms supported by the system
@@ -2411,29 +2498,48 @@ def getVoteResults(latest_responses, cand_map):
     if pollProfile.getElecType() != "soc" and pollProfile.getElecType() != "toc":
         return []
 
+    print(">>> Starting mechanism calculations... <<<")
     scoreVectorList = []
+    print(">>> Calculating Plurality... <<<")
     scoreVectorList.append(MechanismPlurality().getCandScoresMap(pollProfile))
+    print(">>> Calculating Borda... <<<")
     scoreVectorList.append(MechanismBorda().getCandScoresMap(pollProfile))
+    print(">>> Calculating Veto... <<<")
     scoreVectorList.append(MechanismVeto().getCandScoresMap(pollProfile))
+    print(">>> Calculating K-Approval... <<<")
     scoreVectorList.append(MechanismKApproval(3).getCandScoresMap(pollProfile))
+    print(">>> Calculating Simplified Bucklin... <<<")
     scoreVectorList.append(MechanismSimplifiedBucklin().getCandScoresMap(pollProfile))
+    print(">>> Calculating Copeland... <<<")
     scoreVectorList.append(MechanismCopeland(1).getCandScoresMap(pollProfile))
+    print(">>> Calculating Maximin... <<<")
+    scoreVectorList.append(MechanismMaximin().getCandScoresMap(pollProfile))
+    print(">>> Calculating Maximin (Duplicate)... <<<")
     scoreVectorList.append(MechanismMaximin().getCandScoresMap(pollProfile))
     scoreVectorList.append(MechanismMaximin().getCandScoresMap(pollProfile))
 
     #STV, Baldwin, Coombs give list of integers as output
+    print(">>> Calculating STV... <<<")
     stv = MechanismSTV().STVwinners(pollProfile)
+    print(">>> Calculating Baldwin... <<<")
     baldwin = MechanismBaldwin().baldwin_winners(pollProfile)
+    print(">>> Calculating Coombs... <<<")
     coombs = MechanismCoombs().coombs_winners(pollProfile)
     #print("test8")
+    print(">>> Calculating Black... <<<")
     black = MechanismBlack().black_winner(pollProfile)
     #print("test7")
+    print(">>> Calculating Ranked Pairs... <<<")
     ranked = MechanismRankedPairs().ranked_pairs_cowinners(pollProfile)
+    print(">>> Calculating Plurality Runoff... <<<")
     pwro = MechanismPluralityRunOff().PluRunOff_cowinners(pollProfile)
+    print(">>> Calculating Borda Mean... <<<")
     bordamean = MechanismBordaMean().Borda_mean_winners(pollProfile)
+    print(">>> Calculating Simulated Approval... <<<")
     simapp, sim_scores = MechanismBordaMean().simulated_approval(pollProfile)
     # print("pwro=", pwro)
     #print("test6")
+    print(">>> Translating winners... <<<")
     scoreVectorList.append(translateWinnerList(stv, cand_map))
     scoreVectorList.append(translateWinnerList(baldwin, cand_map))
     scoreVectorList.append(translateWinnerList(coombs, cand_map))
@@ -2445,15 +2551,20 @@ def getVoteResults(latest_responses, cand_map):
 
     #for Mixtures
     #print("test1")
+    print(">>> Preparing for Mixtures... <<<")
     rankings = pollProfile.getOrderVectorsEGMM()
     m = len(rankings[0])
     #print("test2")
+    print(">>> Calculating EGMM Mixtures (k=1)... <<<")
     mixtures_pl1 = egmm_mixpl(rankings, m, k=1, itr=10)[0].tolist()
     #print("test3")
+    print(">>> Calculating EGMM Mixtures (k=2)... <<<")
     mixtures_pl2 = egmm_mixpl(rankings, m, k=2, itr=10).tolist()
     #print("test4")
+    print(">>> Calculating EGMM Mixtures (k=3)... <<<")
     mixtures_pl3 = egmm_mixpl(rankings, m, k=3, itr=10).tolist()
     #print("test5")
+    print(">>> All calculations finished! <<<")
     #gmm = GMMMixPLAggregator(list(pollProfile.cand_map.values()), use_matlab=False)
 
     return scoreVectorList, mixtures_pl1, mixtures_pl2, mixtures_pl3
@@ -2555,22 +2666,38 @@ def getShadeValues(scoreVectorList):
 # List<Response> latest_responses
 # return List<int> marginList
 def getMarginOfVictory(latest_responses, cand_map):
+    print("    [getMarginOfVictory] Starting...")
     pollProfile = getPollProfile(latest_responses, cand_map)
     if pollProfile == None:
+        print("    [getMarginOfVictory] pollProfile is None")
         return []
 
     #make sure no incomplete results are in the votes
     if pollProfile.getElecType() != "soc" and pollProfile.getElecType() != "toc":
+        print(f"    [getMarginOfVictory] Unsupported ElecType: {pollProfile.getElecType()}")
         return []
+        
     marginList = []
     for x in range(0,len(getListPollAlgorithms())):
         marginList.append(-1)
-    marginList[0] = MechanismPlurality().getMov(pollProfile)
-    marginList[1] = MechanismBorda().getMov(pollProfile)
-    marginList[2] = MechanismVeto().getMov(pollProfile)
-    marginList[3] = MechanismKApproval(3).getMov(pollProfile)
-    marginList[4] = MechanismSimplifiedBucklin().getMov(pollProfile)
-    #marginList[12] = MechanismPluralityRunOff().getMov(pollProfile)
+        
+    print("    [getMarginOfVictory] Calculating margins...")
+    try:
+        print("      - Plurality MoV...")
+        marginList[0] = MechanismPlurality().getMov(pollProfile)
+        print("      - Borda MoV...")
+        marginList[1] = MechanismBorda().getMov(pollProfile)
+        print("      - Veto MoV...")
+        marginList[2] = MechanismVeto().getMov(pollProfile)
+        print("      - K-Approval MoV...")
+        marginList[3] = MechanismKApproval(3).getMov(pollProfile)
+        print("      - Simplified Bucklin MoV...")
+        marginList[4] = MechanismSimplifiedBucklin().getMov(pollProfile)
+        #marginList[12] = MechanismPluralityRunOff().getMov(pollProfile)
+        print("    [getMarginOfVictory] Calculations complete.")
+    except Exception as e:
+        print(f"    [getMarginOfVictory] ERROR during MoV calculation: {e}")
+        traceback.print_exc()
 
     return marginList
 
@@ -3774,25 +3901,34 @@ def vote(request, question_id):
 # List<List<String>> prefOrder
 def buildResponseDict(response, question, prefOrder):
     d = {}
+    print(f"\n>>> buildResponseDict CALLED for Question ID: {question.id} <<<")
+    print(f">>> prefOrder received: {prefOrder} <<<")
 
     if prefOrder is None:
+        print(">>> prefOrder is None, returning empty dict <<<")
         return d
     # find ranking user gave for each item under the question
     item_num = 1
+    print(f">>> Items in question: {question.item_set.all()} <<<")
     for item in question.item_set.all():
+        print(f">>> Processing Item: {item} <<<")
         rank = 1
         #Flag for examining the case when new choices are added to poll after poll starts
         flag = True
         for l in prefOrder:
             string = "item" + str(item)
-            if string in l:
+            # if string in l:
+            print(f">>> Checking if '{string}' is in {l} <<<")
+            if l[0].get("name") == string:
                 d[item] = rank
                 #If the item is found in preforder, the set flag to false
                 flag = False
+                print(f"    - Item '{item}' FOUND at Rank {rank}")
                 break
             rank += 1
         if flag:
             d[item] = 1000
+            print(f"    - Item '{item}' NOT FOUND. Assigning default rank 1000")
         # if arrayIndex == -1:
         #     # set value to lowest possible rank
         #     d[item] = question.item_set.all().count()
@@ -3801,6 +3937,7 @@ def buildResponseDict(response, question, prefOrder):
         #     rank = (prefOrder.index("item" + str(item))) + 1
         #     # add pref to response dict
         #     d[item] = rank
+    print(f">>> Final mapped ranks for DB: {d} <<<\n")
     return d
 
 def interpretResponseDict(dict):
