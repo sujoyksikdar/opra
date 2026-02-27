@@ -12,7 +12,6 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from django.utils import timezone
 from django.template import RequestContext
-from django.shortcuts import render_to_response
 from django.contrib.auth import authenticate, login,logout
 from django.contrib.auth.decorators import login_required
 from django.core import mail
@@ -103,7 +102,7 @@ def interpretRecordForDownload(record):
                         each_record.append("Submit")
                         each_record.append(str1[1:])
                     elif str1.find("||") == -1:
-                        each_record.append("Move All")
+                        each_record.append("Accept This Order")
                         each_record.append(str1)
                     else:
                         str2 = ""
@@ -161,7 +160,7 @@ def interpretRecord(record):
                         str2 = "Clicked submit at time " + str1[1:] + "."
                         record_arr.append(str2)
                     elif str1.find("||") == -1:
-                        str2 = "Clicked move all at time " + str1 + "."
+                        str2 = "Clicked accept this order at time " + str1 + "."
                         record_arr.append(str2)
                     else:
                         clear_arr = str1.split("||")
@@ -217,6 +216,7 @@ def interpretSliderStar(record):
     return (slider)
     
 def downloadRecord(request, question_id):
+    print('in downloadRecord')
     response = HttpResponse(content_type='text/csv')
     question = get_object_or_404(Question,pk=question_id)
     records = question.uservoterecord_set.all()
@@ -228,6 +228,7 @@ def downloadRecord(request, question_id):
     return response
 
 def downloadAllRecord(request, user_id):
+    print('in downloadAllRecord')
     user = get_object_or_404(User,pk=user_id)
     response = HttpResponse(content_type='text/csv')
     records = []
@@ -255,9 +256,26 @@ def downloadAllRecord1(request, user_id):
                 writer.writerow(r)
             writer.writerow([])
     return response
-            
-    
-    
+
+def downloadLatestVotes(request, question_id):
+    response = HttpResponse(content_type='text/json')
+    question = get_object_or_404(Question,pk=question_id)
+    response_set = question.response_set.filter(active=1).order_by('-timestamp')
+    records = []
+    for r in response_set:
+        record = {}
+        if None == r.user:
+            record["username"] = None
+            record["email"] = None
+        else:
+            record["username"] = r.user.username
+            record["email"] = r.user.email
+        record["question_id"] = r.question.id
+        record["timestamp"] = str(r.timestamp)
+        record["behavior_data"] = r.behavior_data
+        records.append(record)
+    return JsonResponse(records, safe=False)
+
 class RecordView(generic.DetailView):
     model = Question
     template_name = 'polls/record.html'
@@ -267,7 +285,19 @@ class RecordView(generic.DetailView):
         records = self.object.response_set.all()
         interpreted_records = []
         for r in records:
-            interpreted_records.append(r.behavior_data)
+            try:
+                record_data = json.loads(r.behavior_data)
+                # Format the JSON data for better display
+                if isinstance(record_data, dict):
+                    # Add more metadata for display purposes
+                    if hasattr(r, 'user') and r.user:
+                        record_data['user'] = r.user.username
+                    record_data['timestamp'] = str(r.timestamp)
+                    record_data['device'] = r.device if hasattr(r, 'device') else 'Unknown'
+                interpreted_records.append(json.dumps(record_data, indent=4))
+            except (ValueError, TypeError):
+                # If the behavior_data is not valid JSON or is empty, just add it as is
+                interpreted_records.append(r.behavior_data)
         ctx['user_records'] = interpreted_records
         return ctx
 
@@ -331,9 +361,25 @@ def downloadParticipants(request):
         dic["current_poll"] = par.userprofile.cur_poll
         result.append(dic)
     return JsonResponse(result, safe=False)
+
+def downloadallocations(request):
+    all_poll = list(Question.objects.filter(question_type = 2).order_by('-pub_date'))
+    # .question_set.all()
+    result = []
+    for poll in all_poll:
+        dic = {}
+        dic["id"] = poll.id
+        dic["title"] = poll.question_text
+        dic["time_creation"] = str(poll.pub_date)
+        dic["UI"] = getUIs(poll)
+        dic["description"] = poll.question_desc
+        dic["alternatives"] = list(poll.item_set.all().values_list("item_text",flat=True))
+        result.append(dic)
+    return JsonResponse(result, safe=False)
     
 def downloadPolls(request):
-    all_poll = User.objects.get(username="opraexp").question_set.all()
+    all_poll = list(Question.objects.filter(question_type = 1).order_by('-pub_date'))
+    # .question_set.all()
     result = []
     for poll in all_poll:
         dic = {}
@@ -347,6 +393,7 @@ def downloadPolls(request):
     return JsonResponse(result, safe=False)
     
 def downloadRecords(request):
+    print('in downloadRecords')
     all_record = UserVoteRecord.objects.all()
     result = []
     for record in all_record:
@@ -376,6 +423,7 @@ def downloadRecords(request):
     return JsonResponse(result, safe=False)
 
 def downloadSpecificRecords(request):
+    # return JsonResponse({})
     all_responses = []
     result = []
     polls = getMturkPollID()
@@ -397,8 +445,6 @@ def downloadSpecificRecords(request):
             dic["user_id"] = 0
         result.append(dic)
     return JsonResponse(result, safe=False)
-        
-
 
 def getMturkPollID():
     polls = list(range(180,190))
@@ -418,5 +464,10 @@ def getUIs(poll):
         result.append("yesno")
     if poll.yesno2_enabled:
         result.append("yesno_grid")
+    if(poll.budgetUI_enabled):
+        result.append("budget_ui")
+    if(poll.ListUI_enabled):
+        result.append("list_ui")
+    if(poll.infiniteBudgetUI_enabled):
+        result.append("infinite_budget_ui")
     return result
-    

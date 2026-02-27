@@ -6,7 +6,6 @@ from .models import *
 
 from django.utils import timezone
 from django.template import RequestContext
-from django.shortcuts import render_to_response
 from django.contrib.auth import authenticate, login,logout
 from django.contrib.auth.decorators import login_required
 from django.core import mail
@@ -387,7 +386,7 @@ class DependencyView(views.generic.DetailView):
 
         if defaultResponse != None:
             ctx["default_response"] = getCurrentSelection(defaultResponse)        
-        ctx['items'] = self.get_order(ctx)        
+        ctx['items'] = self.get_order(ctx)
         return ctx
 
 # get the item that is currently selected for each subpoll

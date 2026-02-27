@@ -1,25 +1,263 @@
 {% extends 'polls/base.html' %}
 {% load mathfilters %}
-{% load staticfiles %}
+{% load static%}
+{% load i18n %}
 {% block extra_head %}
-
+<style>
+    .download-section {
+        background-color: #f5f5f5;
+        padding: 20px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .download-section .btn {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    .record-card {
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .record-json {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        overflow-x: auto;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .record-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .record-table th {
+        background-color: #f0f0f0;
+        padding: 8px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+    .record-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+    h3 {
+        color: #333;
+        margin-top: 30px;
+        margin-bottom: 15px;
+    }
+    .collapse-btn {
+        cursor: pointer;
+        color: #007bff;
+        margin-right: 15px;
+    }
+    .collapse-btn:hover {
+        text-decoration: underline;
+    }
+    .download-json-btn {
+        margin-left: 10px;
+        font-size: 0.8rem;
+        padding: 3px 8px;
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add collapsible functionality to record cards
+    document.querySelectorAll('.collapse-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById(this.getAttribute('data-target'));
+            if (target.style.display === 'none' || !target.style.display) {
+                target.style.display = 'block';
+                this.textContent = 'Hide Details';
+            } else {
+                target.style.display = 'none';
+                this.textContent = 'Show Details';
+            }
+        });
+    });
+    
+    // Handle JSON downloads for individual records
+    document.querySelectorAll('.download-json-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const jsonElement = document.querySelector(`#${targetId} .record-json`);
+            
+            if (jsonElement) {
+                try {
+                    // Try to parse the JSON data
+                    let jsonData = jsonElement.textContent.trim();
+                    const parsedData = JSON.parse(jsonData);
+                    
+                    // Create a Blob with the JSON data
+                    const blob = new Blob([JSON.stringify(parsedData, null, 2)], { type: 'application/json' });
+                    // Create an object URL for the Blob
+                    const objUrl = URL.createObjectURL(blob);
+                    // Create a temporary anchor element
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = 'allocation_' + targetId + '.json';
+                    // Append to the document
+                    document.body.appendChild(a);
+                    // Click the link programmatically
+                    a.click();
+                    // Clean up
+                    URL.revokeObjectURL(objUrl);
+                    document.body.removeChild(a);
+                } catch (err) {
+                    console.error('Error parsing or downloading JSON:', err);
+                    alert('Could not download data as JSON. Please check console for details.');
+                }
+            }
+        });
+    });
+    
+    // Handle JSON downloads for allocations
+    document.getElementById('downloadAllocationsButton').addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = this.getAttribute('href');
+        
+        // Get the current allocation data from the page if available
+        const currentData = document.querySelector('.record-json')?.textContent;
+        
+        if (currentData) {
+            try {
+                // Try to parse the current data
+                const parsedData = JSON.parse(currentData);
+                // Create a Blob with the JSON data
+                const blob = new Blob([JSON.stringify(parsedData, null, 2)], { type: 'application/json' });
+                // Create an object URL for the Blob
+                const objUrl = URL.createObjectURL(blob);
+                // Create a temporary anchor element
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = 'allocation_' + new Date().getTime() + '.json';
+                // Append to the document
+                document.body.appendChild(a);
+                // Click the link programmatically
+                a.click();
+                // Clean up
+                URL.revokeObjectURL(objUrl);
+                document.body.removeChild(a);
+                return;
+            } catch (err) {
+                console.log('Could not parse current data, fetching from server instead');
+            }
+        }
+        
+        // If no current data or parsing fails, fetch from server
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                // Create a Blob with the JSON data
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                // Create an object URL for the Blob
+                const objUrl = URL.createObjectURL(blob);
+                // Create a temporary anchor element
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = 'allocations.json';
+                // Append to the document
+                document.body.appendChild(a);
+                // Click the link programmatically
+                a.click();
+                // Clean up
+                URL.revokeObjectURL(objUrl);
+                document.body.removeChild(a);
+            })
+            .catch(error => console.error('Error downloading JSON:', error));
+    });
+    
+    // Handle JSON downloads for latest votes
+    document.getElementById('downloadLatestVotesButton').addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = this.getAttribute('href');
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                // Parse and flatten the nested data structure
+                const processedData = data.map(record => {
+                    try {
+                        // Try to parse the behavior_data string into an object
+                        const behaviorData = JSON.parse(record.behavior_data);
+                        
+                        // Create a flattened record with the important data
+                        return {
+                            username: record.username,
+                            email: record.email,
+                            question_id: record.question_id,
+                            timestamp: record.timestamp,
+                            submitted_ranking: behaviorData.submitted_ranking || [],
+                            initial_ranking: behaviorData.initial_ranking || [],
+                            platform: behaviorData.platform || record.platform || 'Unknown',
+                            time_submission: behaviorData.time_submission || null,
+                            num_courses: behaviorData.num_courses || null
+                        };
+                    } catch (err) {
+                        // If we can't parse the behavior_data, return the original record
+                        console.warn('Could not parse behavior_data for a record:', err);
+                        return record;
+                    }
+                });
+                
+                // Create a Blob with the processed JSON data
+                const blob = new Blob([JSON.stringify(processedData, null, 2)], { type: 'application/json' });
+                // Create an object URL for the Blob
+                const objUrl = URL.createObjectURL(blob);
+                // Create a temporary anchor element
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = 'latest_votes.json';
+                // Append to the document
+                document.body.appendChild(a);
+                // Click the link programmatically
+                a.click();
+                // Clean up
+                URL.revokeObjectURL(objUrl);
+                document.body.removeChild(a);
+            })
+            .catch(error => console.error('Error downloading latest votes JSON:', error));
+    });
+});
+</script>
 {% endblock %}
 
 {% block content %}
-<br/>
+<h2 class="mb-4">Record View - {{ question.question_text }}</h2>
 
-<a href="{% url 'polls:downloadrecord' question.id %}" class= "btn btn-primary">Download as csv</a>
-<a href="{% url 'polls:downloadpolls' %}" class= "btn btn-primary">Download polls</a>
-<a href="{% url 'polls:downloadparticipants' %}" class= "btn btn-primary">Download participants</a>
-<a href="{% url 'polls:downloadallrecords' %}" class= "btn btn-primary">Download all vote records</a>
-<a href="{% url 'polls:downloadspecrecords' %}" class= "btn btn-primary">Download new vote records</a>
+<div class="download-section">
+    <h3>Download Options</h3>
 
+    {% if question.question_type == 1 %} 
+        <a href="{% url 'polls:downloadpolls' %}" class="btn btn-primary">Download polls</a> 
+    {% elif question.question_type == 2 %} 
+        <a href="{% url 'polls:downloadallocations' %}" id="downloadAllocationsButton" class="btn btn-primary">Download allocations</a> 
+    {% endif %}
 
-<ul>
-	{% for record in user_records%}
-	<p>{{record}}</p>
+    <a href="{% url 'polls:downloadlatestvotes' question.id %}" id="downloadLatestVotesButton" class="btn btn-primary">Download latest votes</a>
+</div>
 
-	
-	{% endfor %}
-</ul>
+<h3>{{ user_records|length }} Record(s) Found</h3>
+
+{% if user_records %}
+    {% for record in user_records %}
+        <div class="record-card">
+            <h4>Record #{{ forloop.counter }} 
+                <span class="collapse-btn" data-target="record-data-{{ forloop.counter }}">Show Details</span>
+                <button class="btn btn-sm btn-secondary download-json-btn" data-target="record-data-{{ forloop.counter }}">Download as JSON</button>
+            </h4>
+            
+            <div id="record-data-{{ forloop.counter }}" style="display: none;">
+                <div class="record-json">{{ record|safe }}</div>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info">No records found for this item.</div>
+{% endif %}
 {% endblock %}

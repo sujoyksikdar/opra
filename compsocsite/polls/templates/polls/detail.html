@@ -1,7 +1,8 @@
 {% extends 'polls/base.html' %}
 {% load mathfilters %}
-{% load staticfiles %}
+{% load static%}
 {% block extra_head %}
+{% load poll_extra %}
 <!-- Google Tag Manager -->
 <noscript>
     <iframe src="//www.googletagmanager.com/ns.html?id=GTM-59SLDM" height="0" width="0" style="display:none;visibility:hidden"></iframe>
@@ -47,7 +48,7 @@
 {% if question.status == 2 %}
     {% if question.open == 0 and request.user.username == "" %}
         <!-- Poll is not open for anonymous voting and the current user isn't logged in -->
-        You have no permission to vote on this poll.
+        You do not seem to have acquired the right permissions. Try logging in.
     {% elif question.open == 2 and request.user.username == "" %}
         <!-- Poll is not open for anonymous voting and the current user isn't logged in -->
 
@@ -94,7 +95,7 @@
 	
     {% elif question.open == 0 and request.user not in question.question_voters.all %}
         <!-- Poll is not open for anonymous voting and the current user isn't invited -->
-        You are not invited to this poll.
+        Sorry, you do not seem to be invited to participate, and an invitation seems necessary. Please contact the administrator of this poll or assignment instance.
     {% else %}
 
     <!-- Title panel -->
@@ -119,11 +120,16 @@
                 <div class="col-md-10" {% if request.flavour == "mobile" %} style="width:100%;" {% endif %}>
                     <h4 {% if request.flavour == "mobile" %} style="width:70%;display:inline;" {% endif %}><span class="caret" style="color:#377BB5;"></span> 
                     	{{ question.question_text }} 
-              
-						{% if currentSelection %}
-                            <a href="{% url 'polls:voteresults' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" >Current Winners</a>
-                    {% endif %}
-					</h4>
+                            <!-- if currentSelection and question.question_type == 1 -->
+                            {% if question.question_type == 1 and question|can_show_results%}
+                                <a href="{% url 'polls:voteresults' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" >Poll Winners</a>
+                            {% endif %}
+                        
+                        {% if question.question_type == 2 and question|can_show_results%}
+                            <a href="{% url 'polls:allocate_results' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" style="margin-right: 5px;">Allocation Results</a>
+                        {% endif %}
+                        
+                        </h4>
 					
                 </div>
             </div> </a>
@@ -141,7 +147,7 @@
         </div>
     </div>
 	
-    <div id="tabs" clsss="row">
+    <div id="tabs" class="row">
 		{% if not question.ui_number == 1%}
         <ul>
             {% if question.twocol_enabled %}<li><a href="#twoColSection" onclick="changeMethod(1);">Two Columns</a></li> {% endif %}
@@ -150,6 +156,9 @@
             {% if question.star_enabled %}<li><a href="#starsSection" onclick="changeMethod(4);">Stars</a></li> {% endif %}
             {% if question.yesno_enabled %}<li><a href="#yesNoSection" onclick="changeMethod(5);">Yes/No</a></li> {% endif %}
             {% if question.single_enabled %}<li><a href="#singleSection" onclick="changeMethod(6);">Single</a></li> {% endif %}
+            {% if question.budgetUI_enabled %}<li><a href="#budgetUI" onclick="changeMethod(7);">Budget UI</a></li> {% endif %}
+            {% if question.ListUI_enabled %}<li><a href="#listUISection" onclick="changeMethod(8);">List UI</a></li> {% endif %}
+            {% if question.infiniteBudgetUI_enabled %}<li><a href="#InfiniteBudgetUISection" onclick="changeMethod(9);">InfiniteBudget UI</a></li> {% endif %}
         </ul>
 		{% endif %}
             {% if question.twocol_enabled %}{% include "polls/voteOptions/twoCol.html" %}{% endif %}
@@ -166,6 +175,9 @@
                     {% include "polls/voteOptions/yesNo.html" %}
                 {% endif %}
             {% endwith %}
+            {% if question.budgetUI_enabled %}{% include "polls/voteOptions/budgetUI.html" %}{% endif %}
+            {% if question.ListUI_enabled %}{% include "polls/voteOptions/listUI.html" %}{% endif %}
+            {% if question.infiniteBudgetUI_enabled %}{% include "polls/voteOptions/infiniteBudget.html" %}{% endif %}
     </div>
 
     {% endif %}
@@ -192,10 +204,21 @@
     });
     //set the webpage for ajax to report user behavior
     submissionURL="{% url 'polls:record' question.id%}";
+    var previouslySubmitted = {{ submitted_ranking|default:"null" |safe }};
 	
-
     $(function(){
         $(document).ready(function() {
+            
+            // To remove the additional '/' at the starting of the image URL
+            var imagesWithClass = document.getElementsByClassName('item');
+            for (var i = 0; i < imagesWithClass.length; i++) {
+                var staticIndex = imagesWithClass[i].src.indexOf('static');
+                if(imagesWithClass[i].src[staticIndex-1] === '/' && imagesWithClass[i].src[staticIndex-2] === '/' ) {
+                    imagesWithClass[i].src = imagesWithClass[i].src.slice(0,[staticIndex-1]) 
+                    + imagesWithClass[i].src.slice([staticIndex])
+                }
+            }
+
 			$(".dropdown-toggle").dropdown();
 
 			$('[data-toggle="tooltip"]').tooltip();
@@ -209,6 +232,18 @@
             if(document.getElementById("sliderSection") != null){ method = 3; methodIndicator = "slider";}
             if(document.getElementById("oneColSection") != null){ method = 2; methodIndicator = "one_column";}
             if(document.getElementById("twoColSection") != null){ method = 1; methodIndicator = "two_column";}
+            if(document.getElementById("budgetUI") != null){ method = 7; methodIndicator = "budget_ui";}
+            if(document.getElementById("listUISection") != null){ method = 8; methodIndicator = "list_ui";}
+            if(document.getElementById("InfiniteBudgetUISection") != null) { method = 9; methodIndicator = "infinite_budget_ui" }
+            method = 1;
+
+            // for allocation UIs:
+            {% if question.twocol_enabled %} changeMethod(1);{% endif %}
+            {% if question.onecol_enabled %} changeMethod(2);{% endif %}            
+            {% if question.budgetUI_enabled %} changeMethod(7);{% endif %}
+            {% if question.ListUI_enabled %} changeMethod(8);{% endif %}
+            {% if question.infiniteBudgetUI_enabled %} changeMethod(9);{% endif %}
+            method = 1;
 
             //alert(method);
 

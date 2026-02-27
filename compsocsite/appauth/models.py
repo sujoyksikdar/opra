@@ -2,17 +2,20 @@ from __future__ import unicode_literals
 
 import datetime
 import django
+import secrets
 from django import forms
 from django.db import models
 from django.utils import timezone
-from django.utils.encoding import python_2_unicode_compatible
+from six import python_2_unicode_compatible
 from django.contrib.auth.models import User
 
 class UserProfile(models.Model):
     # This line is required. Links UserProfile to a User model instance.
     user = models.OneToOneField(User,on_delete=models.CASCADE,)
+    profile_pic = models.ImageField(upload_to='static/img/profile_pics', blank=True, null=True)
     time_creation = models.DateTimeField()
     displayPref = models.IntegerField(default=1)
+    display_user_info = models.IntegerField(default=1)
     emailInvite = models.BooleanField(default=False)
     emailDelete = models.BooleanField(default=False)
     emailStart = models.BooleanField(default=False)
@@ -27,6 +30,8 @@ class UserProfile(models.Model):
     finished = models.BooleanField(default=False)
     numq= models.IntegerField(default=0)
     exp_data = models.TextField(default="{}")
+    salt = models.CharField(max_length=1000, blank=True, null=True)
+    is_code_user = models.BooleanField(default=False)
     # Override the __unicode__() method to return out something meaningful!
     def __unicode__(self):
         return self.user.username

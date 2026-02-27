@@ -5,35 +5,51 @@ import datetime
 import os
 import time
 import collections
+import csv, io, secrets, string
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseRedirect, HttpResponse, HttpRequest
 from django.urls import reverse
 from django import views
 from django.db.models import Q
+from django.utils.decorators import method_decorator
+from django.utils.dateparse import parse_datetime
+from functools import wraps
 
 from django.utils import timezone
+from django.core.cache import cache
 from django.template import RequestContext
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core import mail
 from prefpy.mechanism import *
-from prefpy.allocation_mechanism import *
 from prefpy.gmm_mixpl import *
 from prefpy.egmm_mixpl import *
-from .email import EmailThread, setupEmail
+from .email import EmailThread, emailSettings, setupEmail
 from django.conf import settings
 from multipolls.models import *
+from prefpy.allocation_properties import is_po
 
 from . import opra_crypto
 import json
 import threading
 import itertools
 import numpy as np
+import pandas as pd
 import random
 import csv
+import ast
+import hashlib
+import logging
+import traceback
+
+# logger for cache
+logger = logging.getLogger(__name__)
+from io import TextIOWrapper
+
+active_polls = []
 
 class IndexView(views.generic.ListView):
     """
@@ -49,7 +65,18 @@ class IndexView(views.generic.ListView):
         
         return Question.objects.all().order_by('-pub_date')
 
+def block_code_users(redirect_url="/polls/regular_polls/code"):
+    """To block code-based users from accessing certain views."""
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            if request.session.get("is_code_user"):
+                return redirect(redirect_url)
+            return view_func(request, *args, **kwargs)
+        return _wrapped
+    return decorator
 
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class RegularPollsView(views.generic.ListView):
     """
     Define regular polls view, inheriting ListView class, which specifies a context variable.
@@ -59,6 +86,7 @@ class RegularPollsView(views.generic.ListView):
     
     template_name = 'polls/regular_polls.html'
     context_object_name = 'question_list'
+
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
@@ -78,11 +106,12 @@ class RegularPollsView(views.generic.ListView):
         
         # sort the lists by date (most recent should be at the top)
         ctx['polls_created'] = list(Question.objects.filter(question_owner=self.request.user,
-                                                       m_poll=False).order_by('-pub_date'))
+                                    m_poll=False, question_type = 1).order_by('-pub_date'))
+        ctx['active_polls'] = list(Question.objects.filter(question_type = 1).order_by('-pub_date'))
         # get all polls current user participates in and filter out those she is the owner of
-        polls = self.request.user.poll_participated.filter(m_poll=False)
+        polls = self.request.user.poll_participated.filter(m_poll=False, question_type = 1)
         polls = polls.exclude(question_owner=self.request.user).order_by('-pub_date')
-        ctx['polls_participated'] = list(polls)
+        ctx['polls_participated'] = list(polls) # .filter(question_type = 1)
         
         # for polls in folders, do not show them in the main page
         for poll in unshown:
@@ -90,8 +119,108 @@ class RegularPollsView(views.generic.ListView):
                 ctx['polls_created'].remove(poll)
             elif poll in ctx['polls_participated']:
                 ctx['polls_participated'].remove(poll)
+
+        self.request.session['questionType'] = 1
         return ctx
 
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+class RegularAllocationView(views.generic.ListView):
+    """
+    Define regular polls view, inheriting ListView class, which specifies a context variable.
+    
+    The variables used in regular polls page are extracted from database and defined below.
+    """
+    
+    template_name = 'polls/allocation_tab.html'
+    context_object_name = 'question_list'
+    def get_queryset(self):
+        """Override function in parent class and return all questions."""
+        
+        return Question.objects.all().order_by('-pub_date')
+        
+    
+    def get_context_data(self, **kwargs):
+        """Override function in parent class and define additional context variables to be used in the page."""
+        
+        
+        ctx = super(RegularAllocationView, self).get_context_data(**kwargs)
+        # get folders
+        ctx['folders'] = Folder.objects.filter(user=self.request.user).all()
+        unshown = []
+        for folder in ctx['folders']:
+            unshown += folder.questions.all()
+        
+        # sort the lists by date (most recent should be at the top)
+        ctx['polls_created'] = list(Question.objects.filter(question_owner=self.request.user,
+                                    m_poll=False, question_type = 2).order_by('-pub_date'))
+        ctx['active_polls'] = list(Question.objects.filter(question_type = 2).order_by('-pub_date'))
+        # get all polls current user participates in and filter out those she is the owner of
+        polls = self.request.user.poll_participated.filter(m_poll=False, question_type = 2)
+        polls = polls.exclude(question_owner=self.request.user).order_by('-pub_date')
+        ctx['polls_participated'] = list(polls) # # .filter(question_type = 2)
+        
+        # for polls in folders, do not show them in the main page
+        for poll in unshown:
+            if poll in ctx['polls_created']:
+                ctx['polls_created'].remove(poll)
+            elif poll in ctx['polls_participated']:
+                ctx['polls_participated'].remove(poll)
+
+        self.request.session['questionType'] = 2
+        return ctx
+
+class CodePollsView(views.generic.ListView):
+    """
+    Polls view for code-based users.
+    Only shows 'participated in' polls.
+    """
+    template_name = 'polls/regular_polls_code.html'
+    context_object_name = 'question_list'
+
+    def get_queryset(self):
+        qid = self.request.session.get('code_question_id')
+        return Question.objects.filter(pk=qid, question_type=1).order_by('-pub_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super(CodePollsView, self).get_context_data(**kwargs)
+        qid = self.request.session.get('code_question_id')
+
+        ctx['folders'] = []
+        ctx['polls_created'] = []  
+        ctx['active_polls'] = list(Question.objects.filter(question_type=1).order_by('-pub_date'))
+        polls = Question.objects.filter(pk=qid, question_type=1)
+        ctx['polls_participated'] = list(polls)
+
+        self.request.session['questionType'] = 1
+        return ctx
+
+
+class CodeAllocationView(views.generic.ListView):
+    """
+    Allocation view for code-based users.
+    Only shows 'participated in' allocations.
+    """
+    template_name = 'polls/allocation_tab_code.html'
+    context_object_name = 'question_list'
+
+    def get_queryset(self):
+        qid = self.request.session.get('code_question_id')
+        return Question.objects.filter(pk=qid, question_type=2).order_by('-pub_date')
+
+    def get_context_data(self, **kwargs):
+        ctx = super(CodeAllocationView, self).get_context_data(**kwargs)
+        qid = self.request.session.get('code_question_id')
+
+        ctx['folders'] = []
+        ctx['polls_created'] = []  # no create
+        ctx['active_polls'] = list(Question.objects.filter(question_type=2).order_by('-pub_date'))
+        polls = Question.objects.filter(pk=qid, question_type=2)
+        ctx['polls_participated'] = list(polls)
+
+        self.request.session['questionType'] = 2
+        return ctx
+
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class RegularPollsFolderView(views.generic.DetailView):
     """Define folder view, inheriting DetailView class, which specifies a specific object."""
     
@@ -113,6 +242,7 @@ def reverseListOrder(query):
     list_query.reverse()
     return list_query
 
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class MultiPollsView(views.generic.ListView):
     """Define multi-poll view, inheriting ListView class, which specifies a context variable. """
     template_name = 'polls/m_polls.html'
@@ -154,27 +284,118 @@ class MainView(views.generic.ListView):
         ctx['poll_algorithms'] = getListPollAlgorithms()
         ctx['alloc_methods'] = getAllocMethods()
         ctx['view_preferences'] = getViewPreferences()
-
+        ctx['active_polls'] = active_polls
         return ctx
 
 
 class DemoView(views.generic.DetailView):
-    """Define demo poll, which is not used. Need more work on this."""
+    """Define demo poll for course matching functionality."""
     
     model = Question
-    template_name = 'polls/demo.html'
-
-    def get_order(self, ctx):
-        other_user_responses = self.object.response_set.reverse()
-        default_order = ctx['object'].item_set.all()
-        #random.shuffle(default_order)
+    template_name = 'events/CourseMatch/coursematchdemo.html'
+    
+    def is_student(self, email: str) -> bool:
+        # In demo mode, treat all users as students
+        return True
+    
+    def get_order_from_email(self, email: str) -> list:
+        # For demo, return empty list to use random order
+        return []
+    
+    def get_random_order(self, ctx) -> list:
+        default_order = list(ctx['object'].item_set.all())
+        random.shuffle(default_order)
         return default_order
-        #return getRecommendedOrder(other_user_responses, self.request, default_order)
+    
+    def get_order(self, ctx) -> list:
+        """Define the initial order to be displayed on the page."""
+        # For demo, always use random order
+        default_order = self.get_random_order(ctx)
+        return default_order
+    
+    def get_num_courses(self, ctx) -> int:
+        """Get the number of courses to display."""
+        # Default to 3 courses for demo if not set
+        return ctx.get('num_courses', 3)
 
     def get_context_data(self, **kwargs):
         ctx = super(DemoView, self).get_context_data(**kwargs)
-        ctx['items'] = self.get_order(ctx)
+        ctx['lastcomment'] = ""
+        ctx['demo_message'] = "This is a demo of the CourseMatchView functionality."
+
+        # Case for anonymous user
+        if self.request.user.get_username() == "":
+            if isPrefReset(self.request):
+                ctx['items'] = self.object.item_set.all()
+                return ctx
+            # check the anonymous voter
+            if 'anonymousvoter' in self.request.session and 'anonymousid' in self.request.session:
+                # sort the responses from latest to earliest
+                anon_id = self.request.session['anonymousid']
+                curr_anon_resps = self.object.response_set.filter(anonymous_id=anon_id, active=1).reverse()
+                if len(curr_anon_resps) > 0:
+                    # get the voter's most recent selection
+                    mostRecentAnonymousResponse = curr_anon_resps[0]
+                    if mostRecentAnonymousResponse.comment:
+                        ctx['lastcomment'] = mostRecentAnonymousResponse.comment
+                    ctx['currentSelection'] = getCurrentSelection(curr_anon_resps[0])
+                    ctx['unrankedCandidates'] = getUnrankedCandidates(curr_anon_resps[0])
+                    ctx['itr'] = itertools.count(1, 1)
+                    items_ano = []
+                    for item in ctx['currentSelection']:
+                        for i in item:
+                            items_ano.append(i)
+                    if not ctx['unrankedCandidates'] == None:
+                        for item in ctx['unrankedCandidates']:
+                            items_ano.append(item)
+                    ctx['items'] = items_ano
+            else:
+                # load choices in the default order
+                ctx['items'] = self.object.item_set.all()
+                # For demo, set a default number of courses
+                ctx['num_courses'] = 3
+            return ctx
+
+        # Get the responses for the current logged-in user from latest to earliest
+        currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
+
+        if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except:
+                ctx['num_courses'] = 3  # Default for demo
+            ctx['submitted_ranking'] = latest_response.behavior_data
+            if currentUserResponses[0].comment:
+                ctx['lastcomment'] = currentUserResponses[0].comment
+        else:
+            # For demo, set a default number of courses
+            ctx['num_courses'] = 3
+        
+        # reset button
+        if isPrefReset(self.request):
+            ctx['items'] = self.get_order(ctx)
+            return ctx
+
+        # check if the user submitted a vote earlier and display that for modification
+        if len(currentUserResponses) > 0 and self.request.user.get_username() != "":
+            ctx['currentSelection'] = getCurrentSelection(currentUserResponses[0])
+            ctx['itr'] = itertools.count(1, 1)
+            ctx['unrankedCandidates'] = getUnrankedCandidates(currentUserResponses[0])
+            items = []
+            for item in ctx['currentSelection']:
+                for i in item:
+                    items.append(i)
+            if not ctx['unrankedCandidates'] == None:
+                for item in ctx['unrankedCandidates']:
+                    items.append(item)
+            ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
+        else:
+            # no history so display the list of choices
+            ctx['items'] = self.get_order(ctx)
         return ctx
+    
     def get_queryset(self):
         """
         Excludes any questions that aren't published yet.
@@ -182,44 +403,173 @@ class DemoView(views.generic.DetailView):
         return Question.objects.filter(pub_date__lte=timezone.now())
 
 
-class GMView(views.generic.ListView):
-    """Define poll main page for GM week 2017."""
-    
-    template_name = 'events/GM2017/GM2017.html'
+class CourseMatchListView(views.generic.ListView):
+    # view for course match
+    """Define course match page for Fall 2025 SoC Course Assignment."""
+    template_name = 'events/CourseMatch/soccoursematchlist.html'
     context_object_name = 'question_list'
     def get_queryset(self):
         return Question.objects.all()
     def get_context_data(self, **kwargs):
-        ctx = super(GMView, self).get_context_data(**kwargs)
-        ctx['winners'] = getWinnersFromIDList(getGMPollIDLIst())
+        ctx = super(CourseMatchListView, self).get_context_data(**kwargs)
         return ctx
 
+class CourseMatchView(views.generic.DetailView):
+    """Define course match preference submission page view."""
+
+    model = Question
+    template_name = 'events/CourseMatch/soccoursematchdetail.html'
         
-class GMResultsView(views.generic.ListView):
-    """Define result page for GM week 2017."""
-
-    template_name = 'events/GM2017/GM2017results.html'
-    context_object_name = 'question_list'
-    def get_queryset(self):
-        return Question.objects.all()
-    def get_context_data(self, **kwargs):
-        ctx = super(GMResultsView, self).get_context_data(**kwargs)
-        ctx['winners'] = getWinnersFromIDList(getGMPollIDLIst())
-        return ctx
-
-
-class CSPosterView(views.generic.ListView):
-    """Define CS Poster page."""
+    def is_student(self, email: str) -> bool:
+        try:
+            with open('compsocsite/coursematch/StudentIDEmails.csv', 'r') as f:
+                email_list = pd.read_csv(f)['Email Address'].tolist()
+                if email in email_list:
+                    return True
+            return False
+        except FileNotFoundError:
+            # File not found, consider everyone a student in this case
+            return True
     
-    template_name = 'events/CSposter/CSposter.html'
-    context_object_name = 'question_list'
-    def get_queryset(self):
-        return Question.objects.all()
+    def get_order_from_email(self, email: str) -> list:
+        try:
+            with open('compsocsite/coursematch/SeedStudentPreferences.json', 'r') as f:
+                seed_prefs = json.load(f)
+                if email in seed_prefs:
+                    return seed_prefs[email]
+                else:
+                    return []
+        except (FileNotFoundError, json.JSONDecodeError):
+            # File not found or invalid JSON, return empty list
+            return []
+    
+    
+    def get_random_order(self, ctx) -> list:
+        """Generate a random ordering over the items"""
+        
+        default_order = list(ctx['object'].item_set.all())
+        random.shuffle(default_order)
+        return default_order
+
+    def get_items_dict(self, ctx) -> dict:
+        """Get a dictionary of items with their text as keys."""
+        
+        items_dict = {item.item_text.replace('\ufeff', ''): item for item in ctx['object'].item_set.all()}
+        return items_dict
+    
+    def get_order(self, ctx) -> list:
+        """Define the initial order to be displayed on the page."""
+        
+        # default_order = list(ctx['object'].item_set.all())
+        user_email = self.request.user.email
+        items_dict = self.get_items_dict(ctx)
+        default_order = []
+        if self.is_student(user_email):
+            seed_order = self.get_order_from_email(user_email)
+            if seed_order == []:
+                default_order = self.get_random_order(ctx)
+            else:
+                default_order = []
+                for item_text in seed_order:
+                    if item_text in items_dict:
+                        default_order.append(items_dict[item_text])
+        else:
+            default_order = self.get_random_order(ctx)
+        return default_order
+    
+    def get_num_courses(self, ctx) -> int:
+        """Get the number of courses to display."""
+        
+        return ctx['num_courses']
+
     def get_context_data(self, **kwargs):
-        ctx = super(CSPosterView, self).get_context_data(**kwargs)
+        ctx = super(CourseMatchView, self).get_context_data(**kwargs)
+        ctx['lastcomment'] = ""
+
+        # Get the responses for the current logged-in user from latest to earliest
+        # Only filter by user if the user is authenticated
+        if self.request.user.is_authenticated:
+            currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
+        else:
+            currentUserResponses = []
+
+        #Case for anonymous user
+        if self.request.user.get_username() == "":
+            if isPrefReset(self.request):
+                ctx['items'] = self.object.item_set.all()
+                return ctx
+            # check the anonymous voter
+            if 'anonymousvoter' in self.request.session and 'anonymousid' in self.request.session:
+                # sort the responses from latest to earliest
+                anon_id = self.request.session['anonymousid']
+                curr_anon_resps = self.object.response_set.filter(anonymous_id=anon_id, active=1).reverse()
+                if len(curr_anon_resps) > 0:
+                    # get the voter's most recent selection
+                    mostRecentAnonymousResponse = curr_anon_resps[0]
+                    if mostRecentAnonymousResponse.comment:
+                        ctx['lastcomment'] = mostRecentAnonymousResponse.comment
+                    ctx['currentSelection'] = getCurrentSelection(curr_anon_resps[0])
+                    ctx['unrankedCandidates'] = getUnrankedCandidates(curr_anon_resps[0])
+                    ctx['itr'] = itertools.count(1, 1)
+                    items_ano = []
+                    for item in ctx['currentSelection']:
+                        for i in item:
+                            items_ano.append(i)
+                    if not ctx['unrankedCandidates'] == None:
+                        for item in ctx['unrankedCandidates']:
+                            items_ano.append(item)
+                    ctx['items'] = items_ano
+            else:
+                # load choices in the default order
+                ctx['items'] = self.object.item_set.all()
+                # set number of courses to display            
+            return ctx
+
+        # Set default num_courses
+        ctx['num_courses'] = 3
+
+        if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except (KeyError, json.JSONDecodeError):
+                pass  # Keep default value if error
+            ctx['submitted_ranking'] = latest_response.behavior_data
+            if currentUserResponses[0].comment:
+                ctx['lastcomment'] = currentUserResponses[0].comment
+        
+        # reset button
+        if isPrefReset(self.request):
+            ctx['items'] = self.get_order(ctx)
+            return ctx
+
+        # check if the user submitted a vote earlier and display that for modification
+        if len(currentUserResponses) > 0 and self.request.user.get_username() != "":
+            ctx['currentSelection'] = getCurrentSelection(currentUserResponses[0])
+            ctx['itr'] = itertools.count(1, 1)
+            ctx['unrankedCandidates'] = getUnrankedCandidates(currentUserResponses[0])
+            items = []
+            for item in ctx['currentSelection']:
+                for i in item:
+                    items.append(i)
+            if not ctx['unrankedCandidates'] == None:
+                for item in ctx['unrankedCandidates']:
+                    items.append(item)
+            ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
+
+        else:
+            # no history so display the list of choices
+            ctx['items'] = self.get_order(ctx)
         return ctx
+    
+    def get_queryset(self):
+        """
+        Excludes any questions that aren't published yet.
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now())
 
-
+@block_code_users("/polls/regular_polls/code")
 def AddStep1View(request):
     """
     Define the first step in creating poll.
@@ -260,7 +610,7 @@ def AddStep1View(request):
         return HttpResponseRedirect(reverse('polls:AddStep2', args=(question.id,)))
     return render(request,'polls/add_step1.html', {})
 
-
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class AddStep2View(views.generic.DetailView):
     """Define step 2 in creating poll: adding choices."""
     
@@ -273,21 +623,55 @@ class AddStep2View(views.generic.DetailView):
     def get_queryset(self):
         return Question.objects.filter(pub_date__lte=timezone.now())
 
-
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class AddStep3View(views.generic.DetailView):
     """Defind step 3 in creating poll: inviting voters."""
 
     model = Question
     template_name = 'polls/add_step3.html'
+
+    def getUsersFromLatestCSV(self, recentCSVText, existingUsers):
+        registeredUsers, unRegisteredUsers=[],[]
+        if(recentCSVText is not None): 
+            userIDsFromCSV = recentCSVText.split(",")
+            userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
+
+            existingUserIDs = [user.username for user in existingUsers]
+
+            for userID in userIDsFromCSV:
+                if userID in existingUserIDs:
+                    registeredUsers.append(userID)
+                else:
+                    unRegisteredUsers.append(userID)
+
+        return registeredUsers, unRegisteredUsers
+
     def get_context_data(self, **kwargs):
         ctx = super(AddStep3View, self).get_context_data(**kwargs)
-        ctx['users'] = User.objects.all()
+        ctx['users'] = User.objects.filter(userprofile__is_code_user=False)
         ctx['groups'] = Group.objects.all()
+        
+        curr_question = ctx['question']
+        ctx['recentCSVText'] = curr_question.recentCSVText
+        registeredUsers, unRegisteredUsers = self.getUsersFromLatestCSV(curr_question.recentCSVText, ctx['users'])
+        ctx['registeredUsers'] = registeredUsers
+        ctx['unRegisteredUsers'] = unRegisteredUsers
+        ctx['allUsers'] = registeredUsers + unRegisteredUsers  
+
+        if Email.objects.filter(question=self.object).count() > 0:
+            ctx['emailInvite'] = Email.objects.filter(question=self.object, type=1)[0]
+            ctx['emailDelete'] = Email.objects.filter(question=self.object, type=2)[0]
+            ctx['emailStart'] = Email.objects.filter(question=self.object, type=3)[0]
+            ctx['emailStop'] = Email.objects.filter(question=self.object, type=4)[0]
+            ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=4)[0]
+            if len(Email.objects.filter(question=self.object, type=5)) > 0:
+                ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=5)[0]
+
         return ctx
     def get_queryset(self):
         return Question.objects.filter(pub_date__lte=timezone.now())
 
-
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class AddStep4View(views.generic.DetailView):
     """Define step 4 in creating poll: privacy setting, voting mechanisms, voting UIs, etc."""
     
@@ -295,6 +679,9 @@ class AddStep4View(views.generic.DetailView):
     template_name = 'polls/add_step4.html'
     def get_context_data(self, **kwargs):
         ctx = super(AddStep4View, self).get_context_data(**kwargs)
+        ctx['question'].display_pref = self.request.user.userprofile.displayPref
+        ctx['question'].display_user_info = self.request.user.userprofile.display_user_info
+
         ctx['preference'] = self.request.user.userprofile.displayPref
         ctx['poll_algorithms'] = getListPollAlgorithms()
         ctx['alloc_methods'] = getAllocMethods()
@@ -398,6 +785,9 @@ def editBasicInfo(request, question_id):
     star = False
     yesno = False
     yesno2 = False
+    BUI_slider = False
+    LUI = False
+    IBUI = False
     uilist = request.POST.getlist('ui')
     if "twocol" in uilist:
         twocol = True
@@ -411,13 +801,22 @@ def editBasicInfo(request, question_id):
         yesno = True
     if "yesno2" in uilist:
         yesno2 = True
+    if "BUI_slider" in uilist:
+        BUI_slider = True 
+    if "LUI" in uilist:
+        LUI = True
+    if "IBUI" in uilist:
+        IBUI = True
     question.twocol_enabled = twocol
     question.onecol_enabled = onecol
     question.slider_enabled = slider
     question.star_enabled = star
     question.yesno_enabled = yesno
     question.yesno2_enabled = yesno2
-    question.ui_number = twocol+onecol+slider+star+yesno+yesno2
+    question.budgetUI_enabled = BUI_slider
+    question.ListUI_enabled =LUI
+    question.infiniteBudgetUI_enabled =IBUI
+    question.ui_number = twocol+onecol+slider+star+yesno+yesno2+BUI_slider+LUI+IBUI
     
     # update whether ties are allowed
     tie=question.allowties
@@ -432,6 +831,7 @@ def editBasicInfo(request, question_id):
     # save the changes
     question.save()
     request.session['setting'] = 8
+    messages.success(request, "Your changes have been saved.")
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
@@ -518,7 +918,7 @@ def pausePoll(request, question_id):
     # get winner or allocation, and save it
     if question.question_type == 1 and question.response_set.filter(active=1).count() >= 1: #poll
         (question.winner, question.mixtures_pl1, question.mixtures_pl2,
-         question.mixtures_pl3) = getPollWinner(question)
+        question.mixtures_pl3) = getPollWinner(question)
     question.save()
 
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
@@ -563,10 +963,14 @@ def stopPoll(request, question_id):
     # get winner or allocation, and save it
     if question.question_type == 1: #poll
         (question.winner, question.mixtures_pl1, question.mixtures_pl2,
-         question.mixtures_pl3) = getPollWinner(question)
+        question.mixtures_pl3) = getPollWinner(question)
     elif question.question_type == 2: #allocation
         getFinalAllocation(question)
     question.save()
+
+    if question.emailStart:
+        email_class = EmailThread(request, question_id, 'stop')
+        email_class.start()
 
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
@@ -580,47 +984,72 @@ def getPollWinner(question):
     Parameter: Question object.
     Returns: string containing winner(s), mixture for k = 1, 2, 3.
     """
+    print(f"\n[getPollWinner] STARTING for Question ID: {question.id} ('{question.question_text}')")
+    try:
+        all_responses = question.response_set.filter(active=1).order_by('-timestamp')
+        (latest_responses, previous_responses) = categorizeResponses(all_responses)
+        # Calculate results
+        cand_map = getCandidateMapFromList(list(question.item_set.all()))
+        results = getVoteResults(latest_responses, cand_map)
+        print(f"  - [getPollWinner] getVoteResults finished. results length: {len(results)}")
+        
+        (vote_results, mixtures_pl1, mixtures_pl2, mixtures_pl3) = ([],[],[],[])
+        if(len(results) == 4):
+            (vote_results, mixtures_pl1, mixtures_pl2, mixtures_pl3) = results
+        else : 
+            print("  - [getPollWinner] ERROR: getVoteResults returned wrong number of items.")
+            return "",json.dumps([]),json.dumps([]),json.dumps([])
+        
+        index_vote_results = question.poll_algorithm - 1
+        # Bounds check
+        if index_vote_results < 0 or index_vote_results >= len(vote_results):
+            print(f"  - [getPollWinner] ERROR: index_vote_results {index_vote_results} out of range (size {len(vote_results)})")
+            index_vote_results = 0 # Fallback to Plurality
+            
+        current_result = vote_results[index_vote_results]
+        print(f"  - [getPollWinner] index_vote_results: {index_vote_results}, current_result size: {len(current_result)}")
     
-    all_responses = question.response_set.filter(active=1).order_by('-timestamp')
-    (latest_responses, previous_responses) = categorizeResponses(all_responses)
-    # Calculate results
-    cand_map = getCandidateMapFromList(list(question.item_set.all()))
-    (vote_results, mixtures_pl1, mixtures_pl2,
-     mixtures_pl3) = getVoteResults(latest_responses, cand_map)
-    index_vote_results = question.poll_algorithm - 1
-    current_result = vote_results[index_vote_results]
+        print(f"  - [getPollWinner] Calculation finished. current_result size: {len(current_result)}")
+        winnerStr = ""
+        
+        # Transform result data into JSON strings and save in database
+        
+        # item_set = getCandidateMap(latest_responses[0])
+        for index, score in current_result.items():
+            # index 5 uses Simplified Bucklin, where score is rank.
+            #   A low score means it has a high rank (e.g. rank 1 > rank 2),
+            #   so the best score is the minimum.
+            # All other indices rank score from highest to lowest, so the best score would be
+            #   the maximum.
+            if ((score == min(current_result.values()) and index_vote_results == 5)
+                    or (score == max(current_result.values()) and index_vote_results != 5)):
+                #add a comma to separate the winners
+                if winnerStr != "":
+                    winnerStr += ", "
+                #add the winner
+                winnerStr += cand_map[index].item_text
+        
+        print(f"  - [getPollWinner] Winners: {winnerStr}")
 
-    winnerStr = ""
-    
-    # Transform result data into JSON strings and save in database
+        if hasattr(question, 'finalresult'):
+            try:
+                print("  - [getPollWinner] Deleting existing finalresult...")
+                question.finalresult.delete()
+            except Exception as e:
+                print(f"  - [getPollWinner] Note: Error deleting finalresult (might not exist): {e}")
 
-    #item_set = getCandidateMap(latest_responses[0])
-    for index, score in current_result.items():
-        # index 5 uses Simplified Bucklin, where score is rank.
-        #   A low score means it has a high rank (e.g. rank 1 > rank 2),
-        #   so the best score is the minimum.
-        # All other indices rank score from highest to lowest, so the best score would be
-        #   the maximum.
-        if ((score == min(current_result.values()) and index_vote_results == 5)
-                or (score == max(current_result.values()) and index_vote_results != 5)):
-            #add a comma to separate the winners
-            if winnerStr != "":
-                winnerStr += ", "
-            #add the winner
-            winnerStr += cand_map[index].item_text
-
-    if hasattr(question, 'finalresult'):
-        question.finalresult.delete()
-    result = FinalResult(question=question, timestamp=timezone.now(),
-                         result_string="", mov_string="", cand_num=question.item_set.all().count(),
-                         node_string="", edge_string="", shade_string="")
-    
-    resultlist = []
-    mov = getMarginOfVictory(latest_responses, cand_map)
-    movlist = [str(i) for i in mov]
-    for x in range(0, len(vote_results)):
-        for key, value in vote_results[x].items():
-            resultlist.append(str(value))
+        result = FinalResult(question=question, timestamp=timezone.now(),
+                            result_string="", mov_string="", cand_num=question.item_set.all().count(),
+                            node_string="", edge_string="", shade_string="")
+        
+        resultlist = []
+        print("  - [getPollWinner] Calling getMarginOfVictory...")
+        mov = getMarginOfVictory(latest_responses, cand_map)
+        print(f"  - [getPollWinner] getMarginOfVictory finished. Size: {len(mov)}")
+        movlist = [str(i) for i in mov]
+        for x in range(0, len(vote_results)):
+            for key, value in vote_results[x].items():
+                resultlist.append(str(value))
             # resultstr += str(value)
             # resultstr += ","
     # for x in range(0, len(mov)):
@@ -628,7 +1057,7 @@ def getPollWinner(question):
     #     movstr += ","
     # resultstr = resultstr[:-1]
     # movstr = movstr[:-1]
-    (nodes, edges) = parseWmg(latest_responses, cand_map)
+        (nodes, edges) = parseWmg(latest_responses, cand_map)
     # for node in nodes:
     #     for k, v in node.items():
     #         nodestr += k + "," + str(v) + ";"
@@ -639,31 +1068,36 @@ def getPollWinner(question):
     #         edgestr += k + "," + str(v) + ";"
     #     edgestr += "|"
     # edgestr = edgestr[:-2]
-    shadevalues = getShadeValues(vote_results)
+        shadevalues = getShadeValues(vote_results)
     # for x in shadevalues:
     #     for y in x:
     #         shadestr += y + ";"
     #     shadestr += "|"
     # shadestr = shadestr[:-2]
-    result.result_string = json.dumps(resultlist)
-    result.mov_string = json.dumps(movlist)
-    result.node_string = json.dumps(nodes)
-    result.edge_string = json.dumps(edges)
-    result.shade_string = json.dumps(shadevalues)
-    result.save()
-    
-    # Resets new vote flag so that result is not computed again
-    if question.new_vote:
-        question.new_vote = False
-    question.winner = winnerStr
-    question.mixtures_pl1 = json.dumps(mixtures_pl1)
-    question.mixtures_pl2 = json.dumps(mixtures_pl2)
-    question.mixtures_pl3 = json.dumps(mixtures_pl3)
-    question.save()
+        result.result_string = json.dumps(resultlist)
+        result.mov_string = json.dumps(movlist)
+        result.node_string = json.dumps(nodes)
+        result.edge_string = json.dumps(edges)
+        result.shade_string = json.dumps(shadevalues)
+        print("  - [getPollWinner] Saving FinalResult...")
+        result.save()
+        
+        # Resets new vote flag so that result is not computed again
+        if question.new_vote:
+            question.new_vote = False
+        question.winner = winnerStr
+        question.mixtures_pl1 = json.dumps(mixtures_pl1)
+        question.mixtures_pl2 = json.dumps(mixtures_pl2)
+        question.mixtures_pl3 = json.dumps(mixtures_pl3)
+        print("  - [getPollWinner] Saving Question...")
+        question.save()
 
-    return winnerStr, json.dumps(mixtures_pl1), json.dumps(mixtures_pl2), json.dumps(mixtures_pl3)
-
-
+        print("[getPollWinner] SUCCESSFUL completion.")
+        return winnerStr, json.dumps(mixtures_pl1), json.dumps(mixtures_pl2), json.dumps(mixtures_pl3)
+    except Exception as e:
+        print(f"\n!!! [getPollWinner] CRITICAL ERROR: {e}")
+        traceback.print_exc()
+        return "", json.dumps([]), json.dumps([]), json.dumps([])
 
 def interpretResult(finalresult):
     """
@@ -672,66 +1106,47 @@ def interpretResult(finalresult):
     Parameter: FinalResult object
     Returns: list of list of String containing data used on result page.
     """
-    
+    if finalresult is None:
+        print("  [interpretResult] ERROR: finalresult is None")
+        return [[], [], [], [], []]
+        
+    print(f"  [interpretResult] Processing finalresult ID: {finalresult.id}")
     candnum = finalresult.cand_num
-    # resultstr = finalresult.result_string
-    # movstr = finalresult.mov_string
-    # shadestr = finalresult.shade_string
-    # nodestr = finalresult.node_string
-    # edgestr = finalresult.edge_string
-    # resultlist = resultstr.split(",")
-    # movlist = movstr.split(",")
-    # tempResults = []
-    # algonum = len(getListPollAlgorithms())
-    # if len(resultlist) < candnum*algonum:
-    #     algonum = 7
-    # if len(resultlist) > 0:
-    #     for x in range(0, algonum):
-    #         tempList = []
-    #         for y in range(x*candnum, (x+1)*candnum):
-    #             tempList.append(resultlist[y])
-    #         tempResults.append(tempList)
-    # tempMargin = []
-    # for margin in movlist:
-    #     tempMargin.append(margin)
-    # tempShades = []
-    # shadelist = shadestr.split(";|")
-    # for item in shadelist:
-    #     tempShades.append(item.split(";"))
-    # temp_nodes = []
-    # nodelist = nodestr.split(";|")
-    # for node in nodelist:
-    #     data = {}
-    #     l = node.split(";")
-    #     for item in l:
-    #         tup = item.split(",")
-    #         data[tup[0]] = tup[1]
-    #     temp_nodes.append(data)
-    # tempEdges = []
-    # edgelist = edgestr.split(";|")
-    # if edgestr != "":
-    #     for edge in edgelist:
-    #         data = {}
-    #         l = edge.split(";")
-    #         for item in l:
-    #             tup = item.split(",")
-    #             data[tup[0]] = tup[1]
-    #         tempEdges.append(data)
-    resultlist = json.loads(finalresult.result_string)
+    print(f"  [interpretResult] candnum: {candnum}")
+    
+    try:
+        resultlist = json.loads(finalresult.result_string)
+        print(f"  [interpretResult] resultlist loaded. size: {len(resultlist)}")
+    except Exception as e:
+        print(f"  [interpretResult] ERROR loading result_string: {e}")
+        resultlist = []
+        
     tempResults = []
     algonum = len(getListPollAlgorithms())
     if len(resultlist) < candnum*algonum:
+        print(f"  [interpretResult] Result list too short ({len(resultlist)} < {candnum}*{algonum}). Setting algonum to 7.")
         algonum = 7
+        
     if len(resultlist) > 0:
-        for x in range(0, algonum):
-            tempList = []
-            for y in range(x*candnum, (x+1)*candnum):
-                tempList.append(resultlist[y])
-            tempResults.append(tempList)
-    tempMargin = json.loads(finalresult.mov_string)
-    tempShades = json.loads(finalresult.shade_string)
-    temp_nodes = json.loads(finalresult.node_string)
-    tempEdges = json.loads(finalresult.edge_string)
+        try:
+            for x in range(0, algonum):
+                tempList = []
+                for y in range(x*candnum, (x+1)*candnum):
+                    tempList.append(resultlist[y])
+                tempResults.append(tempList)
+        except Exception as e:
+            print(f"  [interpretResult] ERROR during resultlist processing: {e}")
+            
+    try:
+        tempMargin = json.loads(finalresult.mov_string)
+        tempShades = json.loads(finalresult.shade_string)
+        temp_nodes = json.loads(finalresult.node_string)
+        tempEdges = json.loads(finalresult.edge_string)
+        print("  [interpretResult] All JSON fields loaded successfully.")
+    except Exception as e:
+        print(f"  [interpretResult] ERROR loading other JSON fields: {e}")
+        tempMargin, tempShades, temp_nodes, tempEdges = [], [], [], []
+        
     return [tempResults, tempMargin, tempShades, temp_nodes, tempEdges]
 
 
@@ -761,12 +1176,9 @@ def getCurrentSelection(mostRecentResponse):
     Returns: List<List<Item>>
     """
     responseDict = {}
-    # if mostRecentResponse.dictionary_set.all().count() > 0:
-        # responseDict = mostRecentResponse.dictionary_set.all()[0]
-    # else:
     responseDict = buildResponseDict(mostRecentResponse, mostRecentResponse.question,
-                                     getPrefOrder(mostRecentResponse.resp_str,
-                                                  mostRecentResponse.question))
+                                    getPrefOrder(mostRecentResponse.resp_str,
+                                    mostRecentResponse.question))
     rd = responseDict
     array = []
     for itr in range(mostRecentResponse.question.item_set.all().count()):
@@ -787,8 +1199,6 @@ def getUnrankedCandidates(resp):
     if len(array) == 0:
         return None
     return array
-
-
 class DetailView(views.generic.DetailView):
     """Define poll voting page view."""
     
@@ -798,12 +1208,9 @@ class DetailView(views.generic.DetailView):
     def get_order(self, ctx):
         """Define the initial order to be displayed on the page."""
         
-        other_user_responses = self.object.response_set.reverse()
         default_order = list(ctx['object'].item_set.all())
         random.shuffle(default_order)
         return default_order
-        #commented out to improve performance
-        #return getRecommendedOrder(other_user_responses, self.request, default_order)
 
     def get_context_data(self, **kwargs):
         ctx = super(DetailView, self).get_context_data(**kwargs)
@@ -818,7 +1225,7 @@ class DetailView(views.generic.DetailView):
             if 'anonymousvoter' in self.request.session and 'anonymousid' in self.request.session:
                 # sort the responses from latest to earliest
                 anon_id = self.request.session['anonymousid']
-                curr_anon_resps = self.object.response_set.filter(anonymous_id=anon_id).reverse()
+                curr_anon_resps = self.object.response_set.filter(anonymous_id=anon_id, active=1).reverse()
                 if len(curr_anon_resps) > 0:
                     # get the voter's most recent selection
                     mostRecentAnonymousResponse = curr_anon_resps[0]
@@ -841,9 +1248,11 @@ class DetailView(views.generic.DetailView):
             return ctx
 
         # Get the responses for the current logged-in user from latest to earliest
-        currentUserResponses = self.object.response_set.filter(user=self.request.user).reverse()
+        currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
 
         if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            ctx['submitted_ranking'] = latest_response.behavior_data
             if currentUserResponses[0].comment:
                 ctx['lastcomment'] = currentUserResponses[0].comment
 
@@ -868,28 +1277,78 @@ class DetailView(views.generic.DetailView):
         else:
             # no history so display the list of choices
             ctx['items'] = self.get_order(ctx)
+        
         return ctx
+    
     def get_queryset(self):
         """
         Excludes any questions that aren't published yet.
         """
         return Question.objects.filter(pub_date__lte=timezone.now())
 
+def addPreferenceValueToResp(objs):
+    for i in range(len(objs)):
+        response, prefOrder = objs[i]
+
+        # convert behavior_data to json and extract submitted_ranking
+        behavior_data = json.loads(response.behavior_data)
+        submitted_rankings = behavior_data.get("submitted_ranking", [])
+
+        # Initialize empty set
+        scores = set()
+
+        # Extract the scores from submitted_rankings and add it to the scores set
+        for tier in submitted_rankings:
+            for jsonObj in tier:
+                if isinstance(jsonObj, dict) and "score" in jsonObj:
+                    scores.add(jsonObj["score"])
+
+        scores = sorted(list(scores))[-1::-1] if scores else []
+
+        # Add score as the first element in the tier-list
+        for i in range(len(scores) if len(scores) < len(prefOrder) else len(prefOrder)):
+            prefOrder[i].insert(0, scores[i])
+
+        # print(prefOrder, scores)
+
+    return objs
+
 # view for settings detail
+@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
 class PollInfoView(views.generic.DetailView):
     model = Question
     template_name = 'polls/pollinfo.html'
+
+    def getUsersFromLatestCSV(self, recentCSVText, existingUsers):
+        registeredUsers, unRegisteredUsers=[],[]
+        if(recentCSVText is not None): 
+            userIDsFromCSV = recentCSVText.split(",")
+            userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
+
+            existingUserIDs = [user.username for user in existingUsers]
+
+            for userID in userIDsFromCSV:
+                if userID in existingUserIDs:
+                    registeredUsers.append(userID)
+                else:
+                    unRegisteredUsers.append(userID)
+
+        return registeredUsers, unRegisteredUsers
+
     def get_context_data(self, **kwargs):
         ctx = super(PollInfoView, self).get_context_data(**kwargs)
+        curr_question = self.object
         emailInvite = Email.objects.filter(question=self.object, type=1)
-        if len(emailInvite) == 1:
-            setupEmail(self.object)
+        setupEmail(self.object)
         if Email.objects.filter(question=self.object).count() > 0:
             ctx['emailInvite'] = Email.objects.filter(question=self.object, type=1)[0]
             ctx['emailDelete'] = Email.objects.filter(question=self.object, type=2)[0]
             ctx['emailStart'] = Email.objects.filter(question=self.object, type=3)[0]
             ctx['emailStop'] = Email.objects.filter(question=self.object, type=4)[0]
-        ctx['users'] = User.objects.all()
+            ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=4)[0]
+            if len(Email.objects.filter(question=self.object, type=5)) > 0:
+                ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=5)[0]
+        ctx['users'] = User.objects.filter(userprofile__is_code_user=False)
         ctx['items'] = self.object.item_set.all()
         ctx['groups'] = Group.objects.all()
         ctx['poll_algorithms'] = getListPollAlgorithms()
@@ -901,29 +1360,49 @@ class PollInfoView(views.generic.DetailView):
         ctx['bools'] = self.object.vote_rule
 
         # display this user's history
-        currentUserResponses = self.object.response_set.filter(user=self.request.user,
-                                                               active=1).order_by('-timestamp')
+        currentUserResponses = self.object.response_set.filter(user=self.request.user,active=1).order_by('-timestamp')
         if len(currentUserResponses) > 0:
             ctx['user_latest_responses'] = getSelectionList([currentUserResponses[0]])
+            if(curr_question.question_type == 2): ctx['user_latest_responses'] = addPreferenceValueToResp(ctx['user_latest_responses'])
+
         ctx['user_previous_responses'] = getSelectionList(currentUserResponses[1:])
+        if(curr_question.question_type == 2): 
+            ctx['user_previous_responses'] = addPreferenceValueToResp(ctx['user_previous_responses'])
 
         # get history of all users
         all_responses = self.object.response_set.filter(active=1).order_by('-timestamp')
         (latest_responses, previous_responses) = categorizeResponses(all_responses)
         ctx['latest_responses'] = getSelectionList(latest_responses)
         ctx['previous_responses'] = getSelectionList(previous_responses)
+        if(curr_question.question_type == 2): 
+            ctx['latest_responses'] = addPreferenceValueToResp(ctx['latest_responses'])
+            ctx['previous_responses'] = addPreferenceValueToResp(ctx['previous_responses'])
 
         # get deleted votes
         deleted_resps = self.object.response_set.filter(active=0).order_by('-timestamp')
         (latest_deleted_resps,previous_deleted_resps) = categorizeResponses(deleted_resps)
         ctx['latest_deleted_resps'] = getSelectionList(latest_deleted_resps)
         ctx['previous_deleted_resps'] = getSelectionList(previous_deleted_resps)
+        if(curr_question.question_type == 2):
+            ctx['latest_deleted_resps'] = addPreferenceValueToResp(ctx['latest_deleted_resps'])
+            ctx['previous_deleted_resps'] = addPreferenceValueToResp(ctx['previous_deleted_resps'])
 
         if self.object.question_voters.all().count() > 0:
             progressPercentage = len(latest_responses) / self.object.question_voters.all().count()
             progressPercentage = progressPercentage * 100
             ctx['progressPercentage'] = progressPercentage
         ctx['request_list'] = self.object.signuprequest_set.filter(status=1)
+
+        # alloc_res_tables contains display options for results of an allocation
+        selected_alloc_res_tables_sum = curr_question.alloc_res_tables
+        ctx['selected_alloc_res_tables_sum'] = selected_alloc_res_tables_sum
+
+        # Registered and unRegisteredUsers
+        registeredUsers, unRegisteredUsers = self.getUsersFromLatestCSV(curr_question.recentCSVText, ctx['users'])
+        ctx['registeredUsers'] = registeredUsers
+        ctx['unRegisteredUsers'] = unRegisteredUsers
+        ctx['recentCSVText'] = curr_question.recentCSVText
+
         return ctx
     def get_queryset(self):
         """
@@ -934,40 +1413,741 @@ class PollInfoView(views.generic.DetailView):
 # view for results detail
 class AllocateResultsView(views.generic.DetailView):
     model = Question
-    template_name = 'polls/allocate_results.html'
+    template_name = 'polls/allocationResults/results_page.html'
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.results_visible_after and timezone.now() < self.object.results_visible_after:
+            return redirect("polls:allocation_tab")   #to /polls/allocation_tab/
+        return super().get(request, *args, **kwargs)
+
+    def getItemsObjects(self):
+        items = [] 
+        items_obj=[]
+        for item in list(self.object.item_set.all()):
+            items.append("item"+item.item_text)
+            items_obj.append(item)
+        return items,items_obj
+    
+    def getDataFromResponseSet(self, response_set):
+        pref_set = {}
+        candidates={}
+        submitted_rankings={}
+        profile_pics = {}
+        # extracting required information from response_set
+        # using dictionary instead of list to avoid duplicate preferences in response_set
+        for response in response_set:
+            candidates[response.user_id] = response.user.first_name 
+            url = response.user.userprofile.profile_pic.name;
+            profile_pics[response.user_id] = "/"+url if url != None else ''
+            pref_set[response.user_id] = ast.literal_eval(response.resp_str)
+            submitted_rankings[response.user_id]  = json.loads(response.behavior_data)["submitted_ranking"]
+        return pref_set, candidates, submitted_rankings, profile_pics
+    
+    def transformSubmittedRankings(self, items, submitted_rankings):
+        #transform submitted rankings
+        for entry in submitted_rankings.items():
+            key,values = entry
+            if(len(values) < len(items)):
+                temp = []
+                for j in range(len(values)):
+                    for entry in values[j]:
+                        temp.append([entry])
+                values= temp
+                submitted_rankings[key] = values
+        return submitted_rankings
+    
+    def getPreferencesList(self, pref_set):
+        preferences=[]
+        # change the type of preferences so that it is compatible to 
+        # store and retrieve from list
+        for pref in pref_set.values(): preferences.append(pref)
+        return preferences
+        
+    def transformPreferences(self, items, preferences):
+        # transform Preferences
+        for i in range(len(preferences)):
+            if(len(preferences[i]) < len(items)):
+                temp = []
+                for j in range(len(preferences[i])):
+                    for entry in preferences[i][j]:
+                        temp.append([entry])
+                preferences[i]= temp
+
+        for i in range(len(preferences)):
+            for j in range(len(preferences[i])):
+                preferences[i][j] = preferences[i][j][0]
+        return preferences
+
+    def transformAllocatedItems(self, allocated_items):
+        # transform allocated_items
+        allocated_items_transformed = [["" for j in range(len(allocated_items[i]))] for i in range(len(allocated_items))]
+        for i in range(len(allocated_items)):
+            for j in range(len(allocated_items[i])):
+                item_obj = allocated_items[i][j]
+            if isinstance(item_obj, str):
+                allocated_items_transformed[i][j] = item_obj[4:]  # "itemcake" → "cake"
+            elif hasattr(item_obj, 'item_text'):
+                allocated_items_transformed[i][j] = item_obj.item_text
+            else:
+                allocated_items_transformed[i][j] = str(item_obj)
+        return allocated_items_transformed
+    
+    def getSumOfAllocatedItems(self, allocated_items, submitted_rankings):
+        # Computing allocated items and Sum of values of allocated items for each candidate
+        sum_of_alloc_items_values = []
+        allocated_items_with_values =[]
+        for i in range(len(allocated_items)):
+            sum_of_values = 0
+            items_with_values = []
+            submitted_rankings_values = list(submitted_rankings.values())[i]
+            for j in range(len(allocated_items[i])):
+                #submitted_rankings_values = list(submitted_rankings.values())[i]
+                for k in range(len(submitted_rankings_values)):
+                    if "score" in submitted_rankings_values[k][0]:
+                        if(submitted_rankings_values[k][0]["name"] == allocated_items[i][j]):
+                            sum_of_values+=submitted_rankings_values[k][0]["score"]
+                            items_with_values.append((submitted_rankings_values[k][0]["name"][4:], submitted_rankings_values[k][0]["score"]))
+            sum_of_alloc_items_values.append(sum_of_values)
+            allocated_items_with_values.append(items_with_values)
+        return allocated_items_with_values, sum_of_alloc_items_values
+    
+    def formatOptions(self, items):
+        # remove 'item' from 'itemOption' string
+        for i in range(len(items)):
+            items[i] = items[i][4:]
+        return items
+
+    def getPrefWithValues(self, submitted_rankings):
+        # computing preferences with values for each candidate
+        preferences_with_values = []
+        for i in range(len(submitted_rankings)):
+            curr_cand_preferences_with_values=[]
+            submitted_rankings_values = list(submitted_rankings.values())[i]
+            for j in range(len(submitted_rankings_values)):
+                if "score" in submitted_rankings_values[j][0]:
+                    curr_cand_preferences_with_values.append([submitted_rankings_values[j][0]["name"][4:], submitted_rankings_values[j][0]["score"]])
+            preferences_with_values.append(curr_cand_preferences_with_values)
+        return preferences_with_values
+    
+    def computeEnvyUptoEF1(self, preferences, allocated_items_with_values,preferences_with_values):
+        # compute envy matrix
+        envy_matrix = [[(0,0) for j in range(len(preferences))] for i in range(len(preferences))]
+        for i in range(len(allocated_items_with_values)):
+            for j in range(len(allocated_items_with_values)):
+                if i!=j:
+                    envy,sum2 = self.getEnvy(preferences_with_values[i], allocated_items_with_values[i], preferences_with_values[j],allocated_items_with_values[j])
+                    envy_matrix[i][j]  = (envy,sum2)
+                    if envy_matrix[i][j][0] < 0:
+                        ef1_val = self.getEF1(preferences_with_values[i], allocated_items_with_values[i], preferences_with_values[j],allocated_items_with_values[j])
+                        if ef1_val == "EF1":
+                            envy_matrix[i][j] = ("EF1",sum2)
+                else:
+                    envy_matrix[i][j] = (0,0)
+        return envy_matrix
+    
+    def computePureEF1(self, preferences, allocated_items_with_values, preferences_with_values):
+        # compute envy free upto 1 item matrix
+        ef1_matrix = [[0 for j in range(len(preferences))] for i in range(len(preferences))]
+        for i in range(len(allocated_items_with_values)):
+            for j in range(len(allocated_items_with_values)):
+                if i!=j:
+                    ef1_matrix[i][j] = self.getEF1(preferences_with_values[i], allocated_items_with_values[i], preferences_with_values[j],allocated_items_with_values[j])
+                else:
+                    ef1_matrix[i][j] = 0
+
+    def getEnvy(self, pref1, allocated_items1, pref2, allocated_items2):  
+
+        # cand 1 sum
+        sum1 = 0
+        print("allocated_items1:", allocated_items1)
+
+        for item,val in allocated_items1:
+            sum1+=val
+
+        # cand 2 sum with cand 1 preferences
+        sum2 = 0
+        for item1, val1 in allocated_items2:
+            for item2, val2 in pref1:
+                if(item1 == item2):sum2+=val2
+            
+        return sum1-sum2,sum2
+
+    def getEF1(self, pref1, allocated_items1, pref2, allocated_items2):
+        for i in range(len(allocated_items2)):
+
+            copy_allocated_items2 = allocated_items2.copy()
+            copy_allocated_items2.remove(allocated_items2[i])
+
+            # cand 1 sum
+            sum1 = 0
+            for item,val in allocated_items1:
+                sum1+=val
+
+            # cand 2 sum with cand 1 preferences
+            sum2 = 0
+            for item1, val1 in copy_allocated_items2:
+                for item2, val2 in pref1:
+                    if(item1 == item2):sum2+=val2
+
+            EF1_val = sum1-sum2   
+            if EF1_val >= 0:
+                return "EF1"
+        return "Not EF1"
+    
+    def getAllocatedItemObjects(self, item_objs, items_texts):
+        allocated_items_objs = []
+        for obj in item_objs:
+            for item_name in items_texts:
+                if item_name == obj.item_text:
+                    allocated_items_objs.append(obj)
+        return allocated_items_objs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        question = self.object  # the current question instance
+
+        # if no responses, nothing to show
+        if not question.response_set.exists():
+            ctx['error_message'] = "No responses found. Users must submit preferences before viewing allocations."
+            return ctx
+        
+        # get mechanism information and prepare context
+        mechanism_info = self._prepare_mechanism_info(question)
+        ctx.update(mechanism_info)
+        
+        # get user responses and preferences
+        user_data = self._prepare_user_data(question)
+        ctx.update(user_data)
+        
+        current_user_id = self.request.user.id
+        current_user_name = user_data['user_names'].get(current_user_id, "")
+        ctx['current_user_name'] = current_user_name
+        ctx['empty_string'] = ""
+
+        curr_user_ranking = user_data['submitted_rankings'].get(current_user_id, [])
+        ctx['curr_user_pref'] = []
+        ctx['curr_user_pref_values'] = []
+
+        for entry in curr_user_ranking: #support for twocol & onecol
+            if not entry:
+                continue
+            val = entry[0]
+            if isinstance(val, dict) and 'name' in val:
+                ctx['curr_user_pref'].append(val['name'][4:])  # Strip "item" prefix
+                ctx['curr_user_pref_values'].append(val.get('score', 0))
+            elif isinstance(val, str):
+                ctx['curr_user_pref'].append(val[4:])  #for string like "itemcake"
+                ctx['curr_user_pref_values'].append(0)
+        # create context data dictionary for caching
+        context_data = {
+            'question_id': question.id,
+            'mechanism_id': ctx['current_mechanism_id'],
+            'preferences': user_data['preferences'],
+            'sorted_user_ids': user_data['sorted_user_ids']
+        }
+        
+        # get cached result or compute new allocation
+        allocation_result, is_cache_hit = self._get_allocation_result(
+            context_data, 
+            ctx['chosen_cls'], 
+            ctx['chosen_label']
+        )
+        
+        # Update context with allocation results
+        ctx.update(allocation_result)
+        
+        # Add additional UI-specific data
+        if question.alloc_res_tables & 2 != 0:
+            ctx["all_user_preferences"] = self._format_user_preferences(
+                user_data['sorted_user_ids'],
+                user_data['user_names'],
+                user_data['submitted_rankings']
+            )
+        
+        # Check Pareto Optimality
+        ctx["is_pareto_optimal"] = False
+        if allocation_result.get('allocation_matrix') is not None and user_data.get('preferences'):
+            try:
+                V = np.array(user_data['preferences'])
+                A = np.array(allocation_result['allocation_matrix'])
+                ctx["is_pareto_optimal"] = is_po(V, A)
+            except Exception as e:
+                print("is_PO check failed:", e)
+
+        # Compute Welfare Metrics
+        sum_values = allocation_result.get('sum_of_alloc_items_values', [])
+        if sum_values:
+            utilitarian_welfare = sum(sum_values)
+            egalitarian_welfare = min(sum_values)
+            ctx["utilitarian_welfare"] = utilitarian_welfare
+            ctx["egalitarian_welfare"] = egalitarian_welfare
+        
+        # Compute envy matrix and add to context
+        if allocation_result.get('allocated_items') and user_data.get('preferences'):
+            preferences_with_values = self.getPrefWithValues(user_data['submitted_rankings'])
+
+            allocated_items_with_values, _ = self.getSumOfAllocatedItems(
+                self.transformAllocatedItems(allocation_result['allocated_items']),
+                user_data['submitted_rankings']
+            )
+            envy_matrix = self.computeEnvyUptoEF1(
+                user_data['preferences'],
+                allocated_items_with_values,
+                preferences_with_values
+            )
+            ctx['envy_matrix'] = envy_matrix
+            #allocation bundle
+            allocated_items = allocation_result.get("allocated_items", [])
+            items_obj = allocation_result.get("items_obj", [])
+            sorted_user_ids = user_data["sorted_user_ids"]
+            item_texts = [item.item_text for item in items_obj]
+
+            if current_user_id in sorted_user_ids:
+                current_user_index = sorted_user_ids.index(current_user_id)
+                user_alloc_items = allocated_items[current_user_index] if current_user_index < len(allocated_items) else []
+
+                ctx["curr_user_bundle"] = user_alloc_items
+
+            if current_user_index < len(user_data['preferences']):
+                raw_ranking = user_data['submitted_rankings'].get(sorted_user_ids[current_user_index], [])
+                ranking_dict = {}
+                for entry in raw_ranking:
+                    if entry and isinstance(entry[0], dict):
+                        name = entry[0].get('name', '')
+                        if name.startswith("item"):
+                            item_text = name[4:]  # Strip prefix
+                            score = entry[0].get('score', 0)
+                            ranking_dict[item_text] = score
+
+                total_value = 0
+                for item in user_alloc_items:
+                    score = ranking_dict.get(item.item_text, 0)
+                    total_value += score
+
+                ctx["curr_user_bundle_sum"] = total_value
+            else:
+                ctx["curr_user_bundle_sum"] = 0 #preference ordering for firrst choice
+        # # First-choice analysis
+        # first_choices_data = []
+        # if allocation_result.get('allocation_matrix') is not None:
+        #     allocation_matrix = allocation_result['allocation_matrix']
+        #     preferences = user_data['preferences']
+        #     user_rankings = user_data['submitted_rankings']
+        #     for i, row in enumerate(allocation_matrix):  # For each agent
+        #         user_id = sorted_user_ids[i]
+        #         raw_pref = user_rankings.get(user_id, [])
+        #         # Create {item_text: score} map
+        #         item_val_map = {}
+        #         for entry in raw_pref:
+        #             if isinstance(entry[0], dict):
+        #                 name = entry[0].get("name", "")[4:]  # Remove "item" prefix
+        #                 score = entry[0].get("score", 0)
+        #                 item_val_map[name] = score
+        #         aligned_valuations = [item_val_map.get(item, 0) for item in item_texts]
+        #         # Get that agent's valuation vector
+        #         print(f"✅ User {i}: {aligned_valuations} | Alloc: {row} | Max: {max(aligned_valuations)}")
+        #         max_val = max(aligned_valuations)  # Their most preferred item's value
+        #         count = 0
+        #         for j, alloc in enumerate(row):  # Loop through their allocated items
+        #             if alloc == 1 and aligned_valuations[j] == max_val:
+        #                 count += 1
+        #         first_choices_data.append(count)
+
+        # ctx["first_choices_data"] = first_choices_data
+
+        rank_histogram = [0] * len(item_texts)  # Ranks 1 to N
+        if allocation_result.get('allocation_matrix') is not None:
+            allocation_matrix = allocation_result['allocation_matrix']
+            preferences = user_data['preferences']
+            user_rankings = user_data['submitted_rankings']
+            for i, row in enumerate(allocation_matrix):  # For each user
+                user_id = sorted_user_ids[i]
+                raw_pref = user_rankings.get(user_id, [])
+
+                # Map item_text -> score
+                ranked_items = []
+                for entry in raw_pref:
+                    if isinstance(entry[0], dict):
+                        name = entry[0].get("name", "")[4:]  # Remove "item" prefix
+                        score = entry[0].get("score", 0)
+                        ranked_items.append((name, score))
+
+                # Sort items in descending preference (highest score = rank 1)
+                ranked_items.sort(key=lambda x: -x[1])
+                item_to_rank = {name: rank for rank, (name, _) in enumerate(ranked_items)}  # 0-based
+
+                # Go through user's allocated items
+                for j, alloc in enumerate(row):
+                    if alloc == 1:
+                        item_name = item_texts[j]
+                        if item_name in item_to_rank:
+                            rank = item_to_rank[item_name]
+                            rank_histogram[rank] += 1
+        
+        ctx["rank_histogram"] = rank_histogram
+        
+        return ctx
+    
+    def _prepare_mechanism_info(self, question):
+        """Prepare mechanism selection information"""
+        # question model
+        locked_alg_id = question.poll_algorithm
+        alg_bitmask = question.alloc_algorithms
+        
+        # define known allocation mechanisms
+        all_mechanisms = [
+            (1,  "Round Robin",       MechanismRoundRobinAllocation),
+            (2,  "Max Nash Welfare",  MechanismMaximumNashWelfare),
+            (4,  "Market (EF1)",      MechanismMarketAllocation),
+            (8,  "MarketEq (EQ1)",    MechanismMarketEqAllocation),
+            (16, "Leximin",           MechanismLeximinAllocation),
+            (32, "MNW Binary",        MechanismMaximumNashWelfareBinary),
+        ]
+
+        # build a list of allowed (bit, label) from the bitmask
+        available_mechanisms = []
+        for (bit, label, cls) in all_mechanisms:
+            if (alg_bitmask & bit) != 0:
+                available_mechanisms.append((bit, label))
+        
+        # if no algorithms are selected, fall back to Round Robin
+        if not available_mechanisms:
+            # Fall back to Round Robin if no algorithms are selected
+            available_mechanisms = [(1, "Round Robin")]
+        
+        # requested ?alg=...
+        requested_alg = self.request.GET.get("alg", None)
+        if requested_alg is not None:
+            try:
+                requested_bit = int(requested_alg)
+                # if that bit is not in the poll's bitmask, revert to locked
+                if (alg_bitmask & requested_bit) == 0:
+                    current_mechanism_id = locked_alg_id
+                else:
+                    current_mechanism_id = requested_bit
+            except ValueError:
+                current_mechanism_id = locked_alg_id
+        else:
+            current_mechanism_id = locked_alg_id
+
+        # Find which mechanism class is chosen
+        chosen_cls = None
+        chosen_label = "Unknown"
+        for (bit, label, cls) in all_mechanisms:
+            if bit == current_mechanism_id:
+                chosen_cls = cls
+                chosen_label = label
+                break
+
+        # If none matched, default to round robin
+        if not chosen_cls:
+            chosen_cls = MechanismRoundRobinAllocation
+            chosen_label = "Round Robin"
+        
+        return {
+            "available_mechanisms": available_mechanisms,
+            "current_mechanism_id": current_mechanism_id,
+            "current_mechanism": chosen_label,
+            "chosen_cls": chosen_cls,
+            "chosen_label": chosen_label,
+            "selected_alloc_res_tables_sum": question.alloc_res_tables
+        }
+
+    def _prepare_user_data(self, question):
+        """Extract user responses and preferences"""
+        response_set = question.response_set.all()
+        current_user_id = self.request.user.id
+
+        # Build map of user ids -> name/pic
+        user_names = {}
+        user_pics = {}
+        submitted_rankings = {}
+        
+        for resp in response_set:
+            uid = resp.user_id
+            if uid not in user_names:
+                user_names[uid] = resp.user.first_name
+                pic_path = resp.user.userprofile.profile_pic.name
+                user_pics[uid] = f"/{pic_path}" if pic_path else ""
+            submitted_rankings[uid] = json.loads(resp.behavior_data)["submitted_ranking"]
+
+        sorted_user_ids = sorted(user_names.keys())
+        
+        # Build a matrix of numeric valuations
+        preferences = self._extract_numeric_preferences(
+            response_set, 
+            sorted_user_ids, 
+            question.item_set.count()
+        )
+        
+        return {
+            "candidates": [user_names[uid] for uid in sorted_user_ids],
+            "profile_pics": [user_pics[uid] for uid in sorted_user_ids],
+            "user_names": user_names,
+            "submitted_rankings": submitted_rankings,
+            "sorted_user_ids": sorted_user_ids,
+            "preferences": preferences,
+            "current_user_id": current_user_id
+        }
+
+    def _extract_numeric_preferences(self, response_set, sorted_user_ids, item_count):
+        """Extract numeric preference values from responses"""
+        user_valuations_map = {}
+        
+        # Process each response
+        for resp in response_set:
+            uid = resp.user_id
+            raw_list = ast.literal_eval(resp.resp_str)
+            behavior_dict = json.loads(resp.behavior_data or '{}')
+            submitted_scores = behavior_dict.get("submitted_ranking", [])
+            item_score_map = {}
+            for group in submitted_scores:
+                if group and isinstance(group[0], dict):
+                    name = group[0].get("name", "")
+                    score = group[0].get("score", 0)
+                    item_score_map[name] = score
+            
+            numeric_vals = []
+            
+            for sublist in raw_list:
+                for x in sublist:  # handle multiple items per tier
+                    if isinstance(x, str):  # raw_list
+                        name=x
+                    elif isinstance(x, dict) and "name" in x:
+                        name=x["name"]
+                    if name:
+                        val=item_score_map.get(name,0.0)
+                    else:
+                        try:
+                            val = float(x[4:]) if isinstance(x, str) and x.startswith("item") else 0.0
+                        except:
+                            val = 0.0
+                    numeric_vals.append(val)
+            user_valuations_map[uid] = numeric_vals
+
+        # Fix for empty preferences
+        for uid in sorted_user_ids:
+            if uid not in user_valuations_map or not user_valuations_map[uid]:
+                user_valuations_map[uid] = [0.0] * item_count
+        
+        # Make sure all preference lists have the same length
+        max_length = max([len(vals) for vals in user_valuations_map.values()]) if user_valuations_map else item_count
+        for uid in user_valuations_map:
+            if len(user_valuations_map[uid]) < max_length:
+                user_valuations_map[uid] += [0.0] * (max_length - len(user_valuations_map[uid]))
+
+        # Convert to a 2d list in user-id sorted order
+        preferences = []
+        for uid in sorted_user_ids:
+            preferences.append(user_valuations_map.get(uid, [0.0] * max_length))
+        
+        return preferences
+
+    def _process_allocation_result(self, result, preferences, sorted_user_ids, question_id):
+        """Process allocation result into template context data"""
+        # Extract allocation matrix
+        allocation_matrix = result.A  # shape: (num_agents, num_items)
+        
+        # Get question and items
+        question = Question.objects.get(id=question_id) if question_id else None
+        items = list(question.item_set.all()) if question else []
+        
+        # Create basic allocation data
+        allocation_data = {
+            'allocation_matrix': allocation_matrix,
+            'items_obj': items,
+        }
+        
+        # Reconstruct allocated items
+        allocated_items = []
+        if allocation_matrix is not None:
+            N = len(allocation_matrix)
+            if N > 0:
+                M = len(allocation_matrix[0])
+                for i in range(N):
+                    user_items = []
+                    for j in range(M):
+                        if allocation_matrix[i][j] == 1 and j < len(items):
+                            # Store the actual Item object
+                            user_items.append(items[j])
+                        elif allocation_matrix[i][j] == 1:
+                            # Fallback for items beyond the range
+                            user_items.append({'item_text': f"Item #{j}", 'id': -1})
+                    allocated_items.append(user_items)
+        allocation_data['allocated_items'] = allocated_items
+        
+        # Calculate sum of values for each agent
+        sum_values = []
+        for i, prefs in enumerate(preferences):
+            if i < len(allocation_matrix):
+                utility = sum(prefs[j] * allocation_matrix[i][j] for j in range(len(prefs)))
+                sum_values.append(utility)
+        
+        allocation_data['sum_of_alloc_items_values'] = sum_values
+        
+        return allocation_data
+
+    def _get_allocation_result(self, context_data, mechanism_class, mechanism_label):
+        """Get cached allocation or compute a new one"""
+        # # Try to get from cache
+        cached_result, is_hit = AllocationCache.get_cached_result(context_data)
+        
+        if is_hit:
+            logger.info(f"Cache hit for mechanism {mechanism_label}")
+            print(f"\n>>> CACHE HIT: Using cached result for {mechanism_label} <<<\n")
+            # return cached_result, True
+            # Process the cached data to ensure it's in the right format for the template
+            processed_result = self._process_cached_allocation_data(cached_result)
+            return processed_result, True
+        
+        # If not in cache, compute allocation
+        logger.info(f"Cache miss for mechanism {mechanism_label}, computing allocation")
+        print(f"\n>>> CACHE MISS: Computing new result for {mechanism_label} <<<\n")
+        start_time = timezone.now()
+        
+        try:
+            # Run the allocation mechanism
+            mechanism = mechanism_class()
+            result = mechanism.allocate(valuations=context_data['preferences'])
+            
+            # Process the allocation result
+            allocation_data = self._process_allocation_result(
+                result, 
+                context_data['preferences'],
+                context_data['sorted_user_ids'],
+                context_data.get('question_id')
+            )
+            
+            # Store in cache
+            AllocationCache.store_result(context_data, allocation_data)
+            
+            # Log performance
+            end_time = timezone.now()
+            computation_time = (end_time - start_time).total_seconds()
+            logger.info(f"Allocation computed in {computation_time:.2f}s for mechanism {mechanism_label}")
+            print(f"Allocation computed in {computation_time:.2f}s for mechanism {mechanism_label}")
+            
+            return allocation_data, False
+            
+        except Exception as e:
+            logger.error(f"Error computing allocation with {mechanism_label}: {str(e)}", exc_info=True)
+            print(f"\n>>> ERROR computing allocation with {mechanism_label}: {str(e)} <<<\n")
+            
+            # Create fallback allocation
+            n = len(context_data['preferences'])
+            m = max([len(p) for p in context_data['preferences']]) if context_data['preferences'] else 0
+            empty_matrix = np.zeros((n, m))
+            
+            # Return error data
+            error_data = {
+                'error_message': f"Could not compute allocation with {mechanism_label}: {str(e)}",
+                'allocation_matrix': empty_matrix,
+                'allocated_items': [[] for _ in range(n)],
+                'sum_of_alloc_items_values': [0] * n
+            }
+            
+            return error_data, False
+
+    def _format_user_preferences(self, sorted_user_ids, user_names, submitted_rankings):
+        """Format user preferences for display"""
+        all_user_prefs = []
+        for uid in sorted_user_ids:
+            username = user_names[uid]
+            ranking = submitted_rankings[uid]
+            cleaned = []
+            for group in ranking:
+                if group and isinstance(group[0], dict):
+                    item_name = group[0].get("name", "")[4:]
+                    cleaned.append((item_name))
+            all_user_prefs.append((username, cleaned))
+        return all_user_prefs
+
+    def _process_cached_allocation_data(self, cached_result, question_id=None):
+        """Process cached allocation data to work with the template"""
+        if not question_id:
+            question_id = self.kwargs.get('pk')
+            
+        question = Question.objects.get(id=question_id)
+        items = list(question.item_set.all())
+        
+        # Store items_obj reference
+        cached_result['items_obj'] = items
+        # Convert dictionary items back to Item objects
+        if 'allocated_items' in cached_result:
+            for i, agent_items in enumerate(cached_result['allocated_items']):
+                for j, item_data in enumerate(agent_items):
+                    if isinstance(item_data, dict) and 'id' in item_data and item_data['id'] > 0:
+                        # Find matching item by ID
+                        for item in items:
+                            if item.id == item_data['id']:
+                                cached_result['allocated_items'][i][j] = item
+                                break
+        
+        return cached_result
 
 # view for submission confirmation
 class ConfirmationView(views.generic.DetailView):
     model = Question
     template_name = 'polls/confirmation.html'
 
+
 # view that displays vote results using various algorithms
 class VoteResultsView(views.generic.DetailView):
     model = Question
     template_name = 'polls/vote_rule.html'
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        print(f"\n[VoteResultsView] GET Request for Poll ID: {self.object.id}")
+        if self.object.results_visible_after and timezone.now() < self.object.results_visible_after:
+            print(f"  - Results not yet visible. Current time: {timezone.now()}, Visible after: {self.object.results_visible_after}")
+            return redirect("polls:regular_polls")   #to /polls/regular_polls/
+        return super().get(request, *args, **kwargs)
+        
     def get_context_data(self, **kwargs):
+        print(f"[VoteResultsView] get_context_data called for Poll: {self.object.question_text}")
         ctx = super(VoteResultsView, self).get_context_data(**kwargs)
-        #print("page accessed")
+        
         cand_map = getCandidateMapFromList(list(self.object.item_set.all()))
-        ctx['cand_map'] = cand_map# if (len(latest_responses) > 0) else None
-        if len(list(self.object.response_set.all())) == 0:
+        ctx['cand_map'] = cand_map
+        print(f"  - [get_context_data] cand_map: {cand_map}")
+
+        response_count = list(self.object.response_set.all())
+        print(f"  - Total responses found: {len(response_count)}")
+        if len(response_count) == 0:
             return ctx
+            
         if self.object.status != 4 and self.object.new_vote == True:
+            print("  - [Recompute Trigger] new_vote flag is True. Calling getPollWinner...")
             getPollWinner(self.object)
+            
         final_result = self.object.finalresult
+        print(f"  - final_result timestamp: {final_result.timestamp if final_result else 'None'}")
+
         if self.object.mixtures_pl1 == "":
+            print("  - [Recompute Trigger] Mixtures missing. Calling getPollWinner...")
             getPollWinner(self.object)
+            
         if self.object.mixtures_pl1 != "":
             mixtures_pl1 = json.loads(self.object.mixtures_pl1)
             mixtures_pl2 = json.loads(self.object.mixtures_pl2)
             mixtures_pl3 = json.loads(self.object.mixtures_pl3)
+            print(f"  - Mixtures loaded. pl1 size: {len(mixtures_pl1)}")
         else:
             mixtures_pl1 = [[]]
             mixtures_pl2 = []
             mixtures_pl3 = []
+            print("  - No mixtures available.")
 
-        l = interpretResult(final_result)
-        # print(l[0])
+        print("  - [get_context_data] Calling interpretResult...")
+        try:
+            l = interpretResult(final_result)
+        except Exception as e:
+            print(f"  - [get_context_data] ERROR during interpretResult: {e}")
+            traceback.print_exc()
+            l = [[], [], [], [], []]
+        
         poll_algorithms = []
         algorithm_links = []
         vote_results = []
@@ -977,6 +2157,8 @@ class VoteResultsView(views.generic.DetailView):
         start_poll_algorithms = getListPollAlgorithms()
         start_algorithm_links = getListAlgorithmLinks()
         to_show = self.object.vote_rule
+        print(f"  - vote_rule bitmask: {to_show}")
+        
         itr = 0
         poll_alg_num = self.object.poll_algorithm
         while to_show > 0:
@@ -992,6 +2174,9 @@ class VoteResultsView(views.generic.DetailView):
                 poll_alg_num -= 1
             to_show = int(to_show / 2)
             itr += 1
+            
+        print(f"  - Algorithms to display: {poll_algorithms}")
+        
         ctx['poll_algorithms'] = poll_algorithms
         ctx['poll_alg_num'] = poll_alg_num
         ctx['algorithm_links'] = algorithm_links
@@ -1002,63 +2187,54 @@ class VoteResultsView(views.generic.DetailView):
         ctx['wmg_edges'] = l[4]
         ctx['time'] = final_result.timestamp
         ctx['margin_len'] = len(margin_victory)
-        #else:
-            #all_responses = self.object.response_set.filter(active=1).order_by('-timestamp')
-            #(latest_responses, previous_responses) = categorizeResponses(all_responses)
-            #voteResults, mixtures = getVoteResults(latest_responses, cand_map)
-            #resultlist = []
-            #for r in voteResults:
-            #    resultlist.append(r.values())
-            #ctx['vote_results'] = resultlist
-            #ctx['shade_values'] = getShadeValues(voteResults)
-            #(nodes, edges) = parseWmg(latest_responses, cand_map)
-            #ctx['wmg_nodes'] = nodes
-            #ctx['wmg_edges'] = edges
 
-            #ctx['margin_victory'] = getMarginOfVictory(latest_responses, cand_map)
-            #ctx['mixtures_pl'] = mixtures[0]
         m = len(mixtures_pl1) - 1
-        print("pl2", mixtures_pl2)
-        print()
         ctx['mixtures_pl1'] = mixtures_pl1
         ctx['mixtures_pl2'] = mixtures_pl2
         ctx['mixtures_pl3'] = mixtures_pl3
-        print(mixtures_pl1)
+        
+        # Get previous winners for the history table
         previous_results = self.object.voteresult_set.all()
+        print(f"  - previous_results count: {len(previous_results)}")
         ctx['previous_winners'] = []
         for pw in previous_results:
-            obj = {}
-            obj['title'] = str(pw.timestamp.time())
-            candnum = pw.cand_num
-            resultstr = pw.result_string
-            movstr = pw.mov_string
-            if resultstr == "" and movstr == "":
-                continue
-            resultlist = resultstr.split(",")
-            movlist = movstr.split(",")
-            tempResults = []
-            algonum = len(getListPollAlgorithms())
-            if len(resultlist) < candnum*algonum:
-                algonum = 7
-            if len(resultlist) > 0:
-                for x in range(0, algonum):
-                    tempList = []
-                    for y in range(x*candnum, (x+1)*candnum):
-                        tempList.append(resultlist[y])
-                    tempResults.append(tempList)
-            obj['vote_results'] = tempResults
-            tempMargin = []
-            for margin in movlist:
-                tempMargin.append(margin)
-            obj['margin_victory'] = tempMargin
-            ctx['previous_winners'].append(obj)
+            try:
+                obj = {}
+                obj['title'] = str(pw.timestamp.time())
+                candnum = pw.cand_num
+                resultstr = pw.result_string
+                movstr = pw.mov_string
+                if resultstr == "" and movstr == "":
+                    continue
+                resultlist = resultstr.split(",")
+                movlist = movstr.split(",")
+                tempResults = []
+                algonum = len(getListPollAlgorithms())
+                if len(resultlist) < candnum*algonum:
+                    algonum = 7
+                if len(resultlist) > 0:
+                    for x in range(0, algonum):
+                        tempList = []
+                        for y in range(x*candnum, (x+1)*candnum):
+                            tempList.append(resultlist[y])
+                        tempResults.append(tempList)
+                obj['vote_results'] = tempResults
+                tempMargin = []
+                for margin in movlist:
+                    tempMargin.append(margin)
+                obj['margin_victory'] = tempMargin
+                ctx['previous_winners'].append(obj)
+            except Exception as e:
+                print(f"  - ERROR processing previous result {pw.id}: {e}")
+                
+        print("[VoteResultsView] get_context_data FINISHED successfully.")
         return ctx
 
 # get a list of algorithms supported by the system
 # return List<String>
 def getListPollAlgorithms():
     return ["Plurality", "Borda", "Veto", "K-approval (k = 3)", "Simplified Bucklin",
-            "Copeland", "Maximin", "STV", "Baldwin", "Coombs", "Black", "Ranked Pairs",
+            "Copeland", "Maximin","MaxiMin-Duplicate", "STV", "Baldwin", "Coombs", "Black", "Ranked Pairs",
             "Plurality With Runoff", "Borda Mean", "Simulated Approval"]
 
 def getListAlgorithmLinks():
@@ -1072,18 +2248,36 @@ def getListAlgorithmLinks():
             "https://en.wikipedia.org/wiki/Coombs%27_method","","","","",""]
 
 # get a list of allocation methods
-# return List<String>
+# return List[String]
 def getAllocMethods():
-    return ["Serial dictatorship: early voters first",
-            "Serial dictatorship: late voter first", "Manually allocate"]
+    return [
+        "Round Robin",
+        "Maximum Nash Welfare",
+        "Market",
+        "MarketEq",
+        "Leximin",
+        "MNW Binary"
+    ]
 
 # get a list of visibility settings
 # return List<String>
 def getViewPreferences():
-    return ["Everyone can see all votes at all times",
-            "Everyone can see all votes", "Only show the names of voters",
-            "Only show number of voters", "Everyone can only see his/her own vote",
-            "All votes will be shown, but usernames will be hidden"]
+    return [
+        # "Everyone can see all votes at all times",
+        "Everyone can see all preferences", 
+        "Everyone can only see own preference",
+        "Nothing"
+            ]
+
+def getViewUserInfo():
+    return [
+        "Only username of users will be shown",
+        "Only numbers of users will be shown",
+        "Nothing"
+    ]
+
+def getViewPreferencesForAllocation():
+    return ["This is Duplicate view pref"]
 
 
 def getWinnersFromIDList(idList):
@@ -1095,10 +2289,6 @@ def getWinnersFromIDList(idList):
         except Question.DoesNotExist:
             pass
     return winners
-
-def getGMPollIDLIst():
-    return [239, 219, 220, 223, 227, 229, 241, 242, 243, 230, 240, 224, 228, 238,
-            232, 233, 234, 235, 236, 222, 226, 244, 245]
 
 # build a graph of nodes and edges from a 2d dictionary
 # List<Response> latest_responses
@@ -1189,7 +2379,6 @@ def categorizeResponses(all_responses):
             #this is the most recent vote
             if add:
                 latest_responses.append(response1)
-
     return (latest_responses, previous_responses)
 
 # get a list of options for this poll
@@ -1201,7 +2390,7 @@ def getCandidateMap(response):
         d = Dictionary.objects.get(response=response)
     else:
         d = buildResponseDict(response, response.question,
-                              getPrefOrder(response.resp_str, response.question))
+                                getPrefOrder(response.resp_str, response.question))
     d = interpretResponseDict(d)
     cand_map = {}
 
@@ -1229,7 +2418,7 @@ def getPreferenceGraph(response, cand_map):
         dictionary = Dictionary.objects.get(response=response)
     else:
         dictionary = buildResponseDict(response, response.question,
-                                       getPrefOrder(response.resp_str, response.question))
+                                        getPrefOrder(response.resp_str, response.question))
     dictionary = interpretResponseDict(dictionary)
     for cand1Index in cand_map:
         tempDict = {}
@@ -1309,28 +2498,48 @@ def getVoteResults(latest_responses, cand_map):
     if pollProfile.getElecType() != "soc" and pollProfile.getElecType() != "toc":
         return []
 
+    print(">>> Starting mechanism calculations... <<<")
     scoreVectorList = []
+    print(">>> Calculating Plurality... <<<")
     scoreVectorList.append(MechanismPlurality().getCandScoresMap(pollProfile))
+    print(">>> Calculating Borda... <<<")
     scoreVectorList.append(MechanismBorda().getCandScoresMap(pollProfile))
+    print(">>> Calculating Veto... <<<")
     scoreVectorList.append(MechanismVeto().getCandScoresMap(pollProfile))
+    print(">>> Calculating K-Approval... <<<")
     scoreVectorList.append(MechanismKApproval(3).getCandScoresMap(pollProfile))
+    print(">>> Calculating Simplified Bucklin... <<<")
     scoreVectorList.append(MechanismSimplifiedBucklin().getCandScoresMap(pollProfile))
+    print(">>> Calculating Copeland... <<<")
     scoreVectorList.append(MechanismCopeland(1).getCandScoresMap(pollProfile))
+    print(">>> Calculating Maximin... <<<")
+    scoreVectorList.append(MechanismMaximin().getCandScoresMap(pollProfile))
+    print(">>> Calculating Maximin (Duplicate)... <<<")
+    scoreVectorList.append(MechanismMaximin().getCandScoresMap(pollProfile))
     scoreVectorList.append(MechanismMaximin().getCandScoresMap(pollProfile))
 
     #STV, Baldwin, Coombs give list of integers as output
+    print(">>> Calculating STV... <<<")
     stv = MechanismSTV().STVwinners(pollProfile)
+    print(">>> Calculating Baldwin... <<<")
     baldwin = MechanismBaldwin().baldwin_winners(pollProfile)
+    print(">>> Calculating Coombs... <<<")
     coombs = MechanismCoombs().coombs_winners(pollProfile)
     #print("test8")
+    print(">>> Calculating Black... <<<")
     black = MechanismBlack().black_winner(pollProfile)
     #print("test7")
+    print(">>> Calculating Ranked Pairs... <<<")
     ranked = MechanismRankedPairs().ranked_pairs_cowinners(pollProfile)
+    print(">>> Calculating Plurality Runoff... <<<")
     pwro = MechanismPluralityRunOff().PluRunOff_cowinners(pollProfile)
+    print(">>> Calculating Borda Mean... <<<")
     bordamean = MechanismBordaMean().Borda_mean_winners(pollProfile)
+    print(">>> Calculating Simulated Approval... <<<")
     simapp, sim_scores = MechanismBordaMean().simulated_approval(pollProfile)
-    print("pwro=", pwro)
+    # print("pwro=", pwro)
     #print("test6")
+    print(">>> Translating winners... <<<")
     scoreVectorList.append(translateWinnerList(stv, cand_map))
     scoreVectorList.append(translateWinnerList(baldwin, cand_map))
     scoreVectorList.append(translateWinnerList(coombs, cand_map))
@@ -1342,15 +2551,20 @@ def getVoteResults(latest_responses, cand_map):
 
     #for Mixtures
     #print("test1")
+    print(">>> Preparing for Mixtures... <<<")
     rankings = pollProfile.getOrderVectorsEGMM()
     m = len(rankings[0])
     #print("test2")
+    print(">>> Calculating EGMM Mixtures (k=1)... <<<")
     mixtures_pl1 = egmm_mixpl(rankings, m, k=1, itr=10)[0].tolist()
     #print("test3")
+    print(">>> Calculating EGMM Mixtures (k=2)... <<<")
     mixtures_pl2 = egmm_mixpl(rankings, m, k=2, itr=10).tolist()
     #print("test4")
+    print(">>> Calculating EGMM Mixtures (k=3)... <<<")
     mixtures_pl3 = egmm_mixpl(rankings, m, k=3, itr=10).tolist()
     #print("test5")
+    print(">>> All calculations finished! <<<")
     #gmm = GMMMixPLAggregator(list(pollProfile.cand_map.values()), use_matlab=False)
 
     return scoreVectorList, mixtures_pl1, mixtures_pl2, mixtures_pl3
@@ -1370,7 +2584,8 @@ def calculatePreviousResults(request, question_id):
         movstr = ""
         responses = question.response_set.reverse()
         responses = responses.filter(timestamp__range=[datetime.date(1899, 12, 30),
-                                                       pw.response.timestamp], active=1)
+                                    pw.response.timestamp], 
+                                    active=1)
         (lr, pr) = categorizeResponses(responses)
         scorelist, mixtures_pl1, mixtures_pl2, mixtures_pl3 = getVoteResults(lr, cand_map)
         mov = getMarginOfVictory(lr, cand_map)
@@ -1451,22 +2666,38 @@ def getShadeValues(scoreVectorList):
 # List<Response> latest_responses
 # return List<int> marginList
 def getMarginOfVictory(latest_responses, cand_map):
+    print("    [getMarginOfVictory] Starting...")
     pollProfile = getPollProfile(latest_responses, cand_map)
     if pollProfile == None:
+        print("    [getMarginOfVictory] pollProfile is None")
         return []
 
     #make sure no incomplete results are in the votes
     if pollProfile.getElecType() != "soc" and pollProfile.getElecType() != "toc":
+        print(f"    [getMarginOfVictory] Unsupported ElecType: {pollProfile.getElecType()}")
         return []
+        
     marginList = []
     for x in range(0,len(getListPollAlgorithms())):
         marginList.append(-1)
-    marginList[0] = MechanismPlurality().getMov(pollProfile)
-    marginList[1] = MechanismBorda().getMov(pollProfile)
-    marginList[2] = MechanismVeto().getMov(pollProfile)
-    marginList[3] = MechanismKApproval(3).getMov(pollProfile)
-    marginList[4] = MechanismSimplifiedBucklin().getMov(pollProfile)
-    #marginList[12] = MechanismPluralityRunOff().getMov(pollProfile)
+        
+    print("    [getMarginOfVictory] Calculating margins...")
+    try:
+        print("      - Plurality MoV...")
+        marginList[0] = MechanismPlurality().getMov(pollProfile)
+        print("      - Borda MoV...")
+        marginList[1] = MechanismBorda().getMov(pollProfile)
+        print("      - Veto MoV...")
+        marginList[2] = MechanismVeto().getMov(pollProfile)
+        print("      - K-Approval MoV...")
+        marginList[3] = MechanismKApproval(3).getMov(pollProfile)
+        print("      - Simplified Bucklin MoV...")
+        marginList[4] = MechanismSimplifiedBucklin().getMov(pollProfile)
+        #marginList[12] = MechanismPluralityRunOff().getMov(pollProfile)
+        print("    [getMarginOfVictory] Calculations complete.")
+    except Exception as e:
+        print(f"    [getMarginOfVictory] ERROR during MoV calculation: {e}")
+        traceback.print_exc()
 
     return marginList
 
@@ -1544,119 +2775,593 @@ def addVoter(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     creator_obj = User.objects.get(id=question.question_owner_id)
 
-    newVoters = request.GET.get('voters')
+    newVoters = request.POST.getlist('voters')
     # send an invitation email
-    email = request.GET.get('email') == 'email'
+    email = request.POST.get('email') == 'email'
     question.emailInvite = email
     question.save()
     if email:
         email_class = EmailThread(request, question_id, 'invite')
         email_class.start()
-    # add each voter to the question by username
-    voterObj = User.objects.get(username=newVoters)
-    question.question_voters.add(voterObj.id)
+    try:
+        if(type(newVoters) == list):
+            # add each voter to the question by username
+            for voter in newVoters:
+                voterObj = User.objects.get(username=voter)
+                question.question_voters.add(voterObj.id)
+    except User.DoesNotExist:
+        print("User does not exist in function addVoter().") # use logging
     request.session['setting'] = 1
-
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     data = "{}"
     mimetype = 'application/json'
     return HttpResponse(data, mimetype)
 
+def addVoters(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    creator_obj = User.objects.get(id=question.question_owner_id)
+
+    email = request.POST.get('email') == 'email'
+
+    mailSub = request.POST.get('mailNotificationSubject1')
+    mailBody = request.POST.get('mailNotificationBody1')
+
+    newVoters = request.POST.getlist('voters')
+    all_new_usernames = list(newVoters)
+    if newVoters: 
+        try:
+            for voter in newVoters:
+                voterObj = User.objects.get(username=voter)
+                question.question_voters.add(voterObj.id)
+            
+            if email:
+                # print("Email sending logic here to invite users")
+                email_class = EmailThread(request, question_id, 'invite', newVoters)
+                email_class.start()
+                messages.success(request,"The Email has been sent to the added users!")
+
+                # mail.send_mail(mailSub,
+                #             mailBody,
+                #             'opra@cs.binghamton.edu',
+                #             ['mukhil1140@gmail.com'], # newVoters
+                #             html_message='')
+                
+        except User.DoesNotExist:
+            print("User does not exist in function addVoters().")
+            request.session['setting'] = 1
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    newGroups = request.POST.getlist('groups')
+    votersEmailIDsInGroups=[]
+    if newGroups:
+        for group in newGroups:
+            groupObj = Group.objects.get(name=group)
+            voters = groupObj.members.all()
+            question.question_voters.add(*voters)
+            group_usernames = [voter.username for voter in voters]
+            votersEmailIDsInGroups.extend(group_usernames)
+            all_new_usernames.extend(group_usernames)        
+        for mailID in votersEmailIDsInGroups:
+            if mailID in newVoters:
+                votersEmailIDsInGroups.remove(mailID)
+
+        if email:
+            # print("Email sending logic here to invite group users")
+            email_class = EmailThread(request, question_id, 'invite-group', votersEmailIDsInGroups)
+            email_class.start()
+            messages.success(request,"The Email has been sent to the added users!")
+
+            # mail.send_mail(mailSub,
+            #                 mailBody,
+            #                 'opra@cs.binghamton.edu',
+            #                 ['mukhil1140@gmail.com'], # votersEmailIDsInGroups
+            #                 html_message='')
+
+    question.emailInvite = email
+    # if email:
+    #     email_class = EmailThread(request, question_id, 'invite')
+    #     email_class.start()
+    existing_emails = question.recentCSVText.split(",") if question.recentCSVText else []
+    updated_list = list(set(existing_emails + all_new_usernames))
+    question.recentCSVText = ",".join(updated_list)
+    question.save()
+    emailSettings(request, question_id)
+    messages.success(request, "Selected users have been addedd to "+ question.question_text)
+    request.session['setting'] = 1
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+# Save the recently uploaded csv text
+def saveLatestCSV(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    creator_obj = User.objects.get(id=question.question_owner_id)
+
+    recentCSVText = request.POST.get('votersCSVText')
+
+    try:
+        question.recentCSVText = recentCSVText
+        question.save() 
+        addUsersFromCSV(request, question_id)
+    except Exception as e:
+        print(e)
+    request.session['setting'] = 1
+    messages.success(request, "The users have been added to "+ question.question_text)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+def sendEmail(toEmails, mailSubject, mailBody):
+    # logic to send email from opra mail id 
+    mail.send_mail(mailSubject,
+                    mailBody,
+                    'opra@cs.binghamton.edu',
+                    ['mukhil1140@gmail.com'], # toEmails
+                    html_message='')
+    return
+
+def getRegAndUnRegUsers(userIDsFromCSV):
+    regUsers, UnregUsers = [], []
+    for userID in userIDsFromCSV:
+        try:
+            _user = User.objects.get(email = userID)
+            regUsers.append(userID)
+        except User.DoesNotExist: 
+            UnregUsers.append(userID)
+
+    return regUsers, UnregUsers
+#add users with csv
+def addUsersFromCSV(request: HttpRequest, question_id: int) -> None:
+    question = get_object_or_404(Question, pk=question_id)
+    recentCSVText = question.recentCSVText
+    if recentCSVText is None:
+        return
+
+    userIDsFromCSV = recentCSVText.split(",")
+    userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
+    registers_users_of_current_poll, UnRegistered_users_of_current_poll = getRegAndUnRegUsers(userIDsFromCSV)
+
+    # Add registered users to the poll
+    for voter in registers_users_of_current_poll:
+        voterObj = User.objects.get(username=voter)
+        question.question_voters.add(voterObj.id)
+
+    # Handle unregistered users
+    for email in UnRegistered_users_of_current_poll:
+        try:
+            voter_obj = UnregisteredUser.objects.get(email=email)
+            voter_obj.polls_invited.add(question)
+        except UnregisteredUser.DoesNotExist:
+            voter_obj = UnregisteredUser.objects.create(email=email)
+            voter_obj.save()
+            question.save()
+            voter_obj.polls_invited.add(question)
+
+def send_email_invites(request: HttpRequest, question_id: int):
+    question = get_object_or_404(Question, pk=question_id)
+
+    recepients = request.POST.get('recepients')
+    mailSubject = request.POST.get('mailSubject') or None
+    mailBody = request.POST.get('mailBody') or None
+    csvEmails = request.POST.get('textAreaForCustomMails', '')
+    customEmails = [email.strip() for email in csvEmails.split(',') if email.strip()]
+
+    recentCSVText = question.recentCSVText
+    userIDsFromCSV = [userID.strip() for userID in recentCSVText.split(",")] if recentCSVText else []
+
+    if not userIDsFromCSV and not customEmails:
+        messages.error(request, "No recipients found to send email.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    reg_users, unreg_users = getRegAndUnRegUsers(userIDsFromCSV)
+
+    users_to_email = []
+    match recepients:
+        case "regVotersOnly":
+            users_to_email = reg_users
+        case "unregVotersOnly":
+            users_to_email = unreg_users
+        case "customEmails":
+            users_to_email = customEmails
+        case "allVoters":
+            users_to_email = userIDsFromCSV
+
+    email_class = EmailThread(
+        request, question_id, 'invite-csv',
+        users_to_email, mail_sub=mailSubject, mail_body=mailBody
+    )
+    email_class.start()
+
+    messages.success(request, "The Email has been sent to the recepients!")
+    emailSettings(request, question_id)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+# # Send email invite to Registered and Non registered Participants
+# # added using csv
+# def addUsersAndSendEmailInvite(request: HttpRequest, question_id: int) -> None:
+#     question = get_object_or_404(Question, pk=question_id)
+    
+#     recepients = request.POST.get('recepients')
+#     mailSubject = request.POST.get('mailSubject')
+#     mailBody = request.POST.get('mailBody')
+#     # existingUsers = User.objects.all()
+#     # existingUserIDs = [user.username for user in existingUsers]
+
+#     registers_users_of_current_poll = []
+#     UnRegistered_users_of_current_poll = []
+
+#     email = request.POST.get('email') == 'email'
+
+#     recentCSVText = question.recentCSVText
+#     if(recentCSVText is None):
+#         return
+    
+#     userIDsFromCSV = recentCSVText.split(",")
+#     userIDsFromCSV = [userID.strip() for userID in userIDsFromCSV]
+
+#     # The invited user to this poll might be already registered with OPRA
+#     # for userID in userIDsFromCSV:
+#     #     if userID in existingUserIDs:
+#     #         registers_users_of_current_poll.append(userID)
+#     #     else:
+#     #         UnRegistered_users_of_current_poll.append(userID)
+
+#     # modified Logic to segregate Reg/Unreg Users
+#     registers_users_of_current_poll, UnRegistered_users_of_current_poll = getRegAndUnRegUsers(userIDsFromCSV)
+    
+#     # Logic to add registered Voters to poll
+#     for voter in registers_users_of_current_poll:
+#         voterObj = User.objects.get(username=voter)
+#         question.question_voters.add(voterObj.id)
+
+#     '''
+#     Logic for adding Unregistered Voters : 
+
+#     Case 1:
+#     Get the list of emails of unregistered users for the current poll, after submitting the csv.
+#     Create an UnregisteredUser Object for every email in unregistered users for the current poll.
+#     Add the question to the list of polls invited to the newly created UnregisteredUser Object.
+
+#     Case 2:
+#     When the unregistered user has already been invited to registred with OPRA via other polls, 
+#     but still the user had not registred with OPRA. In this case, no new object for the UnregisteredUser has to 
+#     be created. Just add the question to the list of polls invited of the reterieved UnregisteredUser Object.
+
+#     '''
+
+#     # UnRegistered_users_of_current_poll - UnRegistered Participants/users of the current poll after submitting csv
+#     for email in UnRegistered_users_of_current_poll:
+#         # the voter_obj will be retrieved if the user is invited via other polls, 
+#         # but not registered with OPRA yet.
+#         try:
+#             voter_obj = UnregisteredUser.objects.get(email = email)
+#             voter_obj.polls_invited.add(question)
+        
+#         # the voter_obj will be created if the user is invited to get registered with OPRA for first time
+#         except UnregisteredUser.DoesNotExist:
+#             voter_obj = UnregisteredUser.objects.create(email=email)
+#             voter_obj.save(); question.save();
+#             voter_obj.polls_invited.add(question)
+    
+#     csvEmails = request.POST.get('textAreaForCustomMails')
+#     customEmails = csvEmails.split(',')
+    
+#     if email:
+#         if mailSubject == '':
+#             mailSubject = None
+#         if mailBody == '':
+#             mailBody = None
+        
+#         users_to_email = []
+#         match recepients:
+#             case "regVotersOnly":
+#                 users_to_email = registers_users_of_current_poll
+#             case "unregVotersOnly":
+#                 users_to_email = UnRegistered_users_of_current_poll
+#             case "customEmails":
+#                 users_to_email = customEmails
+#             case "allVoters":
+#                 users_to_email = userIDsFromCSV
+            
+#         email_class = EmailThread(request, question_id, 'invite-csv', users_to_email, mail_sub=mailSubject, mail_body=mailBody)
+#         email_class.start()
+        
+#         messages.success(request, "The Email has been sent to the recepients!")
+#     emailSettings(request, question_id)
+#     return 
+
+SPECIALS = "!@#$%^&*()_+[]{}|;:,.<>?"   
+def _generate_strong_code(length=10):
+    upper = secrets.choice(string.ascii_uppercase)
+    lower = secrets.choice(string.ascii_lowercase)
+    digit = secrets.choice(string.digits)
+    special = secrets.choice(SPECIALS)
+    pool = string.ascii_letters + string.digits + SPECIALS
+    rest = ''.join(secrets.choice(pool) for _ in range(length - 4))
+    raw = list(upper + lower + digit + special + rest)
+    secrets.SystemRandom().shuffle(raw)
+    return ''.join(raw)
+
+def add_codes(request, question_id):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    question = get_object_or_404(Question, pk=question_id)
+
+    try:
+        count = int(request.POST.get('count', '25'))
+    except ValueError:
+        count = 25
+    if count < 1:
+        count = 1
+    elif count> 100:
+        count=100
+
+    created = 0
+    attempts = 0
+
+    while created < count and attempts < count * 10:
+        attempts += 1
+        code = _generate_strong_code(10)
+        try:
+            lc = LoginCode.objects.create(question=question, code=code)
+            uname = f"code_{question.id}_{secrets.token_hex(4)}"
+            u = User(username=uname, email="") 
+            u.set_unusable_password()
+            u.is_active = True
+            u.save()
+            if not hasattr(u, 'userprofile'):
+                UserProfile.objects.create(
+                    user=u,
+                    displayPref=1,
+                    time_creation=timezone.now(),
+                    salt="",
+                    is_code_user=True
+                )
+            lc.user = u
+            lc.save(update_fields=['user'])
+            question.question_voters.add(u)
+
+            created += 1
+        except IntegrityError:
+            continue
+
+    messages.success(request, f"Created {created} login codes.")
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER') or reverse('polls:regular_polls'))
+
+def export_codes_csv(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    codes = question.login_codes.order_by('created_at').values_list('code', flat=True)
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(['code'])
+    for c in codes:
+        w.writerow([c])
+    buf.seek(0)
+
+    resp = HttpResponse(buf.getvalue(), content_type='text/csv')
+    resp['Content-Disposition'] = f'attachment; filename="opra_q{question_id}_codes.csv"'
+    return resp
 # remove voters from a poll.
 # should only be done before a poll starts
 def removeVoter(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
+    if question.status != 1:
+        messages.error(request, "Cannot remove voters after the poll is started/paused.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
     newVoters = request.POST.getlist('voters')
-    email = request.POST.get('email') == 'email'
+    if not newVoters:
+        messages.warning(request, "No users were selected for removal.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    email = request.POST.get('email') is not None
+    # remove voters
+    users_to_remove = User.objects.filter(username__in=newVoters)
+    emails_to_send = [user.email for user in users_to_remove]
+
+    question.question_voters.remove(*users_to_remove)
+
+    existing_emails = question.recentCSVText.split(",") if question.recentCSVText else []
+    updated_list = [email.strip() for email in existing_emails if email.strip().lower() not in [u.lower() for u in newVoters]]
+    question.recentCSVText = ",".join(updated_list)
+
+
+    mailSub = request.POST.get('mailNotificationSubject')
+    mailBody = request.POST.get('mailNotificationBody')
+
     question.emailDelete = email
-    question.save()
     if email:
-        email_class = EmailThread(request, question_id, 'remove')
+        # print("Email sending logic to remove user")
+        email_class = EmailThread(request, question_id, 'remove',emails_to_send)
         email_class.start()
-    for voter in newVoters:
-        voterObj = User.objects.get(username=voter)
-        question.question_voters.remove(voterObj.id)
+        messages.success(request,"The Email has been sent to the removed users!")
+    
+    question.save()
+    emailSettings(request, question_id)
+    messages.success(request, "Selected users have been removed from "+ question.question_text)
     request.session['setting'] = 1
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-# called when creating the poll
 def setInitialSettings(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
-    question.poll_algorithm = request.POST['pollpreferences']
-    question.display_pref = request.POST['viewpreferences']
-    question.creator_pref = request.POST['creatorpreferences']
-    openstring = request.POST['openpoll']
-    signup_string = request.POST['selfsignup']
-    twocol = False
-    onecol = False
-    slider = False
-    star = False
-    yesno = False
-    yesno2 = False
-    uilist = request.POST.getlist('ui')
-    if "twocol" in uilist:
-        twocol = True
-    if "onecol" in uilist:
-        onecol = True
-    if "slider" in uilist:
-        slider = True
-    if "star" in uilist:
-        star = True
-    if "yesno" in uilist:
-        yesno = True
-    if "yesno2" in uilist:
-        yesno2 = True
-    vr = (2 ** (int(request.POST['pollpreferences']) - 1))
-    for rule in request.POST.getlist('vr'):
-        if int(rule) != (2 ** (int(request.POST['pollpreferences']) - 1)):
-            vr += int(rule)
-    question.twocol_enabled = twocol
-    question.onecol_enabled = onecol
-    question.slider_enabled = slider
-    question.star_enabled = star
-    question.yesno_enabled = yesno
-    question.yesno2_enabled = yesno2
-    question.ui_number = twocol+onecol+slider+star+yesno+yesno2
-    question.vote_rule = vr
+
+    # map the 1-based dropdown index (1..6) to the actual bits (1,2,4,8,16,32)
+    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
+
+    # 1) read the single dropdown selection ("pollpreferences")
+    #    for question_type==1 => regular poll; for question_type==2 => allocation method
+    #    store the actual bit in question.poll_algorithm
+    selected_idx = int(request.POST.get("pollpreferences", "1"))
+    question.poll_algorithm = BIT_MAP.get(selected_idx, 1)  # default to bit=1 if out-of-range
+
+    # 2) optional fields: display_pref, display_user_info, creator_pref
+    if "viewpreferences" in request.POST:
+        question.display_pref = request.POST["viewpreferences"]
+    if "viewuserinfo" in request.POST:
+        question.display_user_info = request.POST["viewuserinfo"]
+    if "creatorpreferences" in request.POST:
+        question.creator_pref = request.POST["creatorpreferences"]
+
+    # 3) accessibility
+    openstring = request.POST.get("openpoll", "anon")
+    signup_string = request.POST.get("selfsignup", "allow")
+
+    # 4) read ui checkboxes
+    uilist = request.POST.getlist("ui")
+    question.twocol_enabled = ("twocol" in uilist)
+    question.onecol_enabled  = ("onecol" in uilist)
+    question.slider_enabled  = ("slider" in uilist)
+    question.star_enabled    = ("star" in uilist)
+    question.yesno_enabled   = ("yesno" in uilist)
+    question.yesno2_enabled  = ("yesno2" in uilist)
+    question.budgetUI_enabled   = ("BUI_slider" in uilist)
+    question.ListUI_enabled     = ("LUI" in uilist)
+    question.infiniteBudgetUI_enabled = ("IBUI" in uilist)
+
+    # count how many ui are selected
+    question.ui_number = sum([
+        question.twocol_enabled,
+        question.onecol_enabled,
+        question.slider_enabled,
+        question.star_enabled,
+        question.yesno_enabled,
+        question.yesno2_enabled,
+        question.budgetUI_enabled,
+        question.ListUI_enabled,
+        question.infiniteBudgetUI_enabled
+    ])
+
+    # 5) if question_type == 1 (regular poll), set vote_rule
+    if question.question_type == 1:
+        # question.poll_algorithm is already a bit
+        locked_bit = question.poll_algorithm
+        vr_sum = locked_bit
+        for rule_str in request.POST.getlist("vr"):
+            rule_val = int(rule_str)
+            if rule_val != locked_bit:
+                vr_sum += rule_val
+        question.vote_rule = vr_sum
+
+    # 6) set question.open => 0,1,2
     if openstring == "anon":
         question.open = 1
     elif openstring == "invite":
         question.open = 0
     else:
         question.open = 2
-    if signup_string == "allow":
-        question.allow_self_sign_up = 1
-    else:
-        question.allow_self_sign_up = 0
 
+    # set question.allow_self_sign_up => 0 or 1
+    question.allow_self_sign_up = 1 if signup_string == "allow" else 0
+
+    # 7) for question_type == 2, handle allocation results + allocation algorithms
+    #    by default, question.alloc_res_tables = 6 => bits 2 and 4 => items bundle + allocation table
+    question.alloc_res_tables = 6
+    if question.question_type == 2:
+        # read which result tables are checked
+        posted_tables = request.POST.getlist("alloc_res_tables")
+        alloc_res_sum = 0
+        for val_str in posted_tables:
+            alloc_res_sum += int(val_str)
+        question.alloc_res_tables = alloc_res_sum
+
+        # read which allocation algorithms are checked
+        # round robin => bit=1 is always included
+        posted_algs = request.POST.getlist("alloc_algorithms")  # e.g. ["2","4","16"]
+        alg_sum = 0
+        for alg_str in posted_algs:
+            alg_sum += int(alg_str)
+        question.alloc_algorithms = alg_sum
+
+    if "results_visible_after" in request.POST:
+        raw_val = request.POST["results_visible_after"].strip()
+        if raw_val:
+            dt = parse_datetime(raw_val)
+            question.results_visible_after = dt
+        else:
+            question.results_visible_after = None
+    
+    # 8) save changes
     question.save()
-    return HttpResponseRedirect(reverse('polls:regular_polls'))
+
+    # 9) redirect
+    if question.question_type == 1:
+        return HttpResponseRedirect(reverse("polls:regular_polls"))
+    else:
+        return HttpResponseRedirect(reverse("polls:allocation_tab"))
+
 
 # set algorithms and visibility
 def setPollingSettings(request, question_id):
+    """
+    Process the POST submission from _set_polling_settings.html and update the Question model
+    with the chosen algorithms/bitmasks.
+    """
     question = get_object_or_404(Question, pk=question_id)
-    # set the poll algorithm or allocation method using an integer
-    poll_alg = question.poll_algorithm
+
+    # Map the 1-based dropdown index to the actual bit:
+    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
+
+    # 1) read the single dropdown selection ("pollpreferences")
+    #    for question_type==1, that's the poll algorithm (1-based).
+    #    for question_type==2, that's the allocation method (also 1-based).
     if 'pollpreferences' in request.POST:
-        poll_alg = int(request.POST['pollpreferences'])
-        question.poll_algorithm = poll_alg
+        selected_idx = int(request.POST['pollpreferences'])
+        # store the actual bit in question.poll_algorithm
+        question.poll_algorithm = BIT_MAP.get(selected_idx, 1)  # default to 1 if out-of-range
+
+    # 2) if question_type == 1 (regular poll), handle the visible algorithms bitmask (vote_rule)
+    if question.question_type == 1:
+        # the chosen poll_algorithm is already a bit (like 4 for "Market(EF1)")
+        locked_bit = question.poll_algorithm
+        posted_vr = request.POST.getlist('vr')  # e.g. ["1","4","8"]
+        vr_sum = locked_bit
+        for rule_str in posted_vr:
+            rule_val = int(rule_str)
+            # skip the locked bit (so we don't double-add it)
+            if rule_val != locked_bit:
+                vr_sum += rule_val
+        question.vote_rule = vr_sum
+
+    # 3) if question_type == 2 (allocation poll), handle:
+    #    (a) "alloc_algorithms" => question.alloc_algorithms bitmask
+    #    (b) "alloc_res_tables" => question.alloc_res_tables bitmask
+    if question.question_type == 2:
+        # 3a) read the posted "alloc_algorithms" checkboxes
+        #     round robin (bit=1) is always included, so start with 1
+        posted_alloc_algs = request.POST.getlist('alloc_algorithms')  # e.g. ["2","8","16"]
+        alloc_algs_sum = 0
+        for alg_str in posted_alloc_algs:
+            alg_val = int(alg_str)
+            alloc_algs_sum += alg_val
+        question.alloc_algorithms = alloc_algs_sum
+
+        # 3b) read the posted "alloc_res_tables" checkboxes
+        #     e.g. 1 => "my preferences", 2 => "items bundle", etc.
+        posted_res_tables = request.POST.getlist('alloc_res_tables')  # e.g. ["1","4"]
+        alloc_res_sum = 0
+        for table_str in posted_res_tables:
+            table_val = int(table_str)
+            alloc_res_sum += table_val
+        question.alloc_res_tables = alloc_res_sum
+
+    # 4) save changes
+    question.save()
+
+    # 5) success message and redirect
+    messages.success(request, "Allocation/poll settings have been updated.")
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+
+
+def setVisibilitySettings(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
 
     # set the visibility settings, how much information should be shown to the user
     # options range from showing everything (most visibility) to showing only the user's vote
     #   (least visibility)
-    displayChoice = request.POST['viewpreferences']
-    if displayChoice == "always":
-        question.display_pref = 0
-    elif displayChoice == "allpermit":
-        question.display_pref = 1
-    elif displayChoice == "voternames":
-        question.display_pref = 2
-    elif displayChoice == "justnumber":
-        question.display_pref = 3
-    elif displayChoice == "nothing":
-        question.display_pref = 4
-    else:
-        question.display_pref = 5
+    if "viewpreferences" in request.POST.keys(): question.display_pref = request.POST['viewpreferences']
+    if "viewuserinfo" in request.POST.keys(): question.display_user_info = request.POST['viewuserinfo']
+        
     creatorChoice = str(question.creator_pref)
     if 'creatorpreferences' in request.POST:
         creatorChoice = request.POST['creatorpreferences']
@@ -1664,15 +3369,45 @@ def setPollingSettings(request, question_id):
         question.creator_pref = 1
     else:
         question.creator_pref = 2
-    vr = (2 ** (poll_alg - 1))
-    for rule in request.POST.getlist('vr'):
-        if int(rule) != (2 ** (poll_alg - 1)):
-            vr += int(rule)
-    question.vote_rule = vr
+    
+    if "results_visible_after" in request.POST:
+        raw_val = request.POST["results_visible_after"].strip()
+        if raw_val:
+            # parse "2025-09-26T14:30"
+            dt = parse_datetime(raw_val)
+            question.results_visible_after = dt
+        else:
+            question.results_visible_after = None
+
+
     question.save()
-    request.session['setting'] = 2
+    request.session['setting'] = 10
     messages.success(request, 'Your changes have been saved.')
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+def show_polling_settings(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+
+    # base context
+    ctx = {
+        'question': question
+    }
+
+    # if question is a regular poll (type=1), we pass poll_algorithms + question.vote_rule
+    if question.question_type == 1:
+        ctx['poll_algorithms'] = getListPollAlgorithms()
+        ctx['bools'] = question.vote_rule  # for the script
+    else:
+        # question_type == 2 => an allocation poll
+        ctx['alloc_methods'] = getAllocMethods()
+        ctx['bools'] = question.alloc_algorithms  # for the script
+
+    # if question_type == 2, also pass the existing bitmask for which result-tables are selected
+    if question.question_type == 2:
+        ctx['selected_alloc_res_tables_sum'] = question.alloc_res_tables
+
+    return render(request, 'polls/_set_polling_settings.html', ctx)
+
 
 # poll is open to anonymous voters
 def changeType(request, question_id):
@@ -1727,6 +3462,9 @@ def duplicatePoll(request, question_id):
                             onecol_enabled=question.onecol_enabled,
                             slider_enabled=question.slider_enabled,
                             star_enabled=question.star_enabled,
+                            budgetUI_enabled = question.budgetUI_enabled,
+                            ListUI_enabled = question.ListUI_enabled,
+                            infiniteBudgetUI_enabled = question.infiniteBudgetUI_enabled,
                             yesno_enabled=question.yesno_enabled,
                             allowties=question.allowties,
                             vote_rule=question.vote_rule)
@@ -1752,11 +3490,11 @@ def deleteUserVotes(request, response_id):
         question.response_set.filter(user=user).update(active=0)
     else:
         question.response_set.filter(anonymous_id=response.anonymous_id).update(active=0)
-    request.session['setting'] = 6
     if not question.new_vote:
-    	question.new_vote = True
-    	question.save()
+        question.new_vote = True
+        question.save()
     messages.success(request, 'Your changes have been saved.')
+    request.session['setting'] = 6
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def restoreUserVotes(request, response_id):
@@ -1769,8 +3507,8 @@ def restoreUserVotes(request, response_id):
         question.response_set.filter(anonymous_id=response.anonymous_id, active=0).update(active=1)
     request.session['setting'] = 7
     if not question.new_vote:
-    	question.new_vote = True
-    	question.save()
+        question.new_vote = True
+        question.save()
     messages.success(request, 'Your changes have been saved.')
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
@@ -1903,11 +3641,11 @@ def getResponseOrder(allocation_order):
         user = order_item.user
 
         # skip if no vote
-        if question.response_set.reverse().filter(user=user).count() == 0:
+        if question.response_set.reverse().filter(user=user, active=1).count() == 0:
             continue
 
         # save response
-        response = question.response_set.reverse().filter(user=user)[0]
+        response = question.response_set.reverse().filter(user=user, active=1)[0]
         order_item.response = response
         order_item.save()
 
@@ -1920,9 +3658,9 @@ def getResponseOrder(allocation_order):
 # Dict<String, String> allocationResults
 def assignAllocation(question, allocationResults):
     for username, item in allocationResults.items():
-        currentUser = User.objects.filter(username=username)
+        currentUser = User.objects.filter(username=username).first()
         allocatedItem = question.item_set.get(item_text=item)
-        mostRecentResponse = question.response_set.reverse().filter(user=currentUser)[0]
+        mostRecentResponse = question.response_set.reverse().filter(user=currentUser, active=1)[0]
         mostRecentResponse.allocation = allocatedItem
         mostRecentResponse.save()
     return
@@ -1955,8 +3693,8 @@ def getFinalAllocation(question):
             dictionary = Dictionary.objects.get(response=response)
         else:
             dictionary = buildResponseDict(response, response.question,
-                                           getPrefOrder(response.resp_str,
-                                                        response.question))
+                                            getPrefOrder(response.resp_str,
+                                            response.question))
         dictionary = interpretResponseDict(dictionary)
         for item, rank in dictionary.items():
             tempDict[item.item_text] = rank
@@ -1972,7 +3710,7 @@ def getFinalAllocation(question):
 # return List<List<String>> prefOrder
 def getPrefOrder(orderStr, question):
     # empty string
-    if orderStr == "":
+    if orderStr == "" or orderStr is None:
         return None
     if ";;|;;" in orderStr:
         current_array = orderStr.split(";;|;;")
@@ -1988,32 +3726,37 @@ def getPrefOrder(orderStr, question):
     
     # the user hasn't ranked all the preferences yet
     #if length != len(question.item_set.all()):
-     #   return None
+    #   return None
 
     return final_order
 
-# function to process student submission
+# # function to process student submission
 def vote(request, question_id):
+    print(">>> VOTE FUNCTION CALLED <<<")
     question = get_object_or_404(Question, pk=question_id)
 
-    prevResponseCount = question.response_set.filter(user=request.user).count()
+    prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
     # get the preference order
 
     orderStr = request.POST["pref_order"]
     prefOrder = getPrefOrder(orderStr, question)
     behavior_string = request.POST["record_data"]
-    #print(behavior_string)
     if prefOrder == None:
         # the user must rank all preferences
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
     # make Response object to store data
     comment = request.POST['comment']
     response = Response(question=question, user=request.user, timestamp=timezone.now(),
-                        resp_str=orderStr, behavior_data=behavior_string)
+                        resp_str=orderStr, behavior_data=behavior_string, active=1)
+    print("Received POST:")
+    print("request.POST['pref_order'] =", request.POST.get('pref_order'))
+    print("request.POST['record_data'] =", request.POST.get('record_data'))
+    
     if comment != "":
         response.comment = comment
+    print("About to save Response with:", response.__dict__)
     response.save()
+    print("Saved response with active =", response.active)
 
     if question.related_class != None and request.user not in question.related_class.students.all():
         question.related_class.students.add(request.user)
@@ -2022,7 +3765,6 @@ def vote(request, question_id):
         formatted_order = sorted([i[4:] for i in prefOrder[0]])
         question.correct_answer = json.dumps(formatted_order)
         question.save()
-
 
     #enqueue
     #enqueue(getCurrentResult(question))
@@ -2045,29 +3787,148 @@ def vote(request, question_id):
 
     return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
 
+# def coursematch_vote(request, question_id):
+#     question = get_object_or_404(Question, pk=question_id)
+
+#     prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
+#     # get the preference order
+
+#     orderStr = request.POST["pref_order"]
+#     prefOrder = getPrefOrder(orderStr, question)
+#     behavior_string = request.POST["record_data"]
+#     if prefOrder == None:
+#         # the user must rank all preferences
+#         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+#     # make Response object to store data
+#     comment = request.POST['comment']
+#     response = Response(question=question, user=request.user, timestamp=timezone.now(),
+#                         resp_str=orderStr, behavior_data=behavior_string)
+    
+#     if comment != "":
+#         response.comment = comment
+#     response.save()
+
+#     if question.related_class != None and request.user not in question.related_class.students.all():
+#         question.related_class.students.add(request.user)
+
+#     if question.related_class != None and request.user == question.related_class.teacher:
+#         formatted_order = sorted([i[4:] for i in prefOrder[0]])
+#         question.correct_answer = json.dumps(formatted_order)
+#         question.save()
+    
+#     question.num_courses = json.loads(request.POST["record_data"])["num_courses"]
+#     question.save()
+
+#     #enqueue
+#     #enqueue(getCurrentResult(question))
+
+#     #get current winner
+#     old_winner = OldWinner(question=question, response=response)
+#     old_winner.save()
+#     # notify the user that the vote has been saved/updated
+#     if prevResponseCount == 0:
+#         messages.success(request, 'Saved!')
+#     else:
+#         messages.success(request, 'Updated!')
+
+#     if question.open == 2 and request.user not in question.question_voters.all():
+#         question.question_voters.add(request.user.id)
+
+#     if not question.new_vote:
+#         question.new_vote = True
+#         question.save()
+
+#     return HttpResponseRedirect(reverse('polls:coursematch', args=(question.id,)))
+
+# # function to process student submission for course match
+# def vote(request, question_id):
+#     question = get_object_or_404(Question, pk=question_id)
+
+#     prevResponseCount = question.response_set.filter(user=request.user, active=1).count()
+#     # get the preference order
+
+#     orderStr = request.POST["pref_order"]
+#     prefOrder = getPrefOrder(orderStr, question)
+#     behavior_string = request.POST["record_data"]
+#     if prefOrder == None:
+#         # the user must rank all preferences
+#         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+#     # make Response object to store data
+#     comment = request.POST['comment']
+#     response = Response(question=question, user=request.user, timestamp=timezone.now(),
+#                         resp_str=orderStr, behavior_data=behavior_string, active=1)
+    
+#     if comment != "":
+#         response.comment = comment
+#     response.save()
+    # print("Saved response with active =", response.active)
+
+
+#     if question.related_class != None and request.user not in question.related_class.students.all():
+#         question.related_class.students.add(request.user)
+
+#     if question.related_class != None and request.user == question.related_class.teacher:
+#         formatted_order = sorted([i[4:] for i in prefOrder[0]])
+#         question.correct_answer = json.dumps(formatted_order)
+#         question.save()
+
+#     #enqueue
+#     #enqueue(getCurrentResult(question))
+
+#     #get current winner
+#     old_winner = OldWinner(question=question, response=response)
+#     old_winner.save()
+#     # notify the user that the vote has been saved/updated
+#     if prevResponseCount == 0:
+#         messages.success(request, 'Saved!')
+#     else:
+#         messages.success(request, 'Updated!')
+
+#     if question.open == 2 and request.user not in question.question_voters.all():
+#         question.question_voters.add(request.user.id)
+
+#     if not question.new_vote:
+#         question.new_vote = True
+#         question.save()
+
+#     return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+
 # create a new dictionary that stores the preferences and rankings
 # Response response
 # Question question
 # List<List<String>> prefOrder
 def buildResponseDict(response, question, prefOrder):
     d = {}
+    print(f"\n>>> buildResponseDict CALLED for Question ID: {question.id} <<<")
+    print(f">>> prefOrder received: {prefOrder} <<<")
 
+    if prefOrder is None:
+        print(">>> prefOrder is None, returning empty dict <<<")
+        return d
     # find ranking user gave for each item under the question
     item_num = 1
+    print(f">>> Items in question: {question.item_set.all()} <<<")
     for item in question.item_set.all():
+        print(f">>> Processing Item: {item} <<<")
         rank = 1
         #Flag for examining the case when new choices are added to poll after poll starts
         flag = True
         for l in prefOrder:
             string = "item" + str(item)
-            if string in l:
+            # if string in l:
+            print(f">>> Checking if '{string}' is in {l} <<<")
+            if l[0].get("name") == string:
                 d[item] = rank
                 #If the item is found in preforder, the set flag to false
                 flag = False
+                print(f"    - Item '{item}' FOUND at Rank {rank}")
                 break
             rank += 1
         if flag:
             d[item] = 1000
+            print(f"    - Item '{item}' NOT FOUND. Assigning default rank 1000")
         # if arrayIndex == -1:
         #     # set value to lowest possible rank
         #     d[item] = question.item_set.all().count()
@@ -2076,6 +3937,7 @@ def buildResponseDict(response, question, prefOrder):
         #     rank = (prefOrder.index("item" + str(item))) + 1
         #     # add pref to response dict
         #     d[item] = rank
+    print(f">>> Final mapped ranks for DB: {d} <<<\n")
     return d
 
 def interpretResponseDict(dict):
@@ -2114,7 +3976,6 @@ def anonymousVote(request, question_id):
         voter = request.session['anonymousvoter']
         id = request.session['anonymousid']
     # get the preference order
-    #print(orderStr)
     orderStr = request.POST["pref_order"]
     prefOrder = getPrefOrder(orderStr, question)
     if prefOrder == None:
@@ -2128,9 +3989,7 @@ def anonymousVote(request, question_id):
     if comment != "":
         response.comment = comment
     response.save()
-
     
-
     # find ranking student gave for each item under the question
 
     #get current winner
@@ -2150,7 +4009,7 @@ def sendMessage(request):
         email = request.POST["email"]
         if request.user.username != "":
             m1 = Message(text=message, timestamp=timezone.now(), user=request.user,
-                         name=name, email=email)
+                        name=name, email=email)
             m1.save()
         else:
             m2 = Message(text=message, timestamp=timezone.now(), name=name, email=email)
@@ -2174,15 +4033,15 @@ def mixtureAPI(request):
 # Mixture API
 def mixtureAPI_test(request):
     context = RequestContext(request)
-    return render_to_response('polls/api_test.html')
+    return render(request, 'polls/api_test.html', context)
 
 #Poll search API
 def get_polls(request):
-    if request.is_ajax():
+    if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
         q = request.GET.get('term', '')
         polls = list(Question.objects.filter(question_owner=request.user,
-                                                       m_poll=False,
-                                                       question_text__icontains = q).order_by('-pub_date'))
+                                                    m_poll=False,
+                                                    question_text__icontains = q).order_by('-pub_date'))
         polls += list(request.user.poll_participated.filter(m_poll=False,
             question_text__icontains = q ).exclude(question_owner=request.user).order_by('-pub_date'))
         polls = polls[:20]
@@ -2227,205 +4086,18 @@ def addFolder(request):
             except:
                 print("Error: poll not working")
         fold.save()
-        print(fold.questions)
+        # print(fold.questions)
         return HttpResponseRedirect(reverse('polls:regular_polls'))
     else:
         print("Error: not post in addFolder function line 1993")
 
-def getMturkPollList(request):
-    # get all IRB polls from database
-    list1 = [1,2,3,4,5,6,7,8,9,10,11]
-    list2 = [12,13,14,15,16,17,18,19,20]
-    ramdom.shuffle(list2)
-    polls = list1 + list2
-    # polls= random.sample(polls,k=10)
-    #329-342
-    
-    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-
-# submit a vote without logging in from Mturk
-def MturkVote(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
-    # get the preference order
-    orderStr = request.POST["pref_order"]
-    prefOrder = getPrefOrder(orderStr, question)
-    behavior_string = request.POST["record_data"]
-    if prefOrder == None:
-        # the user must rank all preferences
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-    # make Response object to store data
-    response = Response(question=question, user=request.user, timestamp=timezone.now(),
-                        resp_str=orderStr, behavior_data=behavior_string)
-    response.save()
-
-    # find ranking student gave for each item under the question
-
-    #get current winner
-    old_winner = OldWinner(question=question, response=response)
-    old_winner.save()
-    if not question.new_vote:
-        question.new_vote = True
-        question.save()
-    # notify the user that the vote has been updated
-    #messages.success(request, 'Saved!')
-    polls = json.loads(request.user.userprofile.sequence)
-    current = request.user.userprofile.cur_poll
+def deleteFolder(request, folder_id):
     try:
-        idx = polls.index(current)
-        if idx == len(polls)-1:
-            request.user.userprofile.finished = True
-            request.user.userprofile.save()
-            return HttpResponseRedirect(reverse('polls:SurveyCode'))
-        else:
-            request.user.userprofile.cur_poll = polls[idx + 1]
-            request.user.userprofile.save()
-            return HttpResponseRedirect(reverse('polls:IRBdetail', args=(polls[idx+1],)))
-
-    except ValueError:
-        return HttpResponseRedirect(reverse('polls:SurveyCode'))
-
-
-
-class MturkView(views.generic.ListView):
-    template_name = 'events/Mturk/Mturk.html'
-    context_object_name = 'question_list'
-    model = Question
-    
-    def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
-    
-    
-    def get_context_data(self,**kwargs):
-        ctx = super(MturkView, self).get_context_data(**kwargs)
-        #exp = get_object_or_404(User, username="opraexp")
-        #polls= list(Question.objects.filter(question_owner = exp))
-        #ctx['IRB_polls'] = polls
-        return ctx
-
-class SurveyFinalView(views.generic.ListView):
-    template_name = 'events/Mturk/SurveyCode.html'
-    model = Question
-    
-    def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
-    
-    def get_context_data(self,**kwargs):
-        ctx = super(SurveyFinalView, self).get_context_data(**kwargs)
-        #get surveycode
-        code= self.request.user.userprofile.code
-        ctx['code']= code
-        return ctx
-
-class SurveyEndView(views.generic.ListView):
-    template_name = 'events/Mturk/End.html'
-    model = Question
-    
-    def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
-    
-    def get_context_data(self,**kwargs):
-        ctx = super(SurveyEndView, self).get_context_data(**kwargs)
-        return ctx
-
-# view for question detail
-class IRBDetailView(views.generic.DetailView):
-    model = Question
-    template_name = 'events/Mturk/IRBPollDetail.html'
-    
-    def get_order(self, ctx):
-        other_user_responses = self.object.response_set.reverse()
-        default_order = list(ctx['object'].item_set.all())
-        random.shuffle(default_order)
-        return default_order
-    #commented out to improve performance
-    #return getRecommendedOrder(other_user_responses, self.request, default_order)
-    
-    def get_context_data(self, **kwargs):
-        ctx = super(IRBDetailView, self).get_context_data(**kwargs)
-        #exp = get_object_or_404(User, username="opraexp")
-            
-        polls = json.loads(self.request.user.userprofile.sequence)
-        current = self.request.user.userprofile.cur_poll
-        idx = 0
-        try:
-            idx = polls.index(current)
-            ctx['poll_index'] = idx + 1
-        except ValueError:
-            pass
-        #ctx['index']= idx
-        #ctx['title_index']=idx-5
-        #ctx['title_type']=idx<12
-        #ctx['tutorials'] = [2,3]
-        ctx['seq']=range(1,len(polls)+1)
-        #ctx['outof']=idx>5
-        ctx['next'] = self.object.next
-        
-        #get surveycode
-        #code= self.request.user.userprofile.code
-        #ctx['code']= code
-        
-        # Get the responses for the current logged-in user from latest to earliest
-        currentUserResponses = self.object.response_set.filter(user=self.request.user).reverse()
-
-    
-        # reset button
-        #if isPrefReset(self.request):
-        #    ctx['items'] = self.get_order(ctx)
-        #    return ctx
-
-        # check if the user submitted a vote earlier and display that for modification
-        #if len(currentUserResponses) > 0 and self.request.user.get_username() != "":
-        #    ctx['currentSelection'] = getCurrentSelection(currentUserResponses[0])
-        #    ctx['itr'] = itertools.count(1, 1)
-        #    ctx['unrankedCandidates'] = getUnrankedCandidates(currentUserResponses[0])
-        #    items = []
-         #   for item in ctx['currentSelection']:
-        #        for i in item:
-        #            items.append(i)
-        #    if not ctx['unrankedCandidates'] == None:
-        #        for item in ctx['unrankedCandidates']:
-        #            items.append(item)
-        #    ctx['items'] = items
-        #else:
-            # no history so display the list of choices
-        random_order = self.get_order(ctx)
-
-        use_recommend = False
-        if use_recommend and idx > 0:
-            recommended_order = recommend_ranking(idx)
-            try:
-                current_order = [int(i.item_text) for i in random_order]
-                new_order = [random_order[current_order.index(i)] for i in recommended_order]
-                random_order = new_order
-            except:
-                pass
-        ctx['items'] = random_order
-        try:
-            random_utilities = []
-            sigma = 20
-            for i in random_order:
-                base = float(i.item_text)
-                utility = round(np.random.normal(0.0,sigma)+ base)
-                while utility in random_utilities:
-                    utility = round(np.random.normal(0.0,sigma)+ base)
-                random_utilities.append(utility)
-        except:
-            random_utilities = random_order
-        ctx['random_utilities'] = random_utilities
-        return ctx
-    def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
-
-# function to process student submission
-def ExpAddComment(request):
-    if request.method == "POST":
-    # make Response object to store data
-        comment = request.POST['comment']
-        request.user.userprofile.comments = comment
-        request.user.userprofile.save()
-    return HttpResponseRedirect(reverse('polls:SurveyEnd'))
+        folder_obj = get_object_or_404(Folder, pk=folder_id)
+        folder_obj.delete()
+    except:
+        print("Problem in retrieving Folder object with id:" ,folder_id)
+    return HttpResponseRedirect(reverse('polls:regular_polls'))
 
 def test_server(request):
     m = Message(timestamp=timezone.now(),text="test")
@@ -2460,7 +4132,7 @@ class RGENView(views.generic.ListView):
         return ctx
 
 def get_voters(request):
-    if request.is_ajax():
+    if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
         q = request.GET.get('term', '')
         users = list(User.objects.filter(username__icontains=q))
         poll_id = request.GET.get('poll_id', '-1')
@@ -2526,8 +4198,8 @@ def change_self_sign_up(request, question_id):
     else:
         question.allow_self_sign_up = 0
     question.save()
-    request.session['setting'] = 9
-
+    request.session['setting'] = 4
+    messages.success(request, "Your changes have been saved.")
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def self_sign_up(request, question_id):
@@ -2573,246 +4245,496 @@ def approve_request(request, request_id):
 
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-#############################################################
-# CLASSES                                                   #
-#############################################################
-def newClass(request):
-    if request.method == "POST":
-        date = request.POST['startDate'].split('/')
-        date = date[2] + "-" + date[0] + "-" + date[1]
-        new_class = Classes(title=request.POST['classTitle'], startDate=date, teacher=request.user)
-        new_class.save()
-        new_class.students.add(request.user.id)
-        return HttpResponseRedirect(reverse('polls:classes'))
-    else:
-        context = RequestContext(request)
-        return render(request, 'classes/new_class.html', {})
+def upload_csv_choices(request, question_id):
+    """
+    Handle CSV file upload to add multiple alternatives at once.
+    Expected CSV format:
+    - One row per item
+    - First column: Item name (required)
+    - Second column: Item description (optional)
+    - Third column: Asset name (optional)
+    - Additional columns are ignored
+    
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # check if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can add alternatives.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST' and request.FILES.get('csvFile'):
+        csv_file = request.FILES['csvFile']
+        
+        # validate file type
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, "Please upload a CSV file.")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        
+        try:
+            # read CSV file
+            csv_text = TextIOWrapper(csv_file.file, encoding='utf-8')
+            csv_reader = csv.reader(csv_text)
+            
+            # Check if first row is a header
+            # Get the first row to inspect
+            first_row = next(csv_reader, None)
+            
+            # If no rows, exit early
+            if not first_row:
+                messages.error(request, "The CSV file is empty.")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            
+            # Check if first row contains common header terms
+            header_indicators = ['course', 'name', 'description', 'image', 'reference', 'title', 'alternative']
+            first_cell_lower = first_row[0].lower().strip()
+            is_header = any(indicator in first_cell_lower for indicator in header_indicators)
+            
+            # If it's not a header, we need to process it as a data row
+            rows_to_process = [first_row] if not is_header else []
+            
+            items_added = 0
+            items_skipped = 0
+            items_with_desc = 0
+            items_with_images = 0
+            
+            # Process the first row if it wasn't a header
+            for row in rows_to_process:
+                if row and row[0].strip():
+                    item_name = row[0].strip()
+                    item_description = row[1].strip() if len(row) > 1 and row[1].strip() else "No description"
+                    item_reference = row[2].strip() if len(row) > 2 and row[2].strip() else ""
+                    
+                    # check duplicates
+                    if not question.item_set.filter(item_text=item_name).exists():
+                        # create new item
+                        recentlyAdded = question.status == 4
+                        item = Item(
+                            question=question,
+                            item_text=item_name,
+                            item_description=item_description,
+                            imageReference=item_reference,
+                            timestamp=timezone.now(),
+                            recently_added=recentlyAdded
+                        )
+                        item.save()
+                        items_added += 1
+                        if item_description:
+                            items_with_desc += 1
+                        if item_reference:
+                            items_with_images += 1
+                    else:
+                        items_skipped += 1
+            
+            # Process the remaining rows
+            for row in csv_reader:
+                if not row or not row[0].strip():  # skip empty rows or rows without name
+                    continue
+                    
+                item_name = row[0].strip()
+                item_description = row[1].strip() if len(row) > 1 and row[1].strip() else "No description"
+                item_reference = row[2].strip() if len(row) > 2 and row[2].strip() else ""
+                
+                # check duplicates
+                if question.item_set.filter(item_text=item_name).exists():
+                    items_skipped += 1
+                    continue
+                
+                # create new item
+                recentlyAdded = question.status == 4
+                item = Item(
+                    question=question,
+                    item_text=item_name,
+                    item_description=item_description,
+                    imageReference=item_reference,
+                    timestamp=timezone.now(),
+                    recently_added=recentlyAdded
+                )
+                item.save()
+                items_added += 1
+                if item_description:
+                    items_with_desc += 1
+                if item_reference:
+                    items_with_images += 1
+            
+            # provide feedback
+            if is_header:
+                messages.info(request, "Detected and skipped header row.")
+                
+            if items_added > 0:
+                success_msg = f"Successfully added {items_added} items"
+                details = []
+                if items_with_desc > 0:
+                    details.append(f"{items_with_desc} with descriptions")
+                if items_with_images > 0:
+                    details.append(f"{items_with_images} with image references")
+                if details:
+                    success_msg += f" ({', '.join(details)})"
+                messages.success(request, success_msg + ".")
+            if items_skipped > 0:
+                messages.warning(request, f"Skipped {items_skipped} duplicate items.")
+                
+        except Exception as e:
+            messages.error(request, f"Error processing CSV file: {str(e)}")
+    
+    request.session['setting'] = 0
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-def newQuiz(request, pk):
-    if request.method == "POST":
-        cur_class = get_object_or_404(Classes, pk=pk)
-        options = json.loads(request.POST["choice"])
-        quiz = Question(question_text=request.POST["quizTitle"],
-                                question_desc=request.POST["quizDesc"],
-                                pub_date=timezone.now(),
-                                question_owner=request.user,
-                                display_pref=4,
-                                emailInvite=False,
-                                emailDelete=False,
-                                emailStart=False,
-                                emailStop=False,
-                                question_type=3,
-                                twocol_enabled=False,
-                                onecol_enabled=False,
-                                slider_enabled=False,
-                                star_enabled=False,
-                                yesno_enabled=True,
-                                single_enabled=False,
-                                ui_number=True+True+True+True+True,
-                                vote_rule=1,
-                                creator_pref=1,
-                                open=2,
-                                related_class=cur_class)
-        quiz.save()
-        for option in options:
-            item = Item(question=quiz,
-                item_text=option,
-                timestamp=timezone.now())
-            item.save()
-        for student in cur_class.students.all():
-            quiz.question_voters.add(student.id)
-    return HttpResponseRedirect(reverse('polls:classes'))
+def upload_bulk_images(request, question_id):
+    """
+    Handle bulk image upload to match with existing items.
+    Images will be attached to items that have a matching reference in their imageReference field.
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can add alternatives.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST' and request.FILES.getlist('imageFiles'):
+        try:
+            image_files = request.FILES.getlist('imageFiles')
+            
+            images_matched = 0
+            images_unmatched = 0
+            
+            # Get all items for this question
+            all_items = question.item_set.all()
+            
+            for image_file in image_files:
+                # Try to find items with matching imageReference
+                matching_items = all_items.filter(imageReference=image_file.name)
+                
+                if matching_items.exists():
+                    # Update all matching items with the actual image file
+                    for item in matching_items:
+                        item.image = image_file
+                        item.save()
+                        images_matched += 1
+                else:
+                    # Try with just the filename without extension as fallback
+                    base_name = os.path.splitext(image_file.name)[0]
+                    matching_items = all_items.filter(imageReference=base_name)
+                    
+                    if matching_items.exists():
+                        for item in matching_items:
+                            item.image = image_file
+                            item.save()
+                            images_matched += 1
+                    else:
+                        images_unmatched += 1
+            
+            if images_matched > 0:
+                messages.success(request, f"Successfully attached {images_matched} images to existing items.")
+            if images_unmatched > 0:
+                messages.warning(request, f"Could not match {images_unmatched} images to any existing items.")
+                
+        except Exception as e:
+            messages.error(request, f"Error processing image files: {str(e)}")
+    
+    request.session['setting'] = 0
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-def takeAttendance(request, pk):
-    cur_class = get_object_or_404(Classes, pk=pk)
-    if cur_class.teacher == request.user and cur_class.attendance == -1:
-        quiz = Question(question_text=cur_class.title + " attendance " + str(timezone.now())[:19],
-                                question_desc="",
-                                pub_date=timezone.now(),
-                                question_owner=request.user,
-                                display_pref=4,
-                                emailInvite=False,
-                                emailDelete=False,
-                                emailStart=False,
-                                emailStop=False,
-                                question_type=4,
-                                twocol_enabled=False,
-                                onecol_enabled=False,
-                                slider_enabled=False,
-                                star_enabled=False,
-                                yesno_enabled=False,
-                                single_enabled=True,
-                                ui_number=True+True+True+True+True,
-                                vote_rule=1,
-                                creator_pref=1,
-                                open=2,
-                                status=2,
-                                related_class=cur_class)
-        quiz.save()
-        item = Item(question=quiz,
-            item_text="I'm here",
-            timestamp=timezone.now())
-        item.save()
-        cur_class.attendance = quiz.id
-        cur_class.save()
-        print(cur_class.attendance)
-        for student in cur_class.students.all():
-            quiz.question_voters.add(student.id)
-    return HttpResponseRedirect(reverse('polls:classes'))
-
-def stopAttendance(request, pk):
-    cur_class = get_object_or_404(Classes, pk=pk)
-    if cur_class.teacher == request.user and cur_class.attendance != -1:
-        quiz = get_object_or_404(Question, pk=cur_class.attendance)
-        quiz.status = 3
-        quiz.save()
-        cur_class.attendance = -1
-        cur_class.save()
-    return HttpResponseRedirect(reverse('polls:classes'))
-
-@login_required
-def attendanceSignIn(request, question_id):
-    cur_poll = get_object_or_404(Question, pk=question_id)
-    if request.user not in cur_poll.related_class.students.all():
-        cur_poll.related_class.students.add(request.user.id)
-    resp = Response(question=cur_poll, user=request.user, timestamp=timezone.now(),resp_str="[\"itemI'm here\"]")
-    resp.save()
-    return render(request, "classes/success_join.html", {"poll_name":cur_poll.question_text})
-
-def classSignIn(request, pk):
-    cur_class = get_object_or_404(Classes, pk=pk)
-    if cur_class.teacher == request.user and cur_class.attendance != -1:
-        quiz = get_object_or_404(Question, pk=cur_class.attendance)
-        orderStr = "itemI'm here;;|;;"
-        response = Response(question=quiz, user=request.user,
-            timestamp=timezone.now(), resp_str=orderStr)
-        response.save()
-    return HttpResponseRedirect(reverse('polls:classes'))
-
-class ClassesView(views.generic.ListView):
-    template_name = 'classes/classes.html'
-    context_object_name = 'question_list'
-    def get_queryset(self):
-        return Question.objects.all()
-    def get_context_data(self, **kwargs):
-        ctx = super(ClassesView, self).get_context_data(**kwargs)
-        # sort the list by date
-        classes = Classes.objects.filter(teacher=self.request.user).order_by('-startDate')
-        quizzes = []
-        quizzes_part_curr = []
-        quizzes_part_prev = []
-        quizzes_part_prev_answer = []
-        attendance_prev = []
-        attendance_curr = []
-        attendance_prev_states = []
-        taking_attendance = []
-        classes_part = self.request.user.students.exclude(teacher=None).order_by('-startDate')#self.request.user)
-        ctx['classes_created'] = classes
-        ctx['classes_participated'] = classes_part
-        for class_inst in classes:
-            quizzes.append(Question.objects.filter(related_class=class_inst).filter(question_type=3))
-        for class_inst in classes_part:
-            if class_inst.attendance > 0:
-                question = Question.objects.filter(id=class_inst.attendance)[0]
-                prevResponseCount = question.response_set.filter(user=self.request.user).count()
-                taking_attendance.append(prevResponseCount == 0)
-            else:
-                taking_attendance.append(False)
-            previous_quiz = list(Question.objects.filter(related_class=class_inst).filter(question_type=3).filter(Q(status=3) | Q(status=4)))
-            previous_att = list(Question.objects.filter(related_class=class_inst).filter(question_type=4).filter(Q(status=3) | Q(status=4)))
-            quizzes_part_curr.append(Question.objects.filter(related_class=class_inst).filter(question_type=3).filter(status=2))
-            quizzes_part_prev.append(previous_quiz)
-            attendance_curr.append(Question.objects.filter(related_class=class_inst).filter(question_type=4).filter(status=2))
-            attendance_prev.append(previous_att)
-            for quiz in previous_quiz:
-                user_response = list(Response.objects.filter(question=quiz,user=self.request.user,active=1).order_by('timestamp'))
-                #print(user_response)
-                if len(user_response) > 0:
+def upload_single_image(request, question_id):
+    """
+    Handle single image upload for an existing item.
+    Updates the image for an existing item instead of creating a new one.
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can modify items.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST' and 'image' in request.FILES:
+        try:
+            image_file = request.FILES['image']
+            item_id = request.POST.get('item_id', None)
+            
+            if not item_id:
+                messages.error(request, "No item selected. Please select an item to update.")
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+            
+            # Get the item to update
+            try:
+                item = Item.objects.get(pk=item_id, question=question)
+                
+                # Remove any existing image (optional)
+                if item.image:
                     try:
-                        resp_str = json.loads(user_response[0].resp_str)
-                        formatted_response = sorted([i[4:] for i in resp_str[0]])
-                        quizzes_part_prev_answer.append(json.dumps(formatted_response))
+                        old_image_path = item.image.path
+                        if os.path.exists(old_image_path):
+                            os.remove(old_image_path)
                     except:
-                        quizzes_part_prev_answer.append("")
-                else:
-                    quizzes_part_prev_answer.append("Missed")
-            for att in previous_att:
-                user_response = list(Response.objects.filter(question=att,user=self.request.user,active=1).order_by('timestamp'))
-                if len(user_response) > 0:
-                    attendance_prev_states.append("Attended")
-                else:
-                    attendance_prev_states.append("Missed")
-        taking_attendance.reverse()
-        ctx['quizzes_created'] = quizzes
-        ctx['quizzes_part_prev'] = quizzes_part_prev
-        ctx['quizzes_part_curr'] = quizzes_part_curr
-        ctx['attendance_prev'] = attendance_prev
-        ctx['attendance_curr'] = attendance_curr
-        ctx['taking_attendance'] = taking_attendance
-        ctx['quizzes_part_prev_answer'] = quizzes_part_prev_answer
-        ctx['attendance_prev_states'] = attendance_prev_states
-        #print(taking_attendance)
-        return ctx
+                        pass  # Ignore errors in removing old image
+                
+                # Update the image
+                item.image = image_file
+                item.save()
+                
+                messages.success(request, f"Successfully updated image for '{item.item_text}'.")
+            except Item.DoesNotExist:
+                messages.error(request, "The specified item was not found.")
+                
+        except Exception as e:
+            messages.error(request, f"Error processing image file: {str(e)}")
+    
+    request.session['setting'] = 0
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-class GradesView(views.generic.ListView):
-    model = Classes
-    template_name = 'classes/classes.html'
-    def get_queryset(self):
-        return Question.objects.all()
+def delete_items(request, question_id):
+    """Delete multiple items or all items from a poll."""
+    question = get_object_or_404(Question, pk=question_id)
+    
+    # check if user is poll owner
+    if request.user != question.question_owner:
+        messages.error(request, "Only the poll owner can delete alternatives.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    if request.method == 'POST':
+        if 'delete_all' in request.POST:
+            # delete all 
+            question.item_set.all().delete()
+            messages.success(request, "All items have been deleted.")
+        else:
+            # delete selected 
+            try:
+                item_ids = json.loads(request.POST.get('item_ids', '[]'))
+                question.item_set.filter(id__in=item_ids).delete()
+                messages.success(request, f"{len(item_ids)} items have been deleted.")
+            except Exception as e:
+                messages.error(request, f"Error deleting items: {str(e)}")
+    
+    request.session['setting'] = 0
+
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+class DemoView(views.generic.DetailView):
+    """Define demo poll for course matching functionality."""
+    
+    model = Question
+    template_name = 'events/CourseMatch/coursematchdemo.html'
+    
+    def is_student(self, email: str) -> bool:
+        # In demo mode, treat all users as students
+        return True
+    
+    def get_order_from_email(self, email: str) -> list:
+        # For demo, return empty list to use random order
+        return []
+    
+    def get_random_order(self, ctx) -> list:
+        default_order = list(ctx['object'].item_set.all())
+        random.shuffle(default_order)
+        return default_order
+    
+    def get_order(self, ctx) -> list:
+        """Define the initial order to be displayed on the page."""
+        # For demo, always use random order
+        default_order = self.get_random_order(ctx)
+        return default_order
+    
+    def get_num_courses(self, ctx) -> int:
+        """Get the number of courses to display."""
+        # Default to 3 courses for demo if not set
+        return ctx.get('num_courses', 3)
+
     def get_context_data(self, **kwargs):
-        ctx = super(GradesView, self).get_context_data(**kwargs)
-        # sort the list by date
-        classes = Classes.objects.filter(teacher=self.request.user).order_by('-startDate')
-        quizzes = []
-        quizzes_part_curr = []
-        quizzes_part_prev = []
-        taking_attendance = []
-        classes_part = self.request.user.students.exclude(teacher=None).order_by('-startDate')#self.request.user)
-        ctx['classes_created'] = classes
-        ctx['classes_participated'] = classes_part
-        for class_inst in classes:
-            quizzes.append(Question.objects.filter(related_class=class_inst).filter(question_type=3))
-        for class_inst in classes_part:
-            if class_inst.attendance > 0:
-                question = Question.objects.filter(id=class_inst.attendance)[0]
-                prevResponseCount = question.response_set.filter(user=self.request.user).count()
-                taking_attendance.append(prevResponseCount == 0)
+        ctx = super(DemoView, self).get_context_data(**kwargs)
+        ctx['lastcomment'] = ""
+        ctx['demo_message'] = "This is a demo of the CourseMatchView functionality."
+
+        # Case for anonymous user
+        if self.request.user.get_username() == "":
+            if isPrefReset(self.request):
+                ctx['items'] = self.object.item_set.all()
+                return ctx
+            # check the anonymous voter
+            if 'anonymousvoter' in self.request.session and 'anonymousid' in self.request.session:
+                # sort the responses from latest to earliest
+                anon_id = self.request.session['anonymousid']
+                curr_anon_resps = self.object.response_set.filter(anonymous_id=anon_id, active=1).reverse()
+                if len(curr_anon_resps) > 0:
+                    # get the voter's most recent selection
+                    mostRecentAnonymousResponse = curr_anon_resps[0]
+                    if mostRecentAnonymousResponse.comment:
+                        ctx['lastcomment'] = mostRecentAnonymousResponse.comment
+                    ctx['currentSelection'] = getCurrentSelection(curr_anon_resps[0])
+                    ctx['unrankedCandidates'] = getUnrankedCandidates(curr_anon_resps[0])
+                    ctx['itr'] = itertools.count(1, 1)
+                    items_ano = []
+                    for item in ctx['currentSelection']:
+                        for i in item:
+                            items_ano.append(i)
+                    if not ctx['unrankedCandidates'] == None:
+                        for item in ctx['unrankedCandidates']:
+                            items_ano.append(item)
+                    ctx['items'] = items_ano
             else:
-                taking_attendance.append(False)
-            quizzes_part_curr.append(Question.objects.filter(related_class=class_inst).filter(question_type=3).filter(status=2))
-            quizzes_part_prev.append(Question.objects.filter(related_class=class_inst).filter(question_type=3).filter(status=4))
-        taking_attendance.reverse()
-        ctx['quizzes_created'] = quizzes
-        ctx['quizzes_part_prev'] = quizzes_part_prev
-        ctx['quizzes_part_curr'] = quizzes_part_curr
-        ctx['taking_attendance'] = taking_attendance
-        print(taking_attendance)
+                # load choices in the default order
+                ctx['items'] = self.object.item_set.all()
+                # For demo, set a default number of courses
+                ctx['num_courses'] = 3
+            return ctx
+
+        # Get the responses for the current logged-in user from latest to earliest
+        currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
+
+        if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except:
+                ctx['num_courses'] = 3  # Default for demo
+            ctx['submitted_ranking'] = latest_response.behavior_data
+            if currentUserResponses[0].comment:
+                ctx['lastcomment'] = currentUserResponses[0].comment
+        else:
+            # For demo, set a default number of courses
+            ctx['num_courses'] = 3
+        
+        # reset button
+        if isPrefReset(self.request):
+            ctx['items'] = self.get_order(ctx)
+            return ctx
+
+        # check if the user submitted a vote earlier and display that for modification
+        if len(currentUserResponses) > 0 and self.request.user.get_username() != "":
+            ctx['currentSelection'] = getCurrentSelection(currentUserResponses[0])
+            ctx['itr'] = itertools.count(1, 1)
+            ctx['unrankedCandidates'] = getUnrankedCandidates(currentUserResponses[0])
+            items = []
+            for item in ctx['currentSelection']:
+                for i in item:
+                    items.append(i)
+            if not ctx['unrankedCandidates'] == None:
+                for item in ctx['unrankedCandidates']:
+                    items.append(item)
+            ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
+        else:
+            # no history so display the list of choices
+            ctx['items'] = self.get_order(ctx)
         return ctx
+    
+    def get_queryset(self):
+        """
+        Excludes any questions that aren't published yet.
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now())
 
-def GradesDownload(request, pk):
-    cur_class = get_object_or_404(Classes, pk=pk)
+class CourseMatchDemoView(views.generic.DetailView):
+    """Define demo poll for course matching functionality."""
+    
+    model = Question
+    template_name = 'events/CourseMatch/coursematchdemo.html'
+    
+    def is_student(self, email: str) -> bool:
+        # In demo mode, treat all users as students
+        return True
+    
+    def get_order_from_email(self, email: str) -> list:
+        # For demo, return empty list to use random order
+        return []
+    
+    def get_random_order(self, ctx) -> list:
+        default_order = list(ctx['object'].item_set.all())
+        random.shuffle(default_order)
+        return default_order
+    
+    def get_order(self, ctx) -> list:
+        """Define the initial order to be displayed on the page."""
+        # For demo, always use random order
+        default_order = self.get_random_order(ctx)
+        return default_order
+    
+    def get_num_courses(self, ctx) -> int:
+        """Get the number of courses to display."""
+        # Default to 3 courses for demo if not set
+        return ctx.get('num_courses', 3)
 
-    quizzes = Question.objects.filter(related_class=cur_class).all()
-    student_dict = {}
-    for quiz in quizzes:
-        responses = Response.objects.filter(question=quiz).all()
-        students_in_quiz = set()
-        for response in responses:
-            user = response.user
-            if user != None and user.username not in students_in_quiz:
-                students_in_quiz.add(user.username)
-                if user.username in student_dict.keys():
-                    student_dict[user.username] += 1
-                else:
-                    student_dict[user.username] = 1
+    def get_context_data(self, **kwargs):
+        ctx = super(CourseMatchDemoView, self).get_context_data(**kwargs)
+        ctx['lastcomment'] = ""
+        ctx['demo_message'] = "This is a demo of the CourseMatchView functionality."
 
-    # Create the HttpResponse object with the appropriate CSV header.
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="grades.csv"'
+        # Case for anonymous user
+        if self.request.user.get_username() == "":
+            if isPrefReset(self.request):
+                ctx['items'] = self.object.item_set.all()
+                return ctx
+            # check the anonymous voter
+            if 'anonymousvoter' in self.request.session and 'anonymousid' in self.request.session:
+                # sort the responses from latest to earliest
+                anon_id = self.request.session['anonymousid']
+                curr_anon_resps = self.object.response_set.filter(anonymous_id=anon_id, active=1).reverse()
+                if len(curr_anon_resps) > 0:
+                    # get the voter's most recent selection
+                    mostRecentAnonymousResponse = curr_anon_resps[0]
+                    if mostRecentAnonymousResponse.comment:
+                        ctx['lastcomment'] = mostRecentAnonymousResponse.comment
+                    ctx['currentSelection'] = getCurrentSelection(curr_anon_resps[0])
+                    ctx['unrankedCandidates'] = getUnrankedCandidates(curr_anon_resps[0])
+                    ctx['itr'] = itertools.count(1, 1)
+                    items_ano = []
+                    for item in ctx['currentSelection']:
+                        for i in item:
+                            items_ano.append(i)
+                    if not ctx['unrankedCandidates'] == None:
+                        for item in ctx['unrankedCandidates']:
+                            items_ano.append(item)
+                    ctx['items'] = items_ano
+            else:
+                # load choices in the default order
+                ctx['items'] = self.object.item_set.all()
+                # For demo, set a default number of courses
+                ctx['num_courses'] = 3
+            return ctx
 
-    writer = csv.writer(response)
-    writer.writerow(["Username", "Classes attended", "Total", "Percentage attended"])
-    for k in student_dict.keys():
-        writer.writerow([k, student_dict[k], len(quizzes), student_dict[k] * 100. / len(quizzes)])
+        # Get the responses for the current logged-in user from latest to earliest
+        currentUserResponses = self.object.response_set.filter(user=self.request.user, active=1).reverse()
 
-    return response
+        if len(currentUserResponses) > 0:
+            latest_response = currentUserResponses[0] #storing last submission to fetch after submit
+            try:
+                ctx['num_courses'] = json.loads(latest_response.behavior_data)['num_courses']
+            except:
+                ctx['num_courses'] = 3  # Default for demo
+            ctx['submitted_ranking'] = latest_response.behavior_data
+            if currentUserResponses[0].comment:
+                ctx['lastcomment'] = currentUserResponses[0].comment
+        else:
+            # For demo, set a default number of courses
+            ctx['num_courses'] = 3
+        
+        # reset button
+        if isPrefReset(self.request):
+            ctx['items'] = self.get_order(ctx)
+            return ctx
+
+        # check if the user submitted a vote earlier and display that for modification
+        if len(currentUserResponses) > 0 and self.request.user.get_username() != "":
+            ctx['currentSelection'] = getCurrentSelection(currentUserResponses[0])
+            ctx['itr'] = itertools.count(1, 1)
+            ctx['unrankedCandidates'] = getUnrankedCandidates(currentUserResponses[0])
+            items = []
+            for item in ctx['currentSelection']:
+                for i in item:
+                    items.append(i)
+            if not ctx['unrankedCandidates'] == None:
+                for item in ctx['unrankedCandidates']:
+                    items.append(item)
+            ctx['items'] = items
+            ctx['num_courses'] = self.get_num_courses(ctx)    
+        else:
+            # no history so display the list of choices
+            ctx['items'] = self.get_order(ctx)
+        return ctx
+    
+    def get_queryset(self):
+        """
+        Excludes any questions that aren't published yet.
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now())

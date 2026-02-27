@@ -5,11 +5,12 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.views import generic
 
+from polls.email import EmailThread
+
 from .models import *
 from django.contrib import messages
 from django.utils import timezone
 from django.template import RequestContext
-from django.shortcuts import render_to_response
 from django.contrib.auth import authenticate, login,logout
 from django.contrib.auth.decorators import login_required
 from django.core import mail
@@ -34,7 +35,7 @@ class addGroupView(generic.ListView):
         return ctx
     
     def get_queryset(self):
-        return Group.objects.order_by('-pub_date')  
+        return Group.objects.all() # .order_by('-pub_date')  
 
 def addgroup(request):
     context = RequestContext(request)
@@ -120,10 +121,24 @@ def addgroupvoters(request, question_id):
     request.session['setting'] = 1
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+def sendEmail(toEmails, mailSubject, mailBody):
+    # logic to send email from opra mail id 
+    mail.send_mail(mailSubject,
+                    mailBody,
+                    'opra@cs.binghamton.edu',
+                    toEmails, # toEmails
+                    html_message='')
+    return
 
 def removegroupvoters(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     removeGroups = request.POST.getlist('groups')
+
+    email = request.POST.get('email') == 'email'
+    recepients = []
+    mailSub = request.POST.get('mailNotificationSubject1')
+    mailBody = request.POST.get('mailNotificationBody1')
+
     for group in removeGroups:
         for cur in Group.objects.all():
             if cur.owner == request.user and cur.name == group:
@@ -132,6 +147,14 @@ def removegroupvoters(request, question_id):
                     if voter in question.question_voters.all():
                         voterObj = User.objects.get(username=voter)
                         question.question_voters.remove(voterObj.id)
+                        recepients.append(voterObj.username)
+    if email : 
+        print("Email sending logic to remove group")
+        email_class = EmailThread(request, question_id, 'remove-group', recepients, mailSub, mailBody)
+        email_class.start()
+        messages.success(request, "The Email has been sent to the removed users!")
+        # sendEmail(recepients, mailSub, mailBody)
+    messages.success(request, "Selected groups have been removed from "+ question.question_text)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     
 def joingroup(request, group_id):

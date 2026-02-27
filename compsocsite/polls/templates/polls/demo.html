@@ -1,6 +1,6 @@
 {% extends 'polls/base.html' %}
 {% load mathfilters %}
-{% load staticfiles %}
+{% load static%}
 {% block extra_head %}
 
 {% if request.flavour == "mobile" %}
@@ -27,9 +27,9 @@
 
     {% if question.status == 2 %}
         {% if question.open == False and request.user.username == ""%}
-        You have no permission to vote on this poll.
+        You do not seem to have acquired the right permissions. Try logging in.
         {% elif question.open == False and request.user not in question.question_voters.all %}
-        You are not invited to this poll.
+        Sorry, you do not seem to be invited to participate, and an invitation seems necessary. Please contact the administrator of this poll or assignment instance.
         {% else %}
         <div class="text-center">
         <a class="btn btn-lg btn-success" href="javascript:void(0);" onclick="javascript:introJs().setOption('showProgress', true).start();">Start the Tutorial</a>
@@ -182,7 +182,7 @@
                                         <ul class="choice2" onclick = "VoteUtil.moveToPref(this)">
                                             <li class="" id="item{{ item.item_text }}">
                                                 {% if item.image %}
-                                                    <img class="item" src='/{{ item.image.url }}'/>
+                                                    <img class="item" src='{{ item.image.url }}'/>
                                                 {% endif %}
                                                 {% if item.imageURL != Null %}
                                                     <img class="item" src='{{ item.imageURL }}'/>

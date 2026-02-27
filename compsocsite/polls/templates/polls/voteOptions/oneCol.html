@@ -29,7 +29,7 @@
                     <div class="panel-heading" >
                         <h4>Your preferences:
                             {% if not request.flavour == "mobile" %}
-                                <button id="submitbutton-onecol" type="submit" onclick="VoteUtil.submitPref();" class="submitbutton btn btn-success" style="">
+                                <button id="submitbutton-onecol" type="submit" onclick="VoteUtil.submitPref();" class="submitbutton btn btn-success" style="float: right; margin-left: 10px;">
                                     Submit
                                 </button>
                                 <button id="submitting-onecol" type="button" class="submitting btn btn-default" style="visibility:hidden;position:absolute;z-index:1;">
@@ -56,7 +56,7 @@
                     <div class="panel-body" >
                         <div class= "sortable-ties" id="one-sortable" >
                             <span class="empty"></span>
-                                {% if currentSelection %}
+                            {% if currentSelection %}
                                 <!-- Display a previously submitted vote -->
                                 {% for s in currentSelection %}
                                     {% if s %}
@@ -68,11 +68,11 @@
                                                 <li class="list-element" id="item{{ selection.item_text }}" type="{{ selection.id }}">
                                                     <!-- Display image (uploaded) -->
                                                     {% if selection.image %}
-                                                    <img class="item" src='/{{ selection.image.url }}'/>
+                                                    <img class="item" src='{{ selection.image.url }}' style="height: 25px; margin-top: -8px;"/>
                                                     {% endif %}
                                                     <!-- Display image (external URL) -->
                                                     {% if selection.imageURL != Null %}
-                                                    <img class="item" src='{{ selection.imageURL }}'/>
+                                                    <img class="item" src='{{ selection.imageURL }}' style="height: 25px; margin-top: -8px;"/>
                                                     {% endif %}
                                                     <!-- Display option text -->
                                                     {{ selection.item_text }}
@@ -96,22 +96,20 @@
                                     <ul class="choice1" id="{{ prev|add:1 }}">
                                     <div class="tier one"> #{{ forloop.counter }}  </div>
                                     {% endwith %}
-                                        <li class="list-element" id="item{{ item.item_text }}" >
+                                        <li class="list-element" id="item{{ item.item_text }}">
                                             <!-- Display image (uploaded) -->
                                             {% if item.image %}
-                                                <img class="item" src='/{{ item.image.url }}'/>
+                                                <img class="item" src='{{ item.image.url }}' style="height: 25px; margin-top: -8px;"/>
                                             {% endif %}
                                             <!-- Display image (external URL) -->
                                             {% if item.imageURL != Null %}
-                                                <img class="item" src='{{ item.imageURL }}'/>
+                                                <img class="item" src='{{ item.imageURL }}' style="height: 25px; margin-top: -8px;"/>
                                             {% endif %}
                                             <!-- Display option text -->
                                             {{ item.item_text }}
                                             <!-- Display tooltip for option description -->
-                                            {% if item.item_description %}
-                                                <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden">
-                                                </span>
-                                            {% endif %}
+                                            <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden">
+                                            </span>
                                         </li>
                                     </ul>
                             {% endfor %}
@@ -125,19 +123,17 @@
                                             <li class="list-element" id="item{{ item.item_text }}">
                                                 <!-- Display image (uploaded) -->
                                                 {% if item.image %}
-                                                    <img class="item" src='/{{ item.image.url }}'/>
+                                                    <img class="item" src='{{ item.image.url }}' style="height: 25px; margin-top: -8px;"/>
                                                 {% endif %}
                                                 <!-- Display image (external URL) -->
                                                 {% if item.imageURL != Null %}
-                                                    <img class="item" src='{{ item.imageURL }}'/>
+                                                    <img class="item" src='{{ item.imageURL }}' style="height: 25px; margin-top: -8px;"/>
                                                 {% endif %}
                                                 <!-- Display option text -->
                                                 {{ item.item_text }}
                                                 <!-- Display tooltip for option description -->
-                                                {% if item.item_description %}
-                                                    <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden">
-                                                    </span>
-                                                {% endif %}
+                                                <span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description|default:'No description available'}}" data-title="Meddelanden">
+                                                </span>
                                             </li>
                                         </ul>
                                 {% endfor %}
@@ -152,3 +148,36 @@
         {% include "polls/voteOptions/_comment_section.html" %}
     </form>
 </div>
+
+<script>
+
+
+    // function adjustWidthOneCol(){
+    //     {% if items %}
+    //         {% for item in items %}
+    //             {% if item %}
+    //                 console.log("item{{ item.item_text }}");
+    //                 var width = document.getElementById("item{{ item.item_text }}").offsetWidth;
+    //                 if(width!==0 && width <= 125){
+    //                     var list_of_options = document.getElementsByClassName('list-element');
+    //                     for(var i=0; i<list_of_options.length; i++){
+    //                         // list_of_options[i].style.width = "125px";
+    //                         if(!list_of_options[i].classList.contains('list-element-small')){
+    //                             list_of_options[i].classList.add('list-element-small');
+    //                         }     
+    //                     }
+    //                 }
+    //             {% endif %}
+    //         {% endfor %}
+    //     {% endif %}
+    // }
+
+
+    
+$(function(){
+        $(document).ready(function() {
+            // adjustWidthOneCol();
+        });
+    });
+
+</script>

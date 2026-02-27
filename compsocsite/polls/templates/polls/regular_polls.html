@@ -1,4 +1,5 @@
 {% extends 'polls/base.html' %}
+{% load poll_extra %}
 
 
 {% block content %}
@@ -27,11 +28,11 @@
             title += va_mid + "<div class=\"start-icon\"><i class=\"fa fa-play\" aria-hidden=\"true\" data-toggle=\"modal\" data-target=\"#confirm-start" + item.id + "\"></i></div></td>"
             title +="<div class=\"modal fade\" id=\"confirm-start" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\">"
             title += "<div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Start Poll " + item.value + "</div>"
-            title += "<div class=\"modal-body\">Are you sure you want to start poll " + item.value + "? Once a poll is started, you cannot modify the settings or remove voters.</div>"
+            title += "<div class=\"modal-body\">Are you sure you want to start poll " + item.value + "? Once a poll is started, you cannot modify the settings or remove users.</div>"
             title += "<div class=\"modal-footer\"><a href=\"/polls/" + item.id + "/start/\"><button type=\"button\" class=\"btn-large btn-success btn-ok\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
         }else if(item.status == 2 && item.created){
             title += "<td style=\"vertical-align:middle\"><div class=\"stop-icon pull-right\"><i class=\"fa fa-stop\" aria-hidden=\"true\" data-toggle=\"modal\" data-target=\"#confirm-stop" + item.id + "\"></i></div><div class=\"pause-icon pull-right\" style=\"position:relative; right:10%;\"><a href=\"/polls/" + item.id + "/pause/\"><i class=\"fa fa-pause\" aria-hidden=\"true\"></i></a></div></td>"
-            title += "<div class=\"modal fade\" id=\"confirm-stop" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\"><div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Stop Poll</div><div class=\"modal-body\">Are you sure you want to stop this poll? Once a poll is stopped, no more votes can be changed.</div>";
+            title += "<div class=\"modal fade\" id=\"confirm-stop" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\"><div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Stop Poll</div><div class=\"modal-body\">Are you sure you want to stop this poll? Once a poll is stopped, no more preferences can be changed.</div>";
             title += "<div class=\"modal-footer\"><a href=\"/polls/" + item.id + "/stop/\"><button type=\"button\" class=\"btn-large  btn-ok btn-danger\" style=\"font-size:100%;\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
         }else if(item.status == 3 && item.created){
             title += "<td>";
@@ -91,7 +92,7 @@
 </div>
 
 <!-- for folders -->
-<div class="container">
+<!-- <div class="container">
     <div class="panel panel-default">
         <div class="panel-heading">
             <a href="#" data-toggle="modal" data-target="#add_folder">
@@ -133,6 +134,37 @@
             </div>
         </div>
     </div>
+</div> -->
+
+<!-- <p>Active Polls:</p>
+{% for question in active_polls %}
+    <h3>{{ question.question_text }}</h3>
+    <h5 href="{% url 'polls:detail' question.id %}" id="QRLink">http://127.0.0.1:8000{% url 'polls:detail' question.id %}</h5>
+{% endfor %} -->
+
+<div class="container" >
+    <div name="created" class="panel panel-default">
+        <div class="panel-body">
+            <table style = "width:100%;" class="table" name="created">
+                <thead>
+                    <tr>
+                        <th colspan=2>
+                            <div> 
+                                Create a new Poll/Allocation instance:
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tr>
+                    <td>
+                        <a href="{% url 'polls:AddStep1' %}" style='font-size:100%;' class="btn btn-yellow">
+                            <span class="glyphicon glyphicon-plus"></span>&nbsp;&nbsp;Create New
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- for created by you section -->
@@ -146,9 +178,9 @@
 		                  Regular polls created by you ({{ polls_created|length }})
                     </th>
                     <th>
-                        <a href="{% url 'polls:AddStep1' %}" style='font-size:60%; float:right;' class="btn btn-yellow">
+                        <!-- <a href="{% url 'polls:AddStep1' %}" style='font-size:60%; float:right;' class="btn btn-yellow">
                             <span class="glyphicon glyphicon-plus"></span>
-                        </a>
+                        </a> -->
                         <!--
                         {% if request.user.username == "opraexp" %}
                         <a href="{% url 'polls:experimentcreate' %}" style='font-size:60%; float:right;' class="btn btn-yellow">
@@ -173,7 +205,7 @@
 							{% endif %}
                             
                         {% endif %}
-						{% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.response_set.all.count > 0 %}
+						{% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.response_set.all.count > 0 and question|can_show_results%}
                             <a href="{% url 'polls:voteresults' question.id %}" class ="btn btn-dark" role="button" target="_blank" >Current Winners</a>
                         {% endif %}
                     </td>
@@ -191,7 +223,7 @@
                                         Confirm Start Poll {{ question.question_text }}
                                     </div>
                                     <div class="modal-body">
-                                        Are you sure you want to start poll {{ question.question_text }}? Once a poll is started, you cannot modify the settings or remove voters.
+                                        Are you sure you want to start poll {{ question.question_text }}? Once a poll is started, you cannot modify the settings or remove users.
                                     </div>
                                     <div class="modal-footer">
                                         <a href="{% url 'polls:start' question.id %}">
@@ -220,7 +252,7 @@
                                         Confirm Stop Poll
                                     </div>
                                     <div class="modal-body">
-                                        Are you sure you want to stop this poll? Once a poll is stopped, no more votes can be changed.
+                                        Are you sure you want to stop this poll? Once a poll is stopped, no more preferences can be changed.
                                     </div>
                                     <div class="modal-footer">
                                         <a href="{% url 'polls:stop' question.id %}">
@@ -289,7 +321,7 @@
                     {% if question.status == 2 %}
                         <a href="{% url 'polls:detail' question.id %}" class ="btn btn-dark" role="button">Vote</a>
                     {% endif %}
-					{% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.response_set.all.count > 0%}
+					{% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.response_set.all.count > 0 and question|can_show_results%}
                             <a href="{% url 'polls:voteresults' question.id %}" class ="btn btn-dark" role="button" target="_blank" >Current Winners</a>
                     {% endif %}
                 </td>

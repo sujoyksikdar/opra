@@ -1,0 +1,443 @@
+{% extends "polls/base.html" %}
+{% load poll_extra %}
+{% load static %}
+
+{% block content %}
+<p>sum of alloc: {{selected_alloc_res_tables_sum }}</p>
+{% if selected_alloc_res_tables_sum == 0 %}
+<div class="alert alert-info" style="margin-top: 40px; margin-bottom: 20px;">
+    <h3 style="margin-bottom: 20px;">Nothing to show here.</h3>
+    <p>This is likely due to two possible reasons:</p>
+    <ul>
+        <li>The administrator of this instance has disabled access to results</li>
+        <li>The results are still being computed at this time.<br>We are waiting on all users to submit preferences</li>
+    </ul>
+    <p style="margin-top: 15px;">Please visit again later.</p>
+</div>
+{% else %}
+<p>sum of alloc: {{selected_alloc_res_tables_sum }}</p>
+<div class="col-md-12">
+    <!-- results header with current algorithm + dropdown -->
+    <div class="results-header">
+        <h1 style="margin-top: 40px; margin-bottom: 25px;">{{ question.question_text }}</h1>
+        <div class="allocation-mechanism">
+            <span>current allocation algorithm:
+                <span id="selected-mechanism-display">{{ current_mechanism }}</span>
+            </span>
+            <div class="dropdown-container">
+                <select id="mechanism-dropdown" onchange="updateAllocationMechanism(this.value)">
+                    <option value="">switch allocation method</option>
+                    {% for mechanism in available_mechanisms %}
+                    <!-- mechanism is a tuple (bit, label) -->
+                    <option value="{{ mechanism.0 }}" {% if mechanism.0 == current_mechanism_id %} selected {% endif %}>
+                        {{ mechanism.1 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user_name != empty_string %}
+    {% if selected_alloc_res_tables_sum|bitwise_and:1 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">My Preference:</div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <tr>
+                        <th>Item</th>
+                        <th>Value</th>
+                    </tr>
+                    {% for item in items_obj %}
+                    <tr>
+                        <td>{{ item.item_text }}</td>
+                        <td>0</td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for item in curr_user_pref %}
+                    <script>
+                        // Find and update the item value in the table
+                        document.querySelectorAll('table tr td:first-child').forEach(function (cell, index) {
+                            if (cell.textContent.trim() === "{{ item }}") {
+                                cell.nextElementSibling.textContent = "{{ curr_user_pref_values|index:forloop.counter0 }}";
+                            }
+                        });
+                    </script>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">All User Preferences</div>
+        <div class="panel-body">
+            <table class="table">
+                <tr>
+                    <th>User</th>
+                    <th>Preferences</th>
+                </tr>
+                {% for username, prefs in all_user_preferences %}
+                <tr>
+                    <td>{{ username }}</td>
+                    <td>
+                        {% for item in prefs %}
+                        <span class="label label-info">{{ item }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">Allocated Items Bundle:</div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <tr>
+                        <th>Candidate</th>
+                        <th>Bundle</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>{{ current_user_name }}</td>
+                        <td>
+                            <div>
+                                {% for item in curr_user_bundle %}
+                                <div class="options-container">
+                                    {% if item.image %}
+                                    <img class="item" src="{{ item.image.url }}" />
+                                    {% endif %}
+                                    <span>{{ item.item_text }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>{{ curr_user_bundle_sum }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">Allocation Results</div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <tr>
+                        <th></th>
+                        {% for item in items_obj %}
+                        <th>
+                            <div style="display: flex; padding-left: 25%; padding-right: 25%;">
+                                {% if item.image %}
+                                <img class="item" src="{{ item.image.url }}" />
+                                {% endif %}
+                                <div style="margin: auto;">{{ item.item_text }}</div>
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                    {% for row in allocation_matrix %}
+                    <tr>
+                        <td>
+                            <div>
+                                <img src="{{ profile_pics|index:forloop.counter0 }}"
+                                    style="height: 40px; width: 40px;" />
+                                {{ candidates|index:forloop.counter0 }}
+                            </div>
+                        </td>
+                        {% for entry in row %}
+                        <td style="text-align: center;">{{ entry }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">Envy Matrix
+            <div class="pull-right" style="display: flex;">
+                <div style="margin-right: 15px;">
+                    <button type="button" class="btn btn-default" style="background-color: #66B032"></button>
+                    &nbsp;<span>No Envy</span>
+                </div>
+                <div style="margin-right: 15px;">
+                    <button type="button" class="btn btn-default" style="background-color: #FBA90A"></button>
+                    &nbsp;<span>EF1</span>
+                </div>
+                <div style="margin-right: 15px;">
+                    <button type="button" class="btn btn-default" style="background-color: #FE8176"></button>
+                    &nbsp;<span>Envy</span>
+                </div>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table" id="envy_matrix" style="border-spacing: 3px; border-collapse: separate;">
+                    <tr>
+                        <th></th>
+                        {% for candidate in candidates %}
+                        <th style="text-align: center;">
+                            <div>
+                                <img src="{{ profile_pics|index:forloop.counter0 }}"
+                                    style="height: 40px; width: 40px;" />
+                                {{ candidate }}
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                    {% for row in envy_matrix %}
+                    <tr>
+                        <td>
+                            <div>
+                                <img src="{{ profile_pics|index:forloop.counter0 }}"
+                                    style="height: 40px; width: 40px;" />
+                                {{ candidates|index:forloop.counter0 }}
+                            </div>
+                        </td>
+                        {% for envy, sum2 in row %}
+                        <td style="text-align: center;">
+                            <div style="height: 100%; width: 100%;" class="table-data">
+                                <input type="hidden" value="{{ envy }}" />
+                                <span class="hover-message">{{ sum2 }}</span>
+                                <span class="hide-sum">{{ sum2 }}</span>
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">Welfare Metrics</div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>
+                        <strong>Utilitarian Welfare:</strong> {{ utilitarian_welfare }}
+                            <span class="tooltip-container">
+                                <i class="glyphicon glyphicon-info-sign text-muted">i</i>
+                                <span class="tooltip-text">Sum of all agents' utilities: Σ Vᵢ(Aᵢ)</span>
+                            </span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p>
+                        <strong>Egalitarian Welfare:</strong> {{ egalitarian_welfare }}
+                        <span class="tooltip-container">
+                            <i class="glyphicon glyphicon-info-sign text-muted">i</i>
+                            <span class="tooltip-text">Minimum utility across all agents: min Vᵢ(Aᵢ)</span>
+                        </span>
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+            {% if selected_alloc_res_tables_sum|bitwise_and:256 != 0 %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Pareto Optimality:</strong>
+                        {% if is_pareto_optimal %}
+                        <span class="label label-success">Yes</span>
+                        {% else %}
+                        <span class="label label-danger">No</span>
+                        {% endif %}
+                    </p>
+                </div>
+                
+            </div>
+            {% endif %}
+        {% if selected_alloc_res_tables_sum|bitwise_and:512 != 0 and rank_histogram %}
+        <hr>
+        <div class="chart-container" style="height: 300px;">
+            <canvas id="rank-distribution-chart"></canvas>
+        </div>
+        <div class="chart-description">
+            <p>This shows how often allocated items appeared at each rank in the agent's preference list.</p>
+        </div>
+        {% endif %}
+        </div>
+    </div>
+
+    {% if fractional_share_data %}
+    <div class="panel panel-default" style="margin: 20px;">
+        <div class="panel-heading">Fractional Share Analysis</div>
+        <div class="panel-body">
+            <div class="chart-container" style="height: 300px;">
+                <canvas id="fractional-share-chart"></canvas>
+            </div>
+            <div class="fractional-description">
+                <p><strong>MMS Threshold:</strong> {{ mms_threshold }}</p>
+                <p>MMS(i) = max min V<sub>i</sub>(B[j])</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .allocation-mechanism {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    #mechanism-dropdown {
+        padding: 5px 10px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
+    .options-container {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        background-color: #f0f8ff;
+        padding: 10px;
+        width: fit-content;
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
+
+    .options-container img {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+    }
+
+    .options-container span {
+        font-size: 16px;
+        color: #333;
+    }
+
+    td,
+    th {
+        height: 7px;
+        width: 20px;
+    }
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.tooltip-container .tooltip-text {
+  visibility: hidden;
+  background-color: #333;
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  border-radius: 4px;
+  padding: 5px 8px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%; /* above the icon */
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<script>
+    function updateAllocationMechanism(mechanismId) {
+        // keep param as 'alg' to match python
+        const url = new URL(window.location.href);
+        if (mechanismId) {
+            url.searchParams.set('alg', mechanismId);
+        } else {
+            // remove param if blank
+            url.searchParams.delete('alg');
+        }
+        window.location.href = url.toString();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.getElementById('fractional-share-chart')) {
+            // const ctx = document.getElementById('fractional-share-chart').getContext('2d');
+            // new Chart(ctx, { ... });
+        }
+
+        // color envy matrix
+        const envyCells = document.querySelectorAll('#envy_matrix .table-data');
+        envyCells.forEach(cell => {
+            const envyValue = parseInt(cell.querySelector('input').value);
+            if (envyValue === 0) {
+                cell.style.backgroundColor = '#66B032'; // no envy
+            } else if (envyValue === 1) {
+                cell.style.backgroundColor = '#FBA90A'; // ef1
+            } else if (envyValue > 1) {
+                cell.style.backgroundColor = '#FE8176'; // envy
+            }
+        });
+    });
+    const ctxRankDist = document.getElementById('rank-distribution-chart').getContext('2d');
+    const rankDistributionChart = new Chart(ctxRankDist, {
+        type: 'bar',
+        data: {
+            labels: [{% for i in rank_histogram %}"{{ forloop.counter }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Allocated Items per Rank',
+                data: {{ rank_histogram|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Rank in Preference List (1 = Most Preferred)'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Allocated Items'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

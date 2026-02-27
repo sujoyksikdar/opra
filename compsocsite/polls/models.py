@@ -4,10 +4,15 @@ import datetime
 
 from django.db import models
 from django.utils import timezone
-from django.utils.encoding import python_2_unicode_compatible
+from six import python_2_unicode_compatible
 from django.contrib.auth.models import User
 import os
 from django.conf import settings
+import json
+import hashlib
+import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 # Models
 
@@ -20,7 +25,6 @@ class Classes(models.Model):
     teachingAssistants = models.ManyToManyField(User, related_name='tas')
     students = models.ManyToManyField(User, related_name='students')
 
-
 # question that will receive responses
 @python_2_unicode_compatible
 class Question(models.Model):
@@ -32,13 +36,16 @@ class Question(models.Model):
     follow_up = models.OneToOneField('Question', on_delete=models.CASCADE, null = True, blank = True)
     question_owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
     question_voters = models.ManyToManyField(User, related_name='poll_participated')
+    recentCSVText = models.TextField(null=True, blank=True, default=None)
     status = models.IntegerField(default=1)
     display_pref = models.IntegerField(default=1)
+    display_user_info = models.IntegerField(default=1)
     creator_pref = models.IntegerField(default=1)
-    emailInvite = models.BooleanField(default=True)
-    emailDelete = models.BooleanField(default=True)
-    emailStart = models.BooleanField(default=True)
-    emailStop = models.BooleanField(default=True)
+    emailInviteCSV = models.BooleanField(default=False)
+    emailInvite = models.BooleanField(default=False)
+    emailDelete = models.BooleanField(default=False)
+    emailStart = models.BooleanField(default=False)
+    emailStop = models.BooleanField(default=False)
     poll_algorithm = models.IntegerField(default=1)
     question_type = models.IntegerField(default=1)
     winner = models.CharField(max_length=200,default="")
@@ -57,12 +64,18 @@ class Question(models.Model):
     yesno_enabled = models.BooleanField(default=True)
     yesno2_enabled = models.BooleanField(default=False)
     single_enabled = models.BooleanField(default=False)
+    budgetUI_enabled = models.BooleanField(default=False) 
+    ListUI_enabled = models.BooleanField(default=False) 
+    infiniteBudgetUI_enabled = models.BooleanField(default=False) 
     allowties = models.BooleanField(default=True)
     initial_ui = models.IntegerField(default=1)
     ui_number = models.IntegerField(default=6)
     vote_rule = models.IntegerField(default=4095)
+    alloc_res_tables = models.IntegerField(default=6)
+    alloc_algorithms = models.IntegerField(default=0)
     first_tier = models.IntegerField(default=0)
     utility_model = models.IntegerField(default=0)
+    results_visible_after = models.DateTimeField(null=True, blank=True)
 
     related_class = models.ForeignKey(Classes, null=True, on_delete=models.CASCADE)
     correct_answer = models.TextField(default="")
@@ -74,6 +87,20 @@ class Question(models.Model):
         return now - datetime.timedelta(days=1) <= self.pub_date <= now
     def get_voters(self):
         return ",".join([str(voter) for voter in self.question_voters.all()])
+
+@python_2_unicode_compatible
+class LoginCode(models.Model):
+    question   = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='login_codes')
+    code       = models.CharField(max_length=64, unique=True, db_index=True)
+    user       = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='login_codes')  # NEW
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.code
+
+class UnregisteredUser(models.Model):
+    email = models.EmailField(unique=True)
+    polls_invited = models.ManyToManyField(Question, related_name='invited_unregistered_users')
 
 # email to be sent
 @python_2_unicode_compatible
@@ -93,7 +120,7 @@ class Email(models.Model):
     subject  = models.CharField(max_length=100)
     message  = models.CharField(max_length=500)
     def __str__(self):
-        return self.question
+        return str(self.question)
 
 #Helper function for image
 def get_image_path(instance, filename):
@@ -107,6 +134,7 @@ class Item(models.Model):
     item_description = models.CharField(max_length=1000, blank=True, null=True)
     image = models.ImageField(upload_to='static/img/items/', blank=True, null=True)
     imageURL = models.CharField(max_length=500, blank=True, null=True)
+    imageReference = models.CharField(max_length=500, blank=True, null=True)
     timestamp = models.DateTimeField('item timestamp')
     recently_added = models.BooleanField(default=False)
     utility = models.FloatField(default=0.0)
@@ -131,9 +159,9 @@ class Response(models.Model):
     behavior_data = models.TextField(default="")
     def __str__(self):
         if self.user:
-            return "Response of user " + self.user.username + "\nfor question " + self.question.question_text
+            return "Response of user " + self.user.username + "\nfor question " + self.question.question_text + "\nat timestamp " + self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         else:
-            return "Response of user " + self.anonymous_voter + "\nfor question " + self.question.question_text
+            return "Response of user " + self.anonymous_voter + "\nfor question " + self.question.question_text + "\nat timestamp " + self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
     class Meta:
         ordering = ['timestamp']
 
@@ -387,3 +415,95 @@ class SignUpRequest(models.Model):
     status = models.IntegerField(default=1)
     timestamp = models.DateTimeField('request timestamp')
 
+# Caching for allocations
+class AllocationCache(models.Model):
+    """cache for allocation results to avoid recomputation"""
+    hash_key = models.CharField(max_length=64, unique=True)
+    allocation_data = models.TextField()
+    timestamp = models.DateTimeField(auto_now=True)
+    hit_count = models.IntegerField(default=0)
+    
+    @staticmethod
+    def generate_key(context_data):
+        """Generate a deterministic hash key from context data"""
+        # Create a stable representation of the data
+        data_str = json.dumps(context_data, sort_keys=True)
+        return hashlib.sha256(data_str.encode()).hexdigest()
+    
+    @staticmethod
+    def get_cached_result(context_data):
+        """Get cached allocation result if it exists"""
+        try:
+            hash_key = AllocationCache.generate_key(context_data)
+            cache_entry = AllocationCache.objects.get(hash_key=hash_key)
+            
+            # Update hit count
+            cache_entry.hit_count += 1
+            cache_entry.save()
+            
+            logger.info(f"Cache HIT for allocation computation (key: {hash_key[:8]}...)")
+            return json.loads(cache_entry.allocation_data), True
+        except AllocationCache.DoesNotExist:
+            logger.info(f"Cache MISS for allocation computation")
+            return None, False
+        except Exception as e:
+            logger.error(f"Cache error: {str(e)}")
+            return None, False
+    
+    @staticmethod
+    def store_result(context_data, allocation_result):
+        """Store allocation result in cache"""
+        try:
+            hash_key = AllocationCache.generate_key(context_data)
+            
+            # Convert numpy arrays to lists for JSON serialization
+            serializable_result = AllocationCache._make_serializable(allocation_result)
+            
+            # Store or update cache entry
+            AllocationCache.objects.update_or_create(
+                hash_key=hash_key,
+                defaults={'allocation_data': json.dumps(serializable_result)}
+            )
+            
+            logger.info(f"Stored result in cache (key: {hash_key[:8]}...)")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to store in cache: {str(e)}")
+            return False
+    
+    @staticmethod
+    def _make_serializable(obj):
+        """Convert object to JSON serializable format"""
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif hasattr(obj, 'id') and hasattr(obj, 'item_text'):  # Item object
+            return {
+                'id': obj.id,
+                'item_text': obj.item_text,
+                'item_description': obj.item_description or "",
+                'imageURL': obj.imageURL or ""
+            }
+        elif isinstance(obj, dict):
+            return {k: AllocationCache._make_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list) or isinstance(obj, tuple):
+            return [AllocationCache._make_serializable(i) for i in obj]
+        else:
+            return obj
+
+def debug_cache():
+    print("\n\n====== CHECKING CACHE ======")
+    from django.db import connection
+    cursor = connection.cursor()
+    cursor.execute("SELECT COUNT(*) FROM polls_allocationcache")
+    count = cursor.fetchone()[0]
+    print(f"Total cache entries: {count}")
+    
+    if count > 0:
+        cursor.execute("SELECT hash_key, hit_count FROM polls_allocationcache LIMIT 5")
+        for row in cursor.fetchall():
+            print(f"Key: {row[0][:10]}..., Hits: {row[1]}")
+    print("====== END CHECK ======\n\n")

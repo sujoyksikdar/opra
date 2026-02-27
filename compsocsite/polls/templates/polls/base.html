@@ -1,4 +1,4 @@
-{% load staticfiles %}
+{% load static%}
 
 
 <link rel="shortcut icon" href="{% static 'img/oprasmalllogowhite.png' %}"/>
@@ -20,12 +20,14 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" type="text/css" href="/static/css/stylish-portfolio.css" />
-	<link rel="stylesheet" type="text/css" href="/static/css/shared.css"/>
-	<link rel="stylesheet" type="text/css" href="/static/css/introjs.css"/>
-	<link rel="stylesheet" type="text/css" href="/static/css/font-awesome.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/shared.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/introjs.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/font-awesome.min.css"/>
+
     <!-- Custom Fonts -->
     <link href="/static/fonts/sanc.css" rel="stylesheet" type="text/css" />     
     <link rel="stylesheet" href="/static/fonts/lato.css">
+    
     <!-- W3 -->
     <link rel="stylesheet" href="/static/css/w3.css">
 
@@ -60,6 +62,10 @@
     <script src='/static/js/intro.js'></script>
     <script src='/static/js/base.js'></script>
     <script src='/static/js/shared.js'></script>
+    <!--links for trix toolbar for email formatting-->
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.8/dist/trix.css">
+    <script type="text/javascript" src="https://unpkg.com/trix@2.0.8/dist/trix.umd.min.js"></script>
+
 
     <style>
 	    .btn{
@@ -68,19 +74,25 @@
 	    body { padding-top: 60px; }
         body,h1,h2,h3,h4,h5 {font-family:"Lato", sans-serif}
 
-       .rpi-red{
+      .rpi-red{
             background-color:rgb(191,7,17);
             color: #fff
         }
-       .rpi-text-red{
+      .rpi-text-red{
             color:rgb(191,7,17)
         }
-         .bgimg-1 {
-            background-position: center;
-            background-size: cover;
-            background-image: url({% static 'img/rpi-empac.png' %});
-
-            min-height: 100%;
+      .bgimg{
+          background-position: center;
+          background-size: cover;
+          background-image: url({% static 'img/bubg-watson.jpg' %});
+          min-height: 100%;
+      }
+      .bu-green{
+            background-color:rgb(0, 93, 64);
+            color: #fff
+        }
+      .bu-text-green{
+            color:rgb(0, 93, 64)
         }
     </style>
     {% block extra_head %}
@@ -96,32 +108,17 @@
 		        <div class="modal-header">
 	            Login
 		        </div>
-            <!--login model-->
-		        <div class="modal-body">
-              <fieldset class="form-group">
-                <label for="username">Email </label>
-                <input type="text" class="form-control" id="email" name="email" placeholder="Enter Email" value="" size="50" autofocus/>
-              </fieldset>
-              <fieldset class="form-group">
-                <label for="username">Password</label><a style="position:relative;left:60%;" href="{% url 'appauth:forgetpasswordview'%}">Forgot Password?</a>
-                <input type="password" class="form-control" id="password" name="password" placeholder="Password" value="" size="50" />
-              </fieldset>
-              <script>
-	              if (typeof(QueryString["name"]) != "undefined"){
-	                $('#email').val(QueryString["name"]);
-	                $('#password').focus();
-	              }
-	              else{
-	                $('#email').focus();
-	              }
-              </script>
-		        </div>
-		        <div class="modal-footer">
-	            <input type="submit" class="btn btn-primary" value="Login"/>
-	            <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel"/>
-		        </div>
-		        <!-- end for login model-->
           </form>
+          <div style="text-align: center; margin-top: 20px;">
+            <!-- <a title="Google" href="/accounts/google/login/?process=login">Sign in with Google</a> -->
+            <form method="post" action="{% url 'appauth:socialSignup' %}">
+              <input type="hidden">
+              {% csrf_token %}
+              <button type="submit" title="Google" class="btn btn-dark">
+                  Sign in with Google
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 		</div>
@@ -147,86 +144,83 @@
 		</div>
       </button>
     </div>
-   
           
-          <!-- Welcome Part-->
-         
-            
-            
-        <!-- nav bar-->
-        <div class="collapse navbar-collapse row" id="bs-example-navbar-collapse-1">
-		
-					{% if user.is_authenticated %}
-					<ul class="nav navbar-nav">
-						{% if not request.flavour == "mobile" %}
-						<li>
-                            <a class="navbar-brand" href="/">
-						       	<img alt="O" src="/static/img/oprafulllogowhitenolink.png" style="width:60px;">
-                            </a>
-						</li>
-						{% endif %}
-						<li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
-						<li><a href="{% url 'polls:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li>
-            <li><a href="{% url 'polls:classes' %}"><span class="fa fa-object-group"></span>Classes</a></li>
-						<li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li>
-						<li><a href="{% url 'sessions_local:sessions_main' %}"><span class="glyphicon glyphicon-book"></span>Sessions</a></li>
-						{% if not request.flavour == "mobile" %}
-						<li>
-						
-							<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-								<span class="fa fa-calendar"></span>  Events  <span class="caret"></span></a>
-          					<ul class="dropdown-menu">
-          						<li><a href="{% url 'GM_2017' %}"><span class="nav-text"> GM 2017</span></a></li>
-								<li role="separator" class="divider"></li>
-								<li><a href="{% url 'CS_poster' %}"><span class="nav-text"> CS Poster</span></a></li>
-          					</ul>
-						
-						</li>
-						{% else %}
-						<li><a href="{% url 'GM_2017' %}"> GM 2017</a></li>
-						<li><a href="{% url 'CS_poster' %}"> CS Poster</a></li>
-						{% endif %}
-					</ul>
-					<ul class="nav navbar-nav navbar-right">
-                    <!-- Dropdown Setting Icon-->
-						<li class="dropdown">
-							<a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="color:black;"> <span class="glyphicon glyphicon-cog"> </span> <span class="caret"></span> </a>
-							<ul class="dropdown-menu" style="font-size:100%; ">
-								<li class="disabled">
-									<a href="#" >Signed in as {{ request.user.username }}</a>
-								</li>
-								<li role="separator" class="divider"></li>
-								<li >
-									<a href="{% url 'appauth:settings' %}" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}"><span >Settings</span></a>
-								</li>
-								<li>
-									<a href="/auth/logout/" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}">Logout</a>
-								</li>
-							</ul>
-						</li> <!-- end of Dropdown setting icon-->
-					</ul>
-					{% else %}
-					{% if not request.flavour == "mobile" %}
-					<ul class="nav navbar-nav">
-					<li><a class="navbar-brand" href="/">
-						       	 <img alt ="O" src="/static/img/oprafulllogowhitenolink.png" style = "width:60px;" >
-						      </a>
-						</li>
-						
-					</ul>
-					{% endif %}
-					<ul class="nav navbar-nav navbar-right pull-right">
-						<li>
-							<a href="{% url 'appauth:register' %}" style="color:black;"><span class="glyphicon glyphicon-user"></span> Sign Up </a>
-						</li>
-						<li>
-							<a data-toggle="modal" data-target="#loginmodal" style="color:black;"> <span class="glyphicon glyphicon-log-in"></span> Login </a>
-						</li>
-					</ul>
-					
-					{% endif %}
-        </div> <!-- end of nav bar-->
-			</div><!--/.container-fluid -->
+        <!-- Welcome Part-->
+          
+          
+      <!-- nav bar-->
+      <div class="collapse navbar-collapse row" id="bs-example-navbar-collapse-1">
+        <!-- <p>{{ user.is_authenticated }} {{ user.get_username }}</p> -->
+        {% if user.is_authenticated %}
+        <ul class="nav navbar-nav">
+          {% if not request.flavour == "mobile" %}
+          <li>
+            <a class="navbar-brand" href="/">
+              <img alt="O" src="/static/img/oprafulllogowhitenolink.png" style="width:60px;">
+            </a>
+          </li>
+          {% endif %}
+          {% if request.session.is_code_user %}
+            <li><a href="{% url 'polls:regular_polls_code' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+            <li><a href="{% url 'polls:allocation_tab_code' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
+          {% else %}
+            <li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+            <li><a href="{% url 'polls:allocation_tab' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
+          {% endif %}
+            <!-- <li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li> -->
+
+
+          <!-- <li><a href="{% url 'polls:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li> -->
+          <!-- <li><a href="#"><span class="fa fa-object-group"></span>Classes</a></li> -->
+          
+          {% if not request.flavour == "mobile" %}
+          {% endif %}
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li>
+            <a class="nav navbar-nav" href="/user_docs/" target="_blank"> 
+              <span class="glyphicon glyphicon-book"></span> OPRA User Guide
+            </a>
+          </li>
+          <!-- Dropdown Setting Icon-->
+          <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false" style="color:black;"> <span class="glyphicon glyphicon-cog"> </span> <span class="caret"></span> </a>
+            <ul class="dropdown-menu" style="font-size:100%; ">
+              <li class="disabled">
+                <a href="#" >Signed in as {{ request.user.username }}</a>
+              </li>
+              <li role="separator" class="divider"></li>
+                <li >
+                <a href="{% url 'appauth:settings' %}" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}"><span >Settings</span></a>
+                </li>
+                <li>
+                <a href="/auth/logout/" align="center" style="{% if request.flavour == 'mobile' %} color:black; {% endif %}">Logout</a>
+                </li>
+            </ul>
+          </li> <!-- end of Dropdown setting icon-->
+        </ul>
+        {% else %}
+        {% if not request.flavour == "mobile" %}
+        <ul class="nav navbar-nav">
+          <li><a class="navbar-brand" href="/">
+            <img alt ="O" src="/static/img/oprafulllogowhitenolink.png" style = "width:60px;" >
+          </a></li>						
+        </ul>
+        {% endif %}
+        <ul class="nav navbar-nav navbar-right pull-right">
+          <li>
+            <a class="nav navbar-nav" href="/user_docs/" target="_blank"> 
+              <span class="glyphicon glyphicon-book"></span> OPRA User Guide
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'appauth:login' %}?next={{ request.path }}"> <span class="glyphicon glyphicon-log-in"></span> Login </a>
+          </li>
+        </ul>
+        
+        {% endif %}
+      </div> <!-- end of nav bar-->
+    </div><!--/.container-fluid -->
 </nav>
 
 {% if request.flavour == "mobile" %}
