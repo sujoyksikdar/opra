@@ -42,10 +42,12 @@ def register(request):
         # Attempt to grab information from the raw form information.
         # Note that we make use of both UserForm and UserProfileForm.
         data=request.POST.copy()
-        data["username"] = data["email"]
+        email = data.get("email", "").strip().lower()
+        data["email"] = email
+        data["username"] = email
         user_form = UserForm(data=data)
         # user_form = UserCreationForm(request.POST)
- 
+
         # If the two forms are valid...
         if user_form.is_valid():
                 # Save the user's form data to the database.
@@ -136,6 +138,7 @@ def verify_otp(request):
 
         user.is_active = True
         user.save(update_fields=['is_active'])
+        # Use simple authenticate first if possible, but for OTP we mostly just login the user
         login(request, user, backend='appauth.custom_backends.CustomUserModelBackend')
 
         for k in ('otp_user_id', 'otp_code', 'otp_expires'):
@@ -230,24 +233,27 @@ def user_login(request):
     # return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     context = RequestContext(request)
     if request.method == 'POST':
-        username = request.POST['email']
-        password = request.POST['password']
+        username = request.POST.get('email', '').strip().lower()
+        password = request.POST.get('password', '')
 
         if not username or not password:
             return render(request, "login.html", {"error": "Please enter both email and password."})
 
         User = get_user_model()
-        users = User.objects.all()
-
-        salt = ""
-        for user in users:
-            if(user.get_username() == username): 
-                salt = user.userprofile.salt
+        # Optimized and case-insensitive lookup for salt
+        try:
+            user_obj = User.objects.get(username__iexact=username)
+            salt = getattr(user_obj.userprofile, 'salt', "")
+        except (User.DoesNotExist, User.MultipleObjectsReturned, ObjectDoesNotExist):
+            salt = ""
         
-        # Check if the username/password combination is valid - a User object is returned if it is.
-        if(salt != None and len(salt)!=0): 
-            password = bcrypt.hashpw(bytes(password,'utf-8'), bytes(salt,'utf-8')).decode('utf-8')
-            user = authenticate(username=username, password=password)
+        # Check if the username/password combination is valid
+        if salt: 
+            try:
+                hashed_password = bcrypt.hashpw(bytes(password,'utf-8'), bytes(salt,'utf-8')).decode('utf-8')
+                user = authenticate(username=username, password=hashed_password)
+            except Exception:
+                user = authenticate(username=username, password=password)
         else: 
             user = authenticate(username=username, password=password)
 

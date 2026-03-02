@@ -12,9 +12,13 @@ class CustomUserModelBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
         UserModel = get_user_model()
         try:
-            user = UserModel._default_manager.get(email=username)
+            # Case-insensitive lookup for email
+            user = UserModel._default_manager.get(email__iexact=username)
         except UserModel.DoesNotExist:
             return None
+        except UserModel.MultipleObjectsReturned:
+            # If multiple users exist (e.g. diff casing), return the first one
+            user = UserModel._default_manager.filter(email__iexact=username).first()
 
         if user.password == password:
             return user
