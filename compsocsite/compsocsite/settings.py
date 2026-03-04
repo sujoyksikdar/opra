@@ -182,7 +182,7 @@ AUTHENTICATION_BACKENDS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'EST'
+TIME_ZONE = 'America/New_York'
 
 USE_I18N = True
 
@@ -255,7 +255,7 @@ LOGGING = {
 	    'file': {
 		    'level': 'DEBUG',
 		    'class': 'logging.FileHandler',
-		    'filename': f'{os.getenv("HOME")}/opra/logs/django_error.log',
+		    'filename': os.path.join(BASE_DIR, 'logs', 'django_error.log'),
 		    'formatter': 'verbose',
 	    },
 	    'mail_admins': {
