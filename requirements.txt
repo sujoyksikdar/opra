@@ -20,7 +20,7 @@ idna==3.7
 kiwisolver==1.4.5
 matplotlib==3.9.1.post1
 networkx==3.3
-numpy==2.0.1
+numpy==1.26.2
 packaging==24.1
 pillow==10.4.0
 prefpy==0.8.1
@@ -41,3 +41,5 @@ urllib3==2.2.2
 wheel==0.43.0
 whitenoise==6.7.0
 psycopg2-binary==2.9.10
+gurobipy==11.0.1
+pandas==2.1.3
