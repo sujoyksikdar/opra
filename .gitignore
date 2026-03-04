@@ -4,6 +4,8 @@ __pycache__/
 compsocsite/db.sqlite3
 compsocsite/polls/.DS_Store
 compsocsite/venv/
+*.log
+logs/
 static_root/
 .vscode/
 .env

@@ -29,7 +29,7 @@ urlpatterns = [
     re_path(r'^admin/', admin.site.urls),
     re_path(r'^auth/', include('appauth.urls')),
     re_path(r'^sessions/', include('sessions_local.urls')),
-    re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT, 'show_indexes':True}),
+    re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATICFILES_DIRS[0], 'show_indexes':True}),
     re_path(r'^multipolls/', include('multipolls.urls')),
     re_path(r'^message$', sendMessage, name='message'),
     re_path('accounts/profile', RedirectView.as_view(url='/polls/main')),
