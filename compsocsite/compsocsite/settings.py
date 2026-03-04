@@ -133,11 +133,15 @@ WSGI_APPLICATION = 'compsocsite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    'default': env.db('DATABASE_URL', default=f"sqlite:///{os.path.join(BASE_DIR, 'db.sqlite3')}")
 }
 
 CACHES = {
@@ -178,7 +182,7 @@ AUTHENTICATION_BACKENDS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'EST'
+TIME_ZONE = 'America/New_York'
 
 USE_I18N = True
 
@@ -250,7 +254,7 @@ LOGGING = {
 	    'file': {
 		    'level': 'DEBUG',
 		    'class': 'logging.FileHandler',
-		    'filename': f'{os.getenv("HOME")}/opra/logs/django_error.log',
+		    'filename': os.path.join(os.path.dirname(BASE_DIR), 'logs', 'django_error.log'),
 		    'formatter': 'verbose',
 	    },
 	    'mail_admins': {
