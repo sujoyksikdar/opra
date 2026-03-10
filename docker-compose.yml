@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:15
+    container_name: opra_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: opra
+      POSTGRES_USER: opra_user
+      POSTGRES_PASSWORD: opra_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    container_name: opra_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./compsocsite/.env
+    environment:
+      - DATABASE_URL=postgres://opra_user:opra_password@db:5432/opra
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
