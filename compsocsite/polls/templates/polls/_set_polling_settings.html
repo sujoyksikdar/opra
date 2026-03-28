@@ -52,7 +52,7 @@
         {% endfor %}
     </span>
     {% if question.status == 1 or question.status == 2 %}
-        <a href="{% url 'polls:viewAllocationOrder' question.id %}" class="btn btn-dark" role="button">
+        <a href="{% url 'allocation:viewAllocationOrder' question.id %}" class="btn btn-dark" role="button">
             set allocation order
         </a>
         <br />

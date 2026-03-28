@@ -99,9 +99,9 @@
                                     {% elif question.status == 3 and question.display_pref != 1 and question.question_type == 1 %}
                                        Winner is  {{question.winner}}
                                     {% elif question.question_type == 2 %}
-                                        <a href="{% url 'polls:allocate_results' question.id %}" > 
+                                        <a href="{% url 'allocation:allocate_results' question.id %}" > 
                                             Allocation Complete:
-                                            <span class = "glyphicon glyphicon-info-sign" href="{% url 'polls:allocate_results' question.id %}"></span>
+                                            <span class = "glyphicon glyphicon-info-sign" href="{% url 'allocation:allocate_results' question.id %}"></span>
                                         </a>   
                                         <br />
                                         {% for order_item in question.allocationvoter_set.all %}
@@ -173,8 +173,8 @@
                                     {% elif question.status == 3 and question.display_pref != 1 and question.question_type == 1 %}
                                         Winner is  {{question.winner}}
                                     {% elif question.question_type == 2 %}
-                                        <a href="{% url 'polls:allocate_results' question.id %}" > Allocation Complete:
-                                            <span class = "glyphicon glyphicon-info-sign" href="{% url 'polls:allocate_results' question.id %}"></span>
+                                        <a href="{% url 'allocation:allocate_results' question.id %}" > Allocation Complete:
+                                            <span class = "glyphicon glyphicon-info-sign" href="{% url 'allocation:allocate_results' question.id %}"></span>
                                         </a>  
                                         <br />
                                         {% for order_item in question.allocationvoter_set.all %}

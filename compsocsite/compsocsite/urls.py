@@ -25,6 +25,7 @@ from polls.views import CourseMatchListView
 urlpatterns = [
     re_path(r'^$', RedirectView.as_view(url='/polls/main')),
     re_path(r'^polls/', include('polls.urls')),
+    re_path(r'^polls/', include('allocation.urls')),
     re_path(r'^groups/', include('groups.urls')),
     re_path(r'^admin/', admin.site.urls),
     re_path(r'^auth/', include('appauth.urls')),
