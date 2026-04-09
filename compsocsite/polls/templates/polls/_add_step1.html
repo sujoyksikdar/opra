@@ -57,6 +57,23 @@
             <input type="radio" name="questiontype" value="2" {% if request.session.questionType == 2 %} checked {% endif %}>Allocation</option>
             </label>
         </div>
+        <script>
+        (function() {
+            var ALLOC_URL = "{% url 'allocation:AddStep1' %}";
+            var POLL_URL = "/polls/add_step1/";
+            function updateFormAction() {
+                var selected = document.querySelector('input[name="questiontype"]:checked');
+                var form = document.getElementById('add_poll');
+                if (form && selected) {
+                    form.action = selected.value === '2' ? ALLOC_URL : POLL_URL;
+                }
+            }
+            document.querySelectorAll('input[name="questiontype"]').forEach(function(r) {
+                r.addEventListener('change', updateFormAction);
+            });
+            updateFormAction();
+        })();
+        </script>
         <br /><br />
 
 				<!-- Use proper form name/values when available -->

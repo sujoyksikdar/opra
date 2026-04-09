@@ -1,0 +1,35 @@
+<form class="form-group" method="post" action="{% url 'allocation:setVisibilitySettings' question.id %}" align="center">
+    {% csrf_token %}
+
+    <label for="viewpreferences">Visibility setting for displaying preferences</label>
+    <select name="viewpreferences" class="form-control">
+        <option value="1" {% if question.display_pref == 1 %} selected {% endif %}>Everyone can see all preferences</option>
+        <option value="2" {% if question.display_pref == 2 %} selected {% endif %}>Everyone can only see own preference</option>
+        <option value="3" {% if question.display_pref == 3 %} selected {% endif %}>Nothing</option>
+    </select>
+    <br />
+
+    <label for="viewuserinfo">Visibility setting for displaying user-info</label>
+    <select name="viewuserinfo" class="form-control">
+        <option value="1" {% if question.display_user_info == 1 %} selected {% endif %}>Username of users will be shown</option>
+        <option value="2" {% if question.display_user_info == 2 %} selected {% endif %}>Only numbers of users will be shown</option>
+        <option value="3" {% if question.display_user_info == 3 %} selected {% endif %}>Nothing</option>
+    </select>
+    <br />
+
+    <label for="creatorpreferences">Visibility setting for creator of this instance</label>
+    <select name="creatorpreferences" class="form-control" {% if question.status != 1 %} disabled {% endif %}>
+        <option value="1" {% if question.creator_pref == 1 %} selected {% endif %}>Creator can see everyone's preference</option>
+        <option value="2" {% if question.creator_pref == 2 %} selected {% endif %}>Creator has the same visibility setting as all users</option>
+    </select>
+
+    <br/>
+    <label for="results_visible_after">Make results visible after (optional):</label>
+    <input type="datetime-local" name="results_visible_after"
+           value="{{ question.results_visible_after|date:'Y-m-d\\TH:i' }}"
+           class="form-control">
+    <small>Leave empty if you don't want to schedule release by time.</small>
+
+    <br />
+    <input type="submit" value="Submit" class="btn btn-success">
+</form>

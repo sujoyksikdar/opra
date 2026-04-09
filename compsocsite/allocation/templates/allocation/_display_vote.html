@@ -1,0 +1,13 @@
+{% for tier in currentSelection %}
+    {% if tier.0 %}
+    <div class="btn btn-default disabled">
+        ({{ tier.0 }})
+        {% for item in tier %}
+            {% if not forloop.first %}
+                <span class="btn btn-default disabled">{{ item }}</span>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endfor %}
+<br />

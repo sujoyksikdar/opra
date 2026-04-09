@@ -1,0 +1,91 @@
+{% extends 'polls/base.html' %}
+
+{% block content %}
+{% if question.question_owner == request.user %}
+<div class="col-md-10 col-md-offset-1">
+    <h2 align="center">Create a New Allocation</h2>
+    <br/>
+    <div class="steps" align="center">
+        <p class="sameline">1. General <span class="glyphicon glyphicon-chevron-right"></span> 2. Items <span class="glyphicon glyphicon-chevron-right"></span> 3. Invite</p>
+        <p class="sameline" style="color:grey;"><span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
+    </div>
+    <div class="progress">
+        <div class="progress-bar progress-bar-info" style="width: 100%"></div>
+    </div>
+    <br/>
+
+    <form class="form-group" method="post" action="{% url 'allocation:setinitial' question.id %}">
+        {% csrf_token %}
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Algorithms:</h4></div>
+            <div class="panel-body">
+                <label for="pollpreferences">Select an allocation method to calculate results</label>
+                <select id="pollpreferences" name="pollpreferences" class="form-control">
+                    {% for item in alloc_methods %}
+                    <option value="{{ forloop.counter }}">{{ item }}</option>
+                    {% endfor %}
+                </select>
+                <br/>
+                <label>Allocation algorithms to show in results</label>
+                <div>
+                    <label class="checkbox-inline"><input type="checkbox" value="1" name="alloc_algorithms"> Round Robin</label>
+                    <label class="checkbox-inline"><input type="checkbox" value="2" name="alloc_algorithms"> Max Nash Welfare</label>
+                    <label class="checkbox-inline"><input type="checkbox" value="4" name="alloc_algorithms"> Market (EF1)</label>
+                    <label class="checkbox-inline"><input type="checkbox" value="8" name="alloc_algorithms"> MarketEq (EQ1)</label>
+                    <label class="checkbox-inline"><input type="checkbox" value="16" name="alloc_algorithms"> Leximin</label>
+                    <label class="checkbox-inline"><input type="checkbox" value="32" name="alloc_algorithms"> MNW Binary</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Visibility:</h4></div>
+            <div class="panel-body">
+                <label>Visibility for preferences</label>
+                <select name="viewpreferences" class="form-control">
+                    <option value="1">Everyone can see all preferences</option>
+                    <option value="2">Everyone can only see own preference</option>
+                    <option value="3">Nothing</option>
+                </select>
+                <br/>
+                <label>Visibility for user info</label>
+                <select name="viewuserinfo" class="form-control">
+                    <option value="1">Username shown</option>
+                    <option value="2">Only numbers shown</option>
+                    <option value="3">Nothing</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Interfaces:</h4></div>
+            <div class="panel-body">
+                <label class="checkbox-inline"><input type="checkbox" value="twocol" name="ui" checked> Two Column</label>
+                <label class="checkbox-inline"><input type="checkbox" value="onecol" name="ui"> One Column</label>
+                <label class="checkbox-inline"><input type="checkbox" value="BUI_slider" name="ui" checked> Budget UI</label>
+                <label class="checkbox-inline"><input type="checkbox" value="LUI" name="ui"> List UI</label>
+                <label class="checkbox-inline"><input type="checkbox" value="IBUI" name="ui"> Infinite Budget UI</label>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Allocation Results:</h4></div>
+            <div class="panel-body">
+                <label class="checkbox-inline"><input type="checkbox" value="1" name="alloc_res_tables" checked> My Preferences</label>
+                <label class="checkbox-inline"><input type="checkbox" value="2" name="alloc_res_tables"> All Preferences</label>
+                <label class="checkbox-inline"><input type="checkbox" value="4" name="alloc_res_tables" checked> Items Bundle</label>
+                <label class="checkbox-inline"><input type="checkbox" value="8" name="alloc_res_tables" checked> Allocation Result Table</label>
+                <label class="checkbox-inline"><input type="checkbox" value="16" name="alloc_res_tables" checked> Envy Matrix</label>
+            </div>
+        </div>
+
+        <br/>
+        <div class="col-md-6 col-md-offset-3" align="center">
+            <input type="submit" value="Finish" class="btn btn-primary"/>
+        </div>
+        <br><br><br>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

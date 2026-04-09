@@ -1,0 +1,57 @@
+{% extends 'polls/base.html' %}
+
+{% block content %}
+{% if question.question_owner == request.user %}
+<div class="col-md-10 col-md-offset-1">
+    <h2 align="center">Create a New Allocation</h2>
+    <br/>
+    <div class="steps" align="center">
+        <p class="sameline">1. General <span class="glyphicon glyphicon-chevron-right"></span> 2. Items</p>
+        <p class="sameline" style="color:grey;"><span class="glyphicon glyphicon-chevron-right"></span> 3. Invite</p>
+        <p class="sameline"><span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
+    </div>
+    <div class="progress">
+        <div class="progress-bar progress-bar-info" style="width: 75%"></div>
+    </div>
+    <br/>
+
+    <h3>Invite Voters</h3>
+    <form action="{% url 'allocation:addvoter' question.id %}" method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Add voters (hold Ctrl/Cmd to select multiple):</label>
+            <select name="voters" class="form-control" multiple size="10">
+                {% for user in users %}
+                    {% if user not in question.question_voters.all %}
+                    <option value="{{ user.username }}">{{ user.username }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Selected</button>
+    </form>
+
+    <br/>
+    <h4>Current Voters ({{ question.question_voters.all.count }})</h4>
+    <ul class="list-group">
+        {% for voter in question.question_voters.all %}
+        <li class="list-group-item">
+            {{ voter.username }}
+            <form action="{% url 'allocation:delvoter' question.id %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="voters" value="{{ voter.username }}"/>
+                <button type="submit" class="btn btn-xs btn-danger pull-right">Remove</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <br/>
+    <div class="col-md-6 col-md-offset-3" align="center">
+        <a href="{% url 'allocation:AddStep4' question.id %}">
+            <input type="submit" value="Next" class="btn btn-primary"/>
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

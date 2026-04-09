@@ -1,0 +1,42 @@
+{% extends 'polls/base.html' %}
+{% block extra_head %}
+<script>
+function validateForm() {
+    var x = document.forms["add_step1"]["questionTitle"].value;
+    if (x == null || x == "") {
+        alert("The title must be filled out");
+        return false;
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="col-md-10 col-md-offset-1">
+    <h2 align="center">Create a New Allocation</h2>
+    <br/>
+    <div class="steps" align="center">
+        <p class="sameline" style="color:grey;">1. General <span class="glyphicon glyphicon-chevron-right"></span></p>
+        <p class="sameline">2. Items <span class="glyphicon glyphicon-chevron-right"></span> 3. Invite <span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
+    </div>
+    <div class="progress">
+        <div class="progress-bar progress-bar-info" style="width: 25%"></div>
+    </div>
+    <br/>
+    <form id="add_step1" method="post" action="{% url 'allocation:AddStep1' %}" name="add_step1" onsubmit="return validateForm()" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="questionTitle">Title:</label> <small class="text-muted">*</small><br/>
+        <input type="text" class="form-control" id="questionTitle" name="questionTitle" maxlength="80" autofocus/><br/>
+
+        <label for="desc">Description:</label><br/>
+        <textarea class="form-control" id="desc" name="desc"></textarea><br/>
+
+        <input type="hidden" name="imageURL" value=""/>
+
+        <div class="col-md-6 col-md-offset-3" align="center">
+            <input type="submit" value="Next" class="btn btn-primary"/>
+        </div>
+    </form>
+</div>
+<br><br>
+{% endblock %}

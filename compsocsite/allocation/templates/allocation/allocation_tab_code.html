@@ -18,7 +18,7 @@
         {% for question in polls_participated %}
           <tr>
             <td>
-              <a href="{% url 'polls:pollinfo' question.id %}"
+              <a href="{% url 'allocation:allocationinfo' question.id %}"
                  data-toggle="tooltip"
                  data-placement="right"
                  title="Description: {% if question.question_desc %}{{ question.question_desc }}{% else %}None.{% endif %}">
@@ -29,10 +29,10 @@
             <td>
               {% if question.status == 2 %}
                 <!-- allocation in session: let them set preferences -->
-                <a href="{% url 'polls:detail' question.id %}" class="btn btn-dark" role="button">Enter Preferences</a>
+                <a href="{% url 'allocation:detail' question.id %}" class="btn btn-dark" role="button">Enter Preferences</a>
               {% endif %}
 
-              {% if question.status == 3 and question.question_type == 2 and question|can_show_results %}
+              {% if question.status == 3 %}
                 <!-- allocation finished: show results page -->
                 <a href="{% url 'allocation:allocate_results' question.id %}" class="btn btn-dark" role="button" target="_blank">
                   Allocation Results

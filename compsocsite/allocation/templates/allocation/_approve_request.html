@@ -2,7 +2,7 @@
     <div class="panel-heading">Self sign up</div>
     <div class="panel-body">
         <h3 class="page-header">Self Sign Up for {{ question.question_text }} </h3>
-        <form class="form-group" method="post" action="{% url 'polls:changeselfsignup' question.id %}">
+        <form class="form-group" method="post" action="{% url 'allocation:changeselfsignup' question.id %}">
             {% csrf_token %}
 
             <div class="btn-group" data-toggle="buttons">
@@ -16,20 +16,20 @@
 
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
-        <p>Self Sign Up Link: <a href="{{ request.scheme }}://{{ request.get_host }}{% url 'polls:selfregister' question.id %}">{{ request.scheme }}://{{ request.get_host }}{% url 'polls:selfregister' question.id %}</a></p>
+        <p>Self Sign Up Link: <a href="{{ request.scheme }}://{{ request.get_host }}{% url 'allocation:selfregister' question.id %}">{{ request.scheme }}://{{ request.get_host }}{% url 'allocation:selfregister' question.id %}</a></p>
         <br/>
         {% if question.allow_self_sign_up == 1 %}
         <h3>List of Self Sign Up Requests for {{question.question_text}}</h3>
         <ul>
         {% for r in request_list %}
             <li>
-                <form method="post" action="{% url 'polls:approverequest' r.id %}">
+                <form method="post" action="{% url 'allocation:approverequest' r.id %}">
                     {% csrf_token %}
                     {{r.user.username}}:  {{r.item_name}}
                     <input type="submit" value="Approve" class="btn btn-primary"/>
                 </form>
             </li>
-        {% endfor%}
+        {% endfor %}
         {% endif %}
         </ul>
     </div>

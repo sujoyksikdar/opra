@@ -1,0 +1,11 @@
+{% extends 'polls/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="alert alert-success">
+        <h3>Your preferences have been submitted!</h3>
+        <a href="{% url 'allocation:detail' question.id %}" class="btn btn-default">Update Preferences</a>
+        <a href="{% url 'allocation:allocation_tab' %}" class="btn btn-primary">Back to Allocations</a>
+    </div>
+</div>
+{% endblock %}

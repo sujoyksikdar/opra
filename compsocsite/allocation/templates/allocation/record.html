@@ -1,0 +1,152 @@
+{% extends 'polls/base.html' %}
+{% load static %}
+{% block extra_head %}
+<style>
+    .download-section {
+        background-color: #f5f5f5;
+        padding: 20px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .download-section .btn {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    .record-card {
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .record-json {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        overflow-x: auto;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .collapse-btn {
+        cursor: pointer;
+        color: #007bff;
+        margin-right: 15px;
+    }
+    .collapse-btn:hover {
+        text-decoration: underline;
+    }
+    .download-json-btn {
+        margin-left: 10px;
+        font-size: 0.8rem;
+        padding: 3px 8px;
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.collapse-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById(this.getAttribute('data-target'));
+            if (target.style.display === 'none' || !target.style.display) {
+                target.style.display = 'block';
+                this.textContent = 'Hide Details';
+            } else {
+                target.style.display = 'none';
+                this.textContent = 'Show Details';
+            }
+        });
+    });
+
+    document.querySelectorAll('.download-json-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const jsonElement = document.querySelector('#' + targetId + ' .record-json');
+            if (jsonElement) {
+                try {
+                    const parsedData = JSON.parse(jsonElement.textContent.trim());
+                    const blob = new Blob([JSON.stringify(parsedData, null, 2)], { type: 'application/json' });
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = 'record_' + targetId + '.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(objUrl);
+                    document.body.removeChild(a);
+                } catch (err) {
+                    console.error('Error downloading JSON:', err);
+                }
+            }
+        });
+    });
+
+    var dlBtn = document.getElementById('downloadLatestVotesButton');
+    if (dlBtn) {
+        dlBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            fetch(url)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    const processedData = data.map(function(record) {
+                        try {
+                            const behaviorData = JSON.parse(record.behavior_data);
+                            return {
+                                username: record.username,
+                                email: record.email,
+                                question_id: record.question_id,
+                                timestamp: record.timestamp,
+                                submitted_ranking: behaviorData.submitted_ranking || [],
+                                initial_ranking: behaviorData.initial_ranking || [],
+                                platform: behaviorData.platform || 'Unknown',
+                                time_submission: behaviorData.time_submission || null
+                            };
+                        } catch (err) {
+                            return record;
+                        }
+                    });
+                    const blob = new Blob([JSON.stringify(processedData, null, 2)], { type: 'application/json' });
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = 'latest_votes.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(objUrl);
+                    document.body.removeChild(a);
+                })
+                .catch(function(err) { console.error('Error downloading:', err); });
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Record View - {{ question.question_text }}</h2>
+
+<div class="download-section">
+    <h3>Download Options</h3>
+    <a href="{% url 'allocation:downloadlatestvotes' question.id %}" id="downloadLatestVotesButton" class="btn btn-primary">Download latest votes</a>
+</div>
+
+<h3>{{ user_records|length }} Record(s) Found</h3>
+
+{% if user_records %}
+    {% for record in user_records %}
+        <div class="record-card">
+            <h4>Record #{{ forloop.counter }}
+                <span class="collapse-btn" data-target="record-data-{{ forloop.counter }}">Show Details</span>
+                <button class="btn btn-sm btn-secondary download-json-btn" data-target="record-data-{{ forloop.counter }}">Download as JSON</button>
+            </h4>
+            <div id="record-data-{{ forloop.counter }}" style="display: none;">
+                <div class="record-json">{{ record|safe }}</div>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info">No records found for this allocation.</div>
+{% endif %}
+{% endblock %}
