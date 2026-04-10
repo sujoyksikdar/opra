@@ -161,23 +161,23 @@
             {% if question.infiniteBudgetUI_enabled %}<li><a href="#InfiniteBudgetUISection" onclick="changeMethod(9);">InfiniteBudget UI</a></li> {% endif %}
         </ul>
 		{% endif %}
-            {% if question.twocol_enabled %}{% include "polls/voteOptions/twoCol.html" %}{% endif %}
-            {% if question.onecol_enabled %}{% include "polls/voteOptions/oneCol.html" %}{% endif %}
-            {% if question.slider_enabled %}{% include "polls/voteOptions/slider.html" %}{% endif %}
-            {% if question.star_enabled %}{% include "polls/voteOptions/stars.html" %}{% endif %}
+            {% if question.twocol_enabled %}{% include "mock_election/voteOptions/twoCol.html" %}{% endif %}
+            {% if question.onecol_enabled %}{% include "mock_election/voteOptions/oneCol.html" %}{% endif %}
+            {% if question.slider_enabled %}{% include "mock_election/voteOptions/slider.html" %}{% endif %}
+            {% if question.star_enabled %}{% include "mock_election/voteOptions/stars.html" %}{% endif %}
             {% with num=1 %}
                 {% if question.yesno_enabled %}
-                    {% include "polls/voteOptions/yesNo.html" %}
+                    {% include "mock_election/voteOptions/yesNo.html" %}
                 {% endif %}
             {% endwith %}
             {% with num=2 %}
                 {% if question.single_enabled %}
-                    {% include "polls/voteOptions/yesNo.html" %}
+                    {% include "mock_election/voteOptions/yesNo.html" %}
                 {% endif %}
             {% endwith %}
-            {% if question.budgetUI_enabled %}{% include "polls/voteOptions/budgetUI.html" %}{% endif %}
-            {% if question.ListUI_enabled %}{% include "polls/voteOptions/listUI.html" %}{% endif %}
-            {% if question.infiniteBudgetUI_enabled %}{% include "polls/voteOptions/infiniteBudget.html" %}{% endif %}
+            {% if question.budgetUI_enabled %}{% include "mock_election/voteOptions/budgetUI.html" %}{% endif %}
+            {% if question.ListUI_enabled %}{% include "mock_election/voteOptions/listUI.html" %}{% endif %}
+            {% if question.infiniteBudgetUI_enabled %}{% include "mock_election/voteOptions/infiniteBudget.html" %}{% endif %}
     </div>
 
     {% endif %}

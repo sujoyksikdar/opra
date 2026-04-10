@@ -18,7 +18,7 @@
         $("#user-search").autocomplete({
             source: function(request, response) {
                 $.ajax({
-                    url: "/polls/api/get_voters/",
+                    url: "/mock_election/api/get_voters/",
                     dataType: "json",
                     data: {
                         term : request.term,

@@ -28,7 +28,7 @@
                         <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
                     {% endif %}
 					
-                    {% include 'polls/_display_vote.html' %}
+                    {% include 'mock_election/_display_vote.html' %}
                 {% endfor %} <!-- for response-->
                 <br />
                 <br />
@@ -45,7 +45,7 @@
                                     <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
                                 {% endif %} 
 
-                                {% include 'polls/_display_vote.html' %}
+                                {% include 'mock_election/_display_vote.html' %}
                             </div>
                         {% endfor %}
                         </div>
@@ -77,7 +77,7 @@
                                 (last voted on {{ response.timestamp }}) <br />
                             {% endif %}
                             
-                            {% include 'polls/_display_vote.html' %}
+                            {% include 'mock_election/_display_vote.html' %}
                         </div>
                         <br>
                     {% endif %}
@@ -85,7 +85,7 @@
                     <div class="btn-group">
                         <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br /> 
                         
-                        {% include 'polls/_display_vote.html' %}
+                        {% include 'mock_election/_display_vote.html' %}
                     </div>
                 {% endif %}
                 {% endfor %}
@@ -130,7 +130,7 @@
                                     <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
                                 {% endif %}
                                 
-                                {% include 'polls/_display_vote.html' %}
+                                {% include 'mock_election/_display_vote.html' %}
                             {% endif %}
                         {% endfor %} <!-- for response-->
                     <br />
@@ -150,7 +150,7 @@
                                             <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
                                         {% endif %} 
 
-                                        {% include 'polls/_display_vote.html' %}
+                                        {% include 'mock_election/_display_vote.html' %}
                                     </div>
                                 {% endif %}
                             {% endfor %}
@@ -174,7 +174,7 @@
                         <div class="btn-group">
                             <b>{%if response.user.username == "" %}Anonymous {%else%} Hidden Username {%endif%}</b> (last voted on {{ response.timestamp }}) <br /> 
                             
-                            {% include 'polls/_display_vote.html' %}
+                            {% include 'mock_election/_display_vote.html' %}
                         </div>
                         <br>
 						{% endif %}
@@ -199,7 +199,7 @@
                     {% for response, currentSelection in user_latest_responses %}
                         <b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br /> 
                         
-                        {% include 'polls/_display_vote.html' %}
+                        {% include 'mock_election/_display_vote.html' %}
                     {% endfor %}
                     <br />
                     <br />
@@ -211,7 +211,7 @@
                         <div class="btn-group">
                             <b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br /> 
     
-                            {% include 'polls/_display_vote.html' %}
+                            {% include 'mock_election/_display_vote.html' %}
                         </div>
                         <br>
                         {% endfor %}

@@ -40,11 +40,11 @@
     <br/>
     
     <h3>Users</h3>
-    {% include 'polls/_invite_voters_new_ui.html' %}
+    {% include 'mock_election/_invite_voters_new_ui.html' %}
 
     <br/> <br/>
     <div class="col-md-6 col-md-offset-3" align="center">
-        <form action= "/polls/{{question.id}}/add_step4/">
+        <form action="{% url 'mock_election:AddStep4' question.id %}">
             <input type="submit" value="Next" class="btn btn-primary">
         </form>
     </div>

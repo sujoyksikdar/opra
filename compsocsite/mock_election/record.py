@@ -246,7 +246,7 @@ def downloadAllRecord1(request, user_id):
     records = []
     response['Content-Disposition'] = 'attachment; filename="record.csv"'
     writer = csv.writer(response)
-    writer.writerow(["Username","Question id","Timestamp","Initial order"])
+    writer.writerow(["Username","MockElectionQuestion id","Timestamp","Initial order"])
     for question in user.question_set.order_by('id'):
         for record in question.mockelectionuservoterecord_set.all():
             (title_arr,record_arr) = interpretRecordForDownload(record)
@@ -277,7 +277,7 @@ def downloadLatestVotes(request, question_id):
     return JsonResponse(records, safe=False)
 
 class RecordView(generic.DetailView):
-    model = Question
+    model = MockElectionQuestion
     template_name = 'mock_election/record.html'
     
     def get_context_data(self, **kwargs):
@@ -394,7 +394,7 @@ def downloadPolls(request):
     
 def downloadRecords(request):
     print('in downloadRecords')
-    all_record = UserVoteRecord.objects.all()
+    all_record = MockElectionUserVoteRecord.objects.all()
     result = []
     for record in all_record:
         dic = {}

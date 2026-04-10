@@ -61,9 +61,9 @@ class IndexView(views.generic.ListView):
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
-        return Question.objects.all().order_by('-pub_date')
+        return MockElectionQuestion.objects.all().order_by('-pub_date')
 
-def block_code_users(redirect_url="/polls/regular_polls/code"):
+def block_code_users(redirect_url="/mock_election/regular_polls/code"):
     """To block code-based users from accessing certain views."""
     def decorator(view_func):
         @wraps(view_func)
@@ -74,7 +74,7 @@ def block_code_users(redirect_url="/polls/regular_polls/code"):
         return _wrapped
     return decorator
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class RegularPollsView(views.generic.ListView):
     """
     Define regular polls view, inheriting ListView class, which specifies a context variable.
@@ -88,7 +88,7 @@ class RegularPollsView(views.generic.ListView):
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
-        return Question.objects.all().order_by('-pub_date')
+        return MockElectionQuestion.objects.all().order_by('-pub_date')
         
     
     def get_context_data(self, **kwargs):
@@ -103,9 +103,9 @@ class RegularPollsView(views.generic.ListView):
             unshown += folder.questions.all()
         
         # sort the lists by date (most recent should be at the top)
-        ctx['polls_created'] = list(Question.objects.filter(question_owner=self.request.user,
+        ctx['polls_created'] = list(MockElectionQuestion.objects.filter(question_owner=self.request.user,
                                     m_poll=False, question_type = 1).order_by('-pub_date'))
-        ctx['active_polls'] = list(Question.objects.filter(question_type = 1).order_by('-pub_date'))
+        ctx['active_polls'] = list(MockElectionQuestion.objects.filter(question_type = 1).order_by('-pub_date'))
         # get all polls current user participates in and filter out those she is the owner of
         polls = self.request.user.poll_participated.filter(m_poll=False, question_type = 1)
         polls = polls.exclude(question_owner=self.request.user).order_by('-pub_date')
@@ -121,7 +121,7 @@ class RegularPollsView(views.generic.ListView):
         self.request.session['questionType'] = 1
         return ctx
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class CodePollsView(views.generic.ListView):
     """
     Polls view for code-based users.
@@ -132,7 +132,7 @@ class CodePollsView(views.generic.ListView):
 
     def get_queryset(self):
         qid = self.request.session.get('code_question_id')
-        return Question.objects.filter(pk=qid, question_type=1).order_by('-pub_date')
+        return MockElectionQuestion.objects.filter(pk=qid, question_type=1).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         ctx = super(CodePollsView, self).get_context_data(**kwargs)
@@ -140,15 +140,15 @@ class CodePollsView(views.generic.ListView):
 
         ctx['folders'] = []
         ctx['polls_created'] = []  
-        ctx['active_polls'] = list(Question.objects.filter(question_type=1).order_by('-pub_date'))
-        polls = Question.objects.filter(pk=qid, question_type=1)
+        ctx['active_polls'] = list(MockElectionQuestion.objects.filter(question_type=1).order_by('-pub_date'))
+        polls = MockElectionQuestion.objects.filter(pk=qid, question_type=1)
         ctx['polls_participated'] = list(polls)
 
         self.request.session['questionType'] = 1
         return ctx
 
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class RegularPollsFolderView(views.generic.DetailView):
     """Define folder view, inheriting DetailView class, which specifies a specific object."""
     
@@ -170,7 +170,7 @@ def reverseListOrder(query):
     list_query.reverse()
     return list_query
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class MultiPollsView(views.generic.ListView):
     """Define multi-poll view, inheriting ListView class, which specifies a context variable. """
     template_name = 'mock_election/m_polls.html'
@@ -178,7 +178,7 @@ class MultiPollsView(views.generic.ListView):
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
-        return Question.objects.all()
+        return MockElectionQuestion.objects.all()
     
     def get_context_data(self, **kwargs):
         """Override function in parent class and define additional context variables to be used in the page."""
@@ -201,7 +201,7 @@ class MainView(views.generic.ListView):
     def get_queryset(self):
         """Override function in parent class and return all questions."""
         
-        return Question.objects.all().order_by('-pub_date')
+        return MockElectionQuestion.objects.all().order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         """Override function in parent class and define additional context variables to be used in the page."""
@@ -219,7 +219,8 @@ class MainView(views.generic.ListView):
 class DemoView(views.generic.DetailView):
     """Define demo poll for course matching functionality."""
     
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'events/CourseMatch/coursematchdemo.html'
     
     def is_student(self, email: str) -> bool:
@@ -328,7 +329,7 @@ class DemoView(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
 
 class CourseMatchListView(views.generic.ListView):
@@ -337,7 +338,7 @@ class CourseMatchListView(views.generic.ListView):
     template_name = 'events/CourseMatch/soccoursematchlist.html'
     context_object_name = 'question_list'
     def get_queryset(self):
-        return Question.objects.all()
+        return MockElectionQuestion.objects.all()
     def get_context_data(self, **kwargs):
         ctx = super(CourseMatchListView, self).get_context_data(**kwargs)
         return ctx
@@ -345,13 +346,14 @@ class CourseMatchListView(views.generic.ListView):
 class CourseMatchView(views.generic.DetailView):
     """Define course match preference submission page view."""
 
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'events/CourseMatch/soccoursematchdetail.html'
         
     def is_student(self, email: str) -> bool:
         try:
             with open('compsocsite/coursematch/StudentIDEmails.csv', 'r') as f:
-                email_list = pd.read_csv(f)['Email Address'].tolist()
+                email_list = pd.read_csv(f)['MockElectionEmail Address'].tolist()
                 if email in email_list:
                     return True
             return False
@@ -495,9 +497,10 @@ class CourseMatchView(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
-@block_code_users("/polls/regular_polls/code")
+@login_required
+@block_code_users("/mock_election/regular_polls/code")
 def AddStep1View(request):
     """
     Define the first step in creating poll.
@@ -521,7 +524,7 @@ def AddStep1View(request):
 
         # create a new question using information from the form and inherit
         # settings from the user's preferences
-        question = Question(question_text=questionString, question_desc=questionDesc,
+        question = MockElectionQuestion(question_text=questionString, question_desc=questionDesc,
                             pub_date=timezone.now(), question_owner=request.user,
                             display_pref=request.user.userprofile.displayPref,
                             emailInvite=request.user.userprofile.emailInvite,
@@ -539,24 +542,28 @@ def AddStep1View(request):
         return HttpResponseRedirect(reverse('mock_election:AddStep2', args=(question.id,)))
     return render(request,'mock_election/add_step1.html', {})
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(login_required, name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class AddStep2View(views.generic.DetailView):
     """Define step 2 in creating poll: adding choices."""
     
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/add_step2.html'
     def get_context_data(self, **kwargs):
         ctx = super(AddStep2View, self).get_context_data(**kwargs)
         ctx['items'] = self.object.mockelectionitem_set.all()
         return ctx
     def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(login_required, name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class AddStep3View(views.generic.DetailView):
     """Defind step 3 in creating poll: inviting voters."""
 
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/add_step3.html'
 
     def getUsersFromLatestCSV(self, recentCSVText, existingUsers):
@@ -587,24 +594,26 @@ class AddStep3View(views.generic.DetailView):
         ctx['unRegisteredUsers'] = unRegisteredUsers
         ctx['allUsers'] = registeredUsers + unRegisteredUsers  
 
-        if Email.objects.filter(question=self.object).count() > 0:
-            ctx['emailInvite'] = Email.objects.filter(question=self.object, type=1)[0]
-            ctx['emailDelete'] = Email.objects.filter(question=self.object, type=2)[0]
-            ctx['emailStart'] = Email.objects.filter(question=self.object, type=3)[0]
-            ctx['emailStop'] = Email.objects.filter(question=self.object, type=4)[0]
-            ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=4)[0]
-            if len(Email.objects.filter(question=self.object, type=5)) > 0:
-                ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=5)[0]
+        if MockElectionEmail.objects.filter(question=self.object).count() > 0:
+            ctx['emailInvite'] = MockElectionEmail.objects.filter(question=self.object, type=1)[0]
+            ctx['emailDelete'] = MockElectionEmail.objects.filter(question=self.object, type=2)[0]
+            ctx['emailStart'] = MockElectionEmail.objects.filter(question=self.object, type=3)[0]
+            ctx['emailStop'] = MockElectionEmail.objects.filter(question=self.object, type=4)[0]
+            ctx['emailInviteCSV'] = MockElectionEmail.objects.filter(question=self.object, type=4)[0]
+            if len(MockElectionEmail.objects.filter(question=self.object, type=5)) > 0:
+                ctx['emailInviteCSV'] = MockElectionEmail.objects.filter(question=self.object, type=5)[0]
 
         return ctx
     def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(login_required, name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class AddStep4View(views.generic.DetailView):
     """Define step 4 in creating poll: privacy setting, voting mechanisms, voting UIs, etc."""
     
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/add_step4.html'
     def get_context_data(self, **kwargs):
         ctx = super(AddStep4View, self).get_context_data(**kwargs)
@@ -620,7 +629,7 @@ class AddStep4View(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
 
 def addChoice(request, question_id):
@@ -633,7 +642,7 @@ def addChoice(request, question_id):
     Image is optional.
     """
 
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     item_text = request.POST['choice']
     imageURL = request.POST['imageURL']
 
@@ -652,7 +661,7 @@ def addChoice(request, question_id):
     if question.status == 4:
         recentlyAdded = True
     # create the choice
-    item = Item(question=question, item_text=item_text, timestamp=timezone.now(),
+    item = MockElectionItem(question=question, item_text=item_text, timestamp=timezone.now(),
                 recently_added=recentlyAdded)
 
     # if the user uploaded an image or set a URL, add it to the item
@@ -670,7 +679,7 @@ def addChoice(request, question_id):
 def editChoice(request, question_id):
     """Called when choice title or description is edited in poll info page."""
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     for item in question.mockelectionitem_set.all():
         # get data from POST request
         new_text = request.POST["item"+str(item.id)]
@@ -696,7 +705,7 @@ def editBasicInfo(request, question_id):
     Updates title, description, available voting UIs, and whether ties are allowed.
     """
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     # update title and description
     new_title = question.question_text
     if "title" in request.POST:
@@ -767,7 +776,7 @@ def editBasicInfo(request, question_id):
 def deleteChoice(request, choice_id):
     """Delete a choice; can only be done before a poll starts."""
     
-    item = get_object_or_404(Item, pk=choice_id)
+    item = get_object_or_404(MockElectionItem, pk=choice_id)
     item.delete()
     request.session['setting'] = 0
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
@@ -776,7 +785,7 @@ def deleteChoice(request, choice_id):
 def deletePoll(request, question_id):
     """Delete a poll. Only poll owner can do this."""
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # check to make sure the current user is the owner
     if request.user != question.question_owner:
@@ -789,7 +798,7 @@ def deletePoll(request, question_id):
 def quitPoll(request, question_id):
     """Voter opts out of a poll."""
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # notify the user if this option is checked
     if request.user.userprofile.emailDelete:
@@ -811,7 +820,7 @@ def startPoll(request, question_id):
     However, poll owner cannot remove choices any more.
     """
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # check to make sure the owner started the poll
     if request.user != question.question_owner:
@@ -836,7 +845,7 @@ def pausePoll(request, question_id):
     Owner can then add choices. Voters can no longer vote until poll resumes.
     """
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # check to make sure the owner paused the poll
     if request.user != question.question_owner:
@@ -856,7 +865,7 @@ def pausePoll(request, question_id):
 def resumePoll(request, question_id):
     """Resume a poll from paused state."""
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # check to make sure the owner resumed the poll
     if request.user != question.question_owner:
@@ -881,7 +890,7 @@ def stopPoll(request, question_id):
     After the poll stops, voters cannot vote. Final results will be available.
     """
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # check to make sure the owner stopped the poll
     if request.user != question.question_owner:
@@ -902,16 +911,16 @@ def stopPoll(request, question_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 # find the winner(s) using the polling algorithm selected earlier
-# Question question
+# MockElectionQuestion question
 # return String winnerStr
 def getPollWinner(question):
     """
     Calculate winner of poll. 
     
-    Parameter: Question object.
+    Parameter: MockElectionQuestion object.
     Returns: string containing winner(s), mixture for k = 1, 2, 3.
     """
-    print(f"\n[getPollWinner] STARTING for Question ID: {question.id} ('{question.question_text}')")
+    print(f"\n[getPollWinner] STARTING for MockElectionQuestion ID: {question.id} ('{question.question_text}')")
     try:
         all_responses = question.mockelectionresponse_set.filter(active=1).order_by('-timestamp')
         (latest_responses, previous_responses) = categorizeResponses(all_responses)
@@ -965,7 +974,7 @@ def getPollWinner(question):
             except Exception as e:
                 print(f"  - [getPollWinner] Note: Error deleting finalresult (might not exist): {e}")
 
-        result = FinalResult(question=question, timestamp=timezone.now(),
+        result = MockElectionFinalResult(question=question, timestamp=timezone.now(),
                             result_string="", mov_string="", cand_num=question.mockelectionitem_set.all().count(),
                             node_string="", edge_string="", shade_string="")
         
@@ -1006,7 +1015,7 @@ def getPollWinner(question):
         result.node_string = json.dumps(nodes)
         result.edge_string = json.dumps(edges)
         result.shade_string = json.dumps(shadevalues)
-        print("  - [getPollWinner] Saving FinalResult...")
+        print("  - [getPollWinner] Saving MockElectionFinalResult...")
         result.save()
         
         # Resets new vote flag so that result is not computed again
@@ -1016,7 +1025,7 @@ def getPollWinner(question):
         question.mixtures_pl1 = json.dumps(mixtures_pl1)
         question.mixtures_pl2 = json.dumps(mixtures_pl2)
         question.mixtures_pl3 = json.dumps(mixtures_pl3)
-        print("  - [getPollWinner] Saving Question...")
+        print("  - [getPollWinner] Saving MockElectionQuestion...")
         question.save()
 
         print("[getPollWinner] SUCCESSFUL completion.")
@@ -1030,7 +1039,7 @@ def interpretResult(finalresult):
     """
     Interpret result into strings that can be shown on the result page.
     
-    Parameter: FinalResult object
+    Parameter: MockElectionFinalResult object
     Returns: list of list of String containing data used on result page.
     """
     if finalresult is None:
@@ -1080,7 +1089,7 @@ def interpretResult(finalresult):
 def recalculateResult(request, question_id):
     """Called when poll owner wants to recalculate result manually."""
     
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     getPollWinner(question)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
@@ -1099,8 +1108,8 @@ def getCurrentSelection(mostRecentResponse):
     """
     Given a response, return current ranking data that can be loaded on voting UIs.
     
-    Parameter: Response object.
-    Returns: List<List<Item>>
+    Parameter: MockElectionResponse object.
+    Returns: List<List<MockElectionItem>>
     """
     responseDict = {}
     responseDict = buildResponseDict(mostRecentResponse, mostRecentResponse.question,
@@ -1129,7 +1138,8 @@ def getUnrankedCandidates(resp):
 class DetailView(views.generic.DetailView):
     """Define poll voting page view."""
     
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/detail.html'
 
     def get_order(self, ctx):
@@ -1211,7 +1221,7 @@ class DetailView(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
 def addPreferenceValueToResp(objs):
     for i in range(len(objs)):
@@ -1241,9 +1251,10 @@ def addPreferenceValueToResp(objs):
     return objs
 
 # view for settings detail
-@method_decorator(block_code_users("/polls/regular_polls/code"), name="dispatch")
+@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class PollInfoView(views.generic.DetailView):
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/pollinfo.html'
 
     def getUsersFromLatestCSV(self, recentCSVText, existingUsers):
@@ -1265,16 +1276,16 @@ class PollInfoView(views.generic.DetailView):
     def get_context_data(self, **kwargs):
         ctx = super(PollInfoView, self).get_context_data(**kwargs)
         curr_question = self.object
-        emailInvite = Email.objects.filter(question=self.object, type=1)
+        emailInvite = MockElectionEmail.objects.filter(question=self.object, type=1)
         setupEmail(self.object)
-        if Email.objects.filter(question=self.object).count() > 0:
-            ctx['emailInvite'] = Email.objects.filter(question=self.object, type=1)[0]
-            ctx['emailDelete'] = Email.objects.filter(question=self.object, type=2)[0]
-            ctx['emailStart'] = Email.objects.filter(question=self.object, type=3)[0]
-            ctx['emailStop'] = Email.objects.filter(question=self.object, type=4)[0]
-            ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=4)[0]
-            if len(Email.objects.filter(question=self.object, type=5)) > 0:
-                ctx['emailInviteCSV'] = Email.objects.filter(question=self.object, type=5)[0]
+        if MockElectionEmail.objects.filter(question=self.object).count() > 0:
+            ctx['emailInvite'] = MockElectionEmail.objects.filter(question=self.object, type=1)[0]
+            ctx['emailDelete'] = MockElectionEmail.objects.filter(question=self.object, type=2)[0]
+            ctx['emailStart'] = MockElectionEmail.objects.filter(question=self.object, type=3)[0]
+            ctx['emailStop'] = MockElectionEmail.objects.filter(question=self.object, type=4)[0]
+            ctx['emailInviteCSV'] = MockElectionEmail.objects.filter(question=self.object, type=4)[0]
+            if len(MockElectionEmail.objects.filter(question=self.object, type=5)) > 0:
+                ctx['emailInviteCSV'] = MockElectionEmail.objects.filter(question=self.object, type=5)[0]
         ctx['users'] = User.objects.filter(userprofile__is_code_user=False)
         ctx['items'] = self.object.mockelectionitem_set.all()
         ctx['groups'] = Group.objects.all()
@@ -1335,16 +1346,18 @@ class PollInfoView(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 # view for submission confirmation
 class ConfirmationView(views.generic.DetailView):
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/confirmation.html'
 
 
 # view that displays vote results using various algorithms
 class VoteResultsView(views.generic.DetailView):
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'mock_election/vote_rule.html'
 
     def get(self, request, *args, **kwargs):
@@ -1352,7 +1365,7 @@ class VoteResultsView(views.generic.DetailView):
         print(f"\n[VoteResultsView] GET Request for Poll ID: {self.object.id}")
         if self.object.results_visible_after and timezone.now() < self.object.results_visible_after:
             print(f"  - Results not yet visible. Current time: {timezone.now()}, Visible after: {self.object.results_visible_after}")
-            return redirect("polls:regular_polls")   #to /polls/regular_polls/
+            return redirect("mock_election:regular_polls")   #to /mock_election/regular_polls/
         return super().get(request, *args, **kwargs)
         
     def get_context_data(self, **kwargs):
@@ -1534,14 +1547,14 @@ def getWinnersFromIDList(idList):
     winners = {}
     for i in idList:
         try:
-            q = Question.objects.get(pk=i)
+            q = MockElectionQuestion.objects.get(pk=i)
             winners[i] = q.winner
-        except Question.DoesNotExist:
+        except MockElectionQuestion.DoesNotExist:
             pass
     return winners
 
 # build a graph of nodes and edges from a 2d dictionary
-# List<Response> latest_responses
+# List<MockElectionResponse> latest_responses
 # return (List<Dict> nodes, List<Dict> edges)
 def parseWmg(latest_responses, cand_map):
     pollProfile = getPollProfile(latest_responses, cand_map)
@@ -1590,8 +1603,8 @@ def getSelectionList(responseList):
     return selectList
 
 #separate the user votes into two categories: (1)most recent (2)previous history
-# List<Response> all_responses
-# return (List<Response> latest_responses, List<Response> previous_responses)
+# List<MockElectionResponse> all_responses
+# return (List<MockElectionResponse> latest_responses, List<MockElectionResponse> previous_responses)
 def categorizeResponses(all_responses):
     latest_responses = []
     previous_responses = []
@@ -1632,12 +1645,12 @@ def categorizeResponses(all_responses):
     return (latest_responses, previous_responses)
 
 # get a list of options for this poll
-# Response response
-# return Dict<int, Item> cand_map
+# MockElectionResponse response
+# return Dict<int, MockElectionItem> cand_map
 def getCandidateMap(response):
     d = {}
     if response.dictionary_set.all().count() > 0:
-        d = Dictionary.objects.get(response=response)
+        d = MockElectionDictionary.objects.get(response=response)
     else:
         d = buildResponseDict(response, response.question,
                                 getPrefOrder(response.resp_str, response.question))
@@ -1659,13 +1672,13 @@ def getCandidateMapFromList(candlist):
     return cand_map
 
 #convert a user's preference into a 2d map
-# Response response
+# MockElectionResponse response
 # return Dict<int, Dict<int, int>> pref_graph
 def getPreferenceGraph(response, cand_map):
     pref_graph = {}
     dictionary = {}
     if response.dictionary_set.all().count() > 0:
-        dictionary = Dictionary.objects.get(response=response)
+        dictionary = MockElectionDictionary.objects.get(response=response)
     else:
         dictionary = buildResponseDict(response, response.question,
                                         getPrefOrder(response.resp_str, response.question))
@@ -1692,7 +1705,7 @@ def getPreferenceGraph(response, cand_map):
     return pref_graph
 
 # initialize a profile object using all the preferences
-# List<Response> latest_responses
+# List<MockElectionResponse> latest_responses
 # return Profile object
 def getPollProfile(latest_responses, cand_map):
     if len(latest_responses) == 0:
@@ -1737,8 +1750,8 @@ def translateBinaryWinnerList(winners, cand_map):
     return result
 
 #calculate the results of the vote using different algorithms
-# List<Response> latest_responses
-# return a List<Dictionary<Double>>
+# List<MockElectionResponse> latest_responses
+# return a List<MockElectionDictionary<Double>>
 def getVoteResults(latest_responses, cand_map):
     pollProfile = getPollProfile(latest_responses, cand_map)
     if pollProfile == None:
@@ -1820,13 +1833,13 @@ def getVoteResults(latest_responses, cand_map):
     return scoreVectorList, mixtures_pl1, mixtures_pl2, mixtures_pl3
 
 def calculatePreviousResults(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     question.voteresult_set.clear()
     cand_map = getCandidateMapFromList(list(question.mockelectionitem_set.all()))
     previous_winners = question.oldwinner_set.all()
     for pw in previous_winners:
 
-        result = VoteResult(question=question, timestamp=pw.response.timestamp,
+        result = MockElectionVoteResult(question=question, timestamp=pw.response.timestamp,
                             result_string="", mov_string="",
                             cand_num=question.mockelectionitem_set.all().count())
         result.save()
@@ -1913,7 +1926,7 @@ def getShadeValues(scoreVectorList):
     return shadeValues
 
 # find the minimum number of votes needed to change the poll results
-# List<Response> latest_responses
+# List<MockElectionResponse> latest_responses
 # return List<int> marginList
 def getMarginOfVictory(latest_responses, cand_map):
     print("    [getMarginOfVictory] Starting...")
@@ -1933,20 +1946,20 @@ def getMarginOfVictory(latest_responses, cand_map):
         
     print("    [getMarginOfVictory] Calculating margins...")
     try:
-        print("      - Plurality MoV...")
+        print("      - Plurality MockElectionMoV...")
         marginList[0] = MechanismPlurality().getMov(pollProfile)
-        print("      - Borda MoV...")
+        print("      - Borda MockElectionMoV...")
         marginList[1] = MechanismBorda().getMov(pollProfile)
-        print("      - Veto MoV...")
+        print("      - Veto MockElectionMoV...")
         marginList[2] = MechanismVeto().getMov(pollProfile)
-        print("      - K-Approval MoV...")
+        print("      - K-Approval MockElectionMoV...")
         marginList[3] = MechanismKApproval(3).getMov(pollProfile)
-        print("      - Simplified Bucklin MoV...")
+        print("      - Simplified Bucklin MockElectionMoV...")
         marginList[4] = MechanismSimplifiedBucklin().getMov(pollProfile)
         #marginList[12] = MechanismPluralityRunOff().getMov(pollProfile)
         print("    [getMarginOfVictory] Calculations complete.")
     except Exception as e:
-        print(f"    [getMarginOfVictory] ERROR during MoV calculation: {e}")
+        print(f"    [getMarginOfVictory] ERROR during MockElectionMoV calculation: {e}")
         traceback.print_exc()
 
     return marginList
@@ -1958,14 +1971,14 @@ def getMarginOfVictory(latest_responses, cand_map):
 def getKTScore(user, otherUser):
     kendall_tau = 0
     num = 0
-    questions = Question.objects.all().filter(question_voters=otherUser).filter(question_voters=user)
+    questions = MockElectionQuestion.objects.all().filter(question_voters=otherUser).filter(question_voters=user)
     for q in questions:
         userResponse = q.mockelectionresponse_set.filter(user=user).reverse()
         other_user_response = q.mockelectionresponse_set.filter(user=otherUser).reverse()
         if len(userResponse) > 0 and len(other_user_response) > 0:
             num = num + 1
-            userResponse = get_object_or_404(Dictionary, response=userResponse[0])
-            other_user_response = get_object_or_404(Dictionary, response=other_user_response[0])
+            userResponse = get_object_or_404(MockElectionDictionary, response=userResponse[0])
+            other_user_response = get_object_or_404(MockElectionDictionary, response=other_user_response[0])
             kendall_tau += getKendallTauScore(userResponse, other_user_response)
 
     if num != 0:
@@ -1978,10 +1991,10 @@ def getKTScore(user, otherUser):
 
 # use other responses to recommend a response order for you
 # responses are sorted from latest to earliest
-# List<Response> response
+# List<MockElectionResponse> response
 # request request
-# List<Item> default_order
-# return List<Item> final_list
+# List<MockElectionItem> default_order
+# return List<MockElectionItem> final_list
 def getRecommendedOrder(other_user_responses, request, default_order):
     # no responses
     if len(other_user_responses) == 0:
@@ -2022,7 +2035,7 @@ def getRecommendedOrder(other_user_responses, request, default_order):
 # function to add voter to voter list (invite only)
 # can invite new voters at any time
 def addVoter(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     creator_obj = User.objects.get(id=question.question_owner_id)
 
     newVoters = request.POST.getlist('voters')
@@ -2048,7 +2061,7 @@ def addVoter(request, question_id):
     return HttpResponse(data, mimetype)
 
 def addVoters(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     creator_obj = User.objects.get(id=question.question_owner_id)
 
     email = request.POST.get('email') == 'email'
@@ -2065,10 +2078,10 @@ def addVoters(request, question_id):
                 question.question_voters.add(voterObj.id)
             
             if email:
-                # print("Email sending logic here to invite users")
+                # print("MockElectionEmail sending logic here to invite users")
                 email_class = EmailThread(request, question_id, 'invite', newVoters)
                 email_class.start()
-                messages.success(request,"The Email has been sent to the added users!")
+                messages.success(request,"The MockElectionEmail has been sent to the added users!")
 
                 # mail.send_mail(mailSub,
                 #             mailBody,
@@ -2096,10 +2109,10 @@ def addVoters(request, question_id):
                 votersEmailIDsInGroups.remove(mailID)
 
         if email:
-            # print("Email sending logic here to invite group users")
+            # print("MockElectionEmail sending logic here to invite group users")
             email_class = EmailThread(request, question_id, 'invite-group', votersEmailIDsInGroups)
             email_class.start()
-            messages.success(request,"The Email has been sent to the added users!")
+            messages.success(request,"The MockElectionEmail has been sent to the added users!")
 
             # mail.send_mail(mailSub,
             #                 mailBody,
@@ -2122,7 +2135,7 @@ def addVoters(request, question_id):
 
 # Save the recently uploaded csv text
 def saveLatestCSV(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     creator_obj = User.objects.get(id=question.question_owner_id)
 
     recentCSVText = request.POST.get('votersCSVText')
@@ -2159,7 +2172,7 @@ def getRegAndUnRegUsers(userIDsFromCSV):
     return regUsers, UnregUsers
 #add users with csv
 def addUsersFromCSV(request: HttpRequest, question_id: int) -> None:
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     recentCSVText = question.recentCSVText
     if recentCSVText is None:
         return
@@ -2176,16 +2189,16 @@ def addUsersFromCSV(request: HttpRequest, question_id: int) -> None:
     # Handle unregistered users
     for email in UnRegistered_users_of_current_poll:
         try:
-            voter_obj = UnregisteredUser.objects.get(email=email)
+            voter_obj = MockElectionUnregisteredUser.objects.get(email=email)
             voter_obj.polls_invited.add(question)
-        except UnregisteredUser.DoesNotExist:
-            voter_obj = UnregisteredUser.objects.create(email=email)
+        except MockElectionUnregisteredUser.DoesNotExist:
+            voter_obj = MockElectionUnregisteredUser.objects.create(email=email)
             voter_obj.save()
             question.save()
             voter_obj.polls_invited.add(question)
 
 def send_email_invites(request: HttpRequest, question_id: int):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     recepients = request.POST.get('recepients')
     mailSubject = request.POST.get('mailSubject') or None
@@ -2219,7 +2232,7 @@ def send_email_invites(request: HttpRequest, question_id: int):
     )
     email_class.start()
 
-    messages.success(request, "The Email has been sent to the recepients!")
+    messages.success(request, "The MockElectionEmail has been sent to the recepients!")
     emailSettings(request, question_id)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
@@ -2227,7 +2240,7 @@ def send_email_invites(request: HttpRequest, question_id: int):
 # # Send email invite to Registered and Non registered Participants
 # # added using csv
 # def addUsersAndSendEmailInvite(request: HttpRequest, question_id: int) -> None:
-#     question = get_object_or_404(Question, pk=question_id)
+#     question = get_object_or_404(MockElectionQuestion, pk=question_id)
     
 #     recepients = request.POST.get('recepients')
 #     mailSubject = request.POST.get('mailSubject')
@@ -2267,13 +2280,13 @@ def send_email_invites(request: HttpRequest, question_id: int):
 
 #     Case 1:
 #     Get the list of emails of unregistered users for the current poll, after submitting the csv.
-#     Create an UnregisteredUser Object for every email in unregistered users for the current poll.
-#     Add the question to the list of polls invited to the newly created UnregisteredUser Object.
+#     Create an MockElectionUnregisteredUser Object for every email in unregistered users for the current poll.
+#     Add the question to the list of polls invited to the newly created MockElectionUnregisteredUser Object.
 
 #     Case 2:
 #     When the unregistered user has already been invited to registred with OPRA via other polls, 
-#     but still the user had not registred with OPRA. In this case, no new object for the UnregisteredUser has to 
-#     be created. Just add the question to the list of polls invited of the reterieved UnregisteredUser Object.
+#     but still the user had not registred with OPRA. In this case, no new object for the MockElectionUnregisteredUser has to 
+#     be created. Just add the question to the list of polls invited of the reterieved MockElectionUnregisteredUser Object.
 
 #     '''
 
@@ -2282,12 +2295,12 @@ def send_email_invites(request: HttpRequest, question_id: int):
 #         # the voter_obj will be retrieved if the user is invited via other polls, 
 #         # but not registered with OPRA yet.
 #         try:
-#             voter_obj = UnregisteredUser.objects.get(email = email)
+#             voter_obj = MockElectionUnregisteredUser.objects.get(email = email)
 #             voter_obj.polls_invited.add(question)
         
 #         # the voter_obj will be created if the user is invited to get registered with OPRA for first time
-#         except UnregisteredUser.DoesNotExist:
-#             voter_obj = UnregisteredUser.objects.create(email=email)
+#         except MockElectionUnregisteredUser.DoesNotExist:
+#             voter_obj = MockElectionUnregisteredUser.objects.create(email=email)
 #             voter_obj.save(); question.save();
 #             voter_obj.polls_invited.add(question)
     
@@ -2314,7 +2327,7 @@ def send_email_invites(request: HttpRequest, question_id: int):
 #         email_class = EmailThread(request, question_id, 'invite-csv', users_to_email, mail_sub=mailSubject, mail_body=mailBody)
 #         email_class.start()
         
-#         messages.success(request, "The Email has been sent to the recepients!")
+#         messages.success(request, "The MockElectionEmail has been sent to the recepients!")
 #     emailSettings(request, question_id)
 #     return 
 
@@ -2334,7 +2347,7 @@ def add_codes(request, question_id):
     if request.method != 'POST':
         return HttpResponse(status=405)
 
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     try:
         count = int(request.POST.get('count', '25'))
@@ -2352,7 +2365,7 @@ def add_codes(request, question_id):
         attempts += 1
         code = _generate_strong_code(10)
         try:
-            lc = LoginCode.objects.create(question=question, code=code)
+            lc = MockElectionLoginCode.objects.create(question=question, code=code)
             uname = f"code_{question.id}_{secrets.token_hex(4)}"
             u = User(username=uname, email="") 
             u.set_unusable_password()
@@ -2378,7 +2391,7 @@ def add_codes(request, question_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER') or reverse('mock_election:regular_polls'))
 
 def export_codes_csv(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     codes = question.login_codes.order_by('created_at').values_list('code', flat=True)
 
     buf = io.StringIO()
@@ -2394,7 +2407,7 @@ def export_codes_csv(request, question_id):
 # remove voters from a poll.
 # should only be done before a poll starts
 def removeVoter(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     if question.status != 1:
         messages.error(request, "Cannot remove voters after the poll is started/paused.")
@@ -2421,10 +2434,10 @@ def removeVoter(request, question_id):
 
     question.emailDelete = email
     if email:
-        # print("Email sending logic to remove user")
+        # print("MockElectionEmail sending logic to remove user")
         email_class = EmailThread(request, question_id, 'remove',emails_to_send)
         email_class.start()
-        messages.success(request,"The Email has been sent to the removed users!")
+        messages.success(request,"The MockElectionEmail has been sent to the removed users!")
     
     question.save()
     emailSettings(request, question_id)
@@ -2433,7 +2446,7 @@ def removeVoter(request, question_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def setInitialSettings(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # map the 1-based dropdown index (1..6) to the actual bits (1,2,4,8,16,32)
     BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
@@ -2535,7 +2548,7 @@ def setInitialSettings(request, question_id):
 
     # 9) redirect
     if question.question_type == 1:
-        return HttpResponseRedirect(reverse("polls:regular_polls"))
+        return HttpResponseRedirect(reverse("mock_election:regular_polls"))
     else:
         return HttpResponseRedirect(reverse("allocation:allocation_tab"))
 
@@ -2543,10 +2556,10 @@ def setInitialSettings(request, question_id):
 # set algorithms and visibility
 def setPollingSettings(request, question_id):
     """
-    Process the POST submission from _set_polling_settings.html and update the Question model
+    Process the POST submission from _set_polling_settings.html and update the MockElectionQuestion model
     with the chosen algorithms/bitmasks.
     """
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # Map the 1-based dropdown index to the actual bit:
     BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
@@ -2604,7 +2617,7 @@ def setPollingSettings(request, question_id):
 
 
 def setVisibilitySettings(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # set the visibility settings, how much information should be shown to the user
     # options range from showing everything (most visibility) to showing only the user's vote
@@ -2636,7 +2649,7 @@ def setVisibilitySettings(request, question_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def show_polling_settings(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     # base context
     ctx = {
@@ -2661,7 +2674,7 @@ def show_polling_settings(request, question_id):
 
 # poll is open to anonymous voters
 def changeType(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     openstring = request.POST['openpoll']
     if openstring == "anon":
         question.open = 1
@@ -2676,7 +2689,7 @@ def changeType(request, question_id):
 
 # poll is closed to anonymous voters
 def closePoll(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     question.open = 0
     question.save()
     request.session['setting'] = 4
@@ -2685,7 +2698,7 @@ def closePoll(request, question_id):
 
 # poll is closed to anonymous voters, open to people logged in
 def uninvitedPoll(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     question.open = 2
     question.save()
     request.session['setting'] = 4
@@ -2693,13 +2706,13 @@ def uninvitedPoll(request, question_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def duplicatePoll(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     title = question.question_text
     desc = question.question_desc
     voters = question.question_voters.all()
     user = request.user
     items = question.mockelectionitem_set.all()
-    new_question = Question(question_text=title, question_desc=desc,
+    new_question = MockElectionQuestion(question_text=title, question_desc=desc,
                             pub_date=timezone.now(), question_owner=user,
                             display_pref=question.display_pref,
                             emailInvite=question.emailInvite,
@@ -2722,7 +2735,7 @@ def duplicatePoll(request, question_id):
     new_question.question_voters.add(*voters)
     new_items = []
     for item in items:
-        new_item = Item(question=new_question, item_text=item.item_text,
+        new_item = MockElectionItem(question=new_question, item_text=item.item_text,
                         item_description=item.item_description, timestamp=timezone.now(),
                         image=item.image, imageURL=item.imageURL)
         new_item.save()
@@ -2733,7 +2746,7 @@ def duplicatePoll(request, question_id):
     #return HttpResponseRedirect(reverse('mock_election:regular_polls'))
 
 def deleteUserVotes(request, response_id):
-    response = get_object_or_404(Response, pk=response_id)
+    response = get_object_or_404(MockElectionResponse, pk=response_id)
     user = response.user
     question = response.question
     if user: 
@@ -2748,7 +2761,7 @@ def deleteUserVotes(request, response_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def restoreUserVotes(request, response_id):
-    response = get_object_or_404(Response, pk=response_id)
+    response = get_object_or_404(MockElectionResponse, pk=response_id)
     user = response.user
     question = response.question
     if user: 
@@ -2764,7 +2777,7 @@ def restoreUserVotes(request, response_id):
 
 # function to get preference order from a string
 # String orderStr
-# Question question
+# MockElectionQuestion question
 # return List<List<String>> prefOrder
 def getPrefOrder(orderStr, question):
     # empty string
@@ -2791,7 +2804,7 @@ def getPrefOrder(orderStr, question):
 # # function to process student submission
 def vote(request, question_id):
     print(">>> VOTE FUNCTION CALLED <<<")
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
     prevResponseCount = question.mockelectionresponse_set.filter(user=request.user, active=1).count()
     # get the preference order
@@ -2802,9 +2815,9 @@ def vote(request, question_id):
     if prefOrder == None:
         # the user must rank all preferences
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    # make Response object to store data
+    # make MockElectionResponse object to store data
     comment = request.POST['comment']
-    response = Response(question=question, user=request.user, timestamp=timezone.now(),
+    response = MockElectionResponse(question=question, user=request.user, timestamp=timezone.now(),
                         resp_str=orderStr, behavior_data=behavior_string, active=1)
     print("Received POST:")
     print("request.POST['pref_order'] =", request.POST.get('pref_order'))
@@ -2812,7 +2825,7 @@ def vote(request, question_id):
     
     if comment != "":
         response.comment = comment
-    print("About to save Response with:", response.__dict__)
+    print("About to save MockElectionResponse with:", response.__dict__)
     response.save()
     print("Saved response with active =", response.active)
 
@@ -2828,7 +2841,7 @@ def vote(request, question_id):
     #enqueue(getCurrentResult(question))
 
     #get current winner
-    old_winner = OldWinner(question=question, response=response)
+    old_winner = MockElectionOldWinner(question=question, response=response)
     old_winner.save()
     # notify the user that the vote has been saved/updated
     if prevResponseCount == 0:
@@ -2846,7 +2859,7 @@ def vote(request, question_id):
     return HttpResponseRedirect(reverse('mock_election:detail', args=(question.id,)))
 
 # def coursematch_vote(request, question_id):
-#     question = get_object_or_404(Question, pk=question_id)
+#     question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
 #     prevResponseCount = question.mockelectionresponse_set.filter(user=request.user, active=1).count()
 #     # get the preference order
@@ -2858,9 +2871,9 @@ def vote(request, question_id):
 #         # the user must rank all preferences
 #         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-#     # make Response object to store data
+#     # make MockElectionResponse object to store data
 #     comment = request.POST['comment']
-#     response = Response(question=question, user=request.user, timestamp=timezone.now(),
+#     response = MockElectionResponse(question=question, user=request.user, timestamp=timezone.now(),
 #                         resp_str=orderStr, behavior_data=behavior_string)
     
 #     if comment != "":
@@ -2882,7 +2895,7 @@ def vote(request, question_id):
 #     #enqueue(getCurrentResult(question))
 
 #     #get current winner
-#     old_winner = OldWinner(question=question, response=response)
+#     old_winner = MockElectionOldWinner(question=question, response=response)
 #     old_winner.save()
 #     # notify the user that the vote has been saved/updated
 #     if prevResponseCount == 0:
@@ -2901,7 +2914,7 @@ def vote(request, question_id):
 
 # # function to process student submission for course match
 # def vote(request, question_id):
-#     question = get_object_or_404(Question, pk=question_id)
+#     question = get_object_or_404(MockElectionQuestion, pk=question_id)
 
 #     prevResponseCount = question.mockelectionresponse_set.filter(user=request.user, active=1).count()
 #     # get the preference order
@@ -2913,9 +2926,9 @@ def vote(request, question_id):
 #         # the user must rank all preferences
 #         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-#     # make Response object to store data
+#     # make MockElectionResponse object to store data
 #     comment = request.POST['comment']
-#     response = Response(question=question, user=request.user, timestamp=timezone.now(),
+#     response = MockElectionResponse(question=question, user=request.user, timestamp=timezone.now(),
 #                         resp_str=orderStr, behavior_data=behavior_string, active=1)
     
 #     if comment != "":
@@ -2936,7 +2949,7 @@ def vote(request, question_id):
 #     #enqueue(getCurrentResult(question))
 
 #     #get current winner
-#     old_winner = OldWinner(question=question, response=response)
+#     old_winner = MockElectionOldWinner(question=question, response=response)
 #     old_winner.save()
 #     # notify the user that the vote has been saved/updated
 #     if prevResponseCount == 0:
@@ -2954,12 +2967,12 @@ def vote(request, question_id):
 #     return HttpResponseRedirect(reverse('mock_election:detail', args=(question.id,)))
 
 # create a new dictionary that stores the preferences and rankings
-# Response response
-# Question question
+# MockElectionResponse response
+# MockElectionQuestion question
 # List<List<String>> prefOrder
 def buildResponseDict(response, question, prefOrder):
     d = {}
-    print(f"\n>>> buildResponseDict CALLED for Question ID: {question.id} <<<")
+    print(f"\n>>> buildResponseDict CALLED for MockElectionQuestion ID: {question.id} <<<")
     print(f">>> prefOrder received: {prefOrder} <<<")
 
     if prefOrder is None:
@@ -2969,7 +2982,7 @@ def buildResponseDict(response, question, prefOrder):
     item_num = 1
     print(f">>> Items in question: {question.mockelectionitem_set.all()} <<<")
     for item in question.mockelectionitem_set.all():
-        print(f">>> Processing Item: {item} <<<")
+        print(f">>> Processing MockElectionItem: {item} <<<")
         rank = 1
         #Flag for examining the case when new choices are added to poll after poll starts
         flag = True
@@ -2981,12 +2994,12 @@ def buildResponseDict(response, question, prefOrder):
                 d[item] = rank
                 #If the item is found in preforder, the set flag to false
                 flag = False
-                print(f"    - Item '{item}' FOUND at Rank {rank}")
+                print(f"    - MockElectionItem '{item}' FOUND at Rank {rank}")
                 break
             rank += 1
         if flag:
             d[item] = 1000
-            print(f"    - Item '{item}' NOT FOUND. Assigning default rank 1000")
+            print(f"    - MockElectionItem '{item}' NOT FOUND. Assigning default rank 1000")
         # if arrayIndex == -1:
         #     # set value to lowest possible rank
         #     d[item] = question.mockelectionitem_set.all().count()
@@ -3013,14 +3026,14 @@ def interpretResponseDict(dict):
 
 # join a poll without logging in
 def anonymousJoin(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     name = request.POST['name']
     request.session['anonymousvoter'] = name
     return HttpResponseRedirect(reverse('mock_election:detail', args=(question.id,)))
 
 # submit a vote without logging in
 def anonymousVote(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     voter = "Anonymous"
     id = 0
     # check if the anonymous voter has voted before
@@ -3040,9 +3053,9 @@ def anonymousVote(request, question_id):
         # the user must rank all preferences
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-    # make Response object to store data
+    # make MockElectionResponse object to store data
     comment = request.POST['comment']
-    response = Response(question=question, timestamp=timezone.now(),
+    response = MockElectionResponse(question=question, timestamp=timezone.now(),
                         anonymous_voter=voter, anonymous_id=id, resp_str=orderStr)
     if comment != "":
         response.comment = comment
@@ -3051,7 +3064,7 @@ def anonymousVote(request, question_id):
     # find ranking student gave for each item under the question
 
     #get current winner
-    old_winner = OldWinner(question=question, response=response)
+    old_winner = MockElectionOldWinner(question=question, response=response)
     old_winner.save()
     if not question.new_vote:
         question.new_vote = True
@@ -3097,7 +3110,7 @@ def mixtureAPI_test(request):
 def get_polls(request):
     if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
         q = request.GET.get('term', '')
-        polls = list(Question.objects.filter(question_owner=request.user,
+        polls = list(MockElectionQuestion.objects.filter(question_owner=request.user,
                                                     m_poll=False,
                                                     question_text__icontains = q).order_by('-pub_date'))
         polls += list(request.user.poll_participated.filter(m_poll=False,
@@ -3139,7 +3152,7 @@ def addFolder(request):
         fold.save()
         for poll in request.POST.getlist('polls'):
             try:
-                q = Question.objects.filter(id=int(poll)).all()[0]
+                q = MockElectionQuestion.objects.filter(id=int(poll)).all()[0]
                 fold.questions.add(q)
             except:
                 print("Error: poll not working")
@@ -3168,7 +3181,7 @@ def delete_messages(request):
     
 def get_num_responses(request):
     result = ""
-    resps = Response.objects.filter(user__id__range=(237,647))
+    resps = MockElectionResponse.objects.filter(user__id__range=(237,647))
     result += str(len(resps)) + "\n"
     return HttpResponse(result)
 
@@ -3176,7 +3189,7 @@ def get_num_responses(request):
 class RGView(views.generic.ListView):
     template_name = 'events/ResearchGroup.html'
     def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
     def get_context_data(self, **kwargs):
         ctx = super(RGView, self).get_context_data(**kwargs)
         return ctx
@@ -3184,7 +3197,7 @@ class RGView(views.generic.ListView):
 class RGENView(views.generic.ListView):
     template_name = 'events/ResearchGroupEN.html'
     def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
     def get_context_data(self, **kwargs):
         ctx = super(RGENView, self).get_context_data(**kwargs)
         return ctx
@@ -3195,7 +3208,7 @@ def get_voters(request):
         users = list(User.objects.filter(username__icontains=q))
         poll_id = request.GET.get('poll_id', '-1')
         if poll_id != '-1':
-            exists = Question.objects.filter(pk=poll_id)[0].question_voters.all()
+            exists = MockElectionQuestion.objects.filter(pk=poll_id)[0].question_voters.all()
         else:
             exists = []
         ##Add get possible users from API
@@ -3240,8 +3253,9 @@ def recommend_ranking(k):
 
 
 class SelfRegisterView(views.generic.DetailView):
-    model = Question
-    template_name = "polls/self_register.html"
+    model = MockElectionQuestion
+    context_object_name = 'question'
+    template_name = "mock_election/self_register.html"
     def get_context_data(self, **kwargs):
         ctx = super(SelfRegisterView, self).get_context_data(**kwargs)
         if check_duplicate_sign_up(self.request.user,self.object):
@@ -3249,7 +3263,7 @@ class SelfRegisterView(views.generic.DetailView):
         return ctx
 
 def change_self_sign_up(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     signup_string = request.POST["selfsignup"]
     if signup_string == "allow":
         question.allow_self_sign_up = 1
@@ -3261,12 +3275,12 @@ def change_self_sign_up(request, question_id):
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 def self_sign_up(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     if request.method == "POST" and request.user != question.question_owner:
         if check_duplicate_sign_up(request.user,question):
             return HttpResponse("You can only register once!")
         item_name = request.POST['item_name']
-        new_request = SignUpRequest(question=question,user=request.user,item_name=item_name,timestamp=timezone.now())
+        new_request = MockElectionSignUpRequest(question=question,user=request.user,item_name=item_name,timestamp=timezone.now())
         new_request.save()
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
@@ -3283,7 +3297,7 @@ def check_duplicate_sign_up(user, question):
     return False
 
 def approve_request(request, request_id):
-    sign_up_request = get_object_or_404(SignUpRequest,pk=request_id)
+    sign_up_request = get_object_or_404(MockElectionSignUpRequest,pk=request_id)
     question = sign_up_request.question
     if question.status != 1 and question.status != 4:
         return HttpResponse("Please pause the poll first.")
@@ -3297,7 +3311,7 @@ def approve_request(request, request_id):
     recentlyAdded = False
     if question.status == 4:
         recentlyAdded = True
-    new_choice = Item(question=question, item_text=item_text, timestamp=timezone.now(), recently_added=recentlyAdded, self_sign_up_user_id=str(sign_up_request.user.id))
+    new_choice = MockElectionItem(question=question, item_text=item_text, timestamp=timezone.now(), recently_added=recentlyAdded, self_sign_up_user_id=str(sign_up_request.user.id))
     new_choice.save()
     request.session['setting'] = 9
 
@@ -3308,13 +3322,13 @@ def upload_csv_choices(request, question_id):
     Handle CSV file upload to add multiple alternatives at once.
     Expected CSV format:
     - One row per item
-    - First column: Item name (required)
-    - Second column: Item description (optional)
+    - First column: MockElectionItem name (required)
+    - Second column: MockElectionItem description (optional)
     - Third column: Asset name (optional)
     - Additional columns are ignored
     
     """
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     
     # check if user is poll owner
     if request.user != question.question_owner:
@@ -3367,7 +3381,7 @@ def upload_csv_choices(request, question_id):
                     if not question.mockelectionitem_set.filter(item_text=item_name).exists():
                         # create new item
                         recentlyAdded = question.status == 4
-                        item = Item(
+                        item = MockElectionItem(
                             question=question,
                             item_text=item_name,
                             item_description=item_description,
@@ -3400,7 +3414,7 @@ def upload_csv_choices(request, question_id):
                 
                 # create new item
                 recentlyAdded = question.status == 4
-                item = Item(
+                item = MockElectionItem(
                     question=question,
                     item_text=item_name,
                     item_description=item_description,
@@ -3443,7 +3457,7 @@ def upload_bulk_images(request, question_id):
     Handle bulk image upload to match with existing items.
     Images will be attached to items that have a matching reference in their imageReference field.
     """
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     
     # if user is poll owner
     if request.user != question.question_owner:
@@ -3499,7 +3513,7 @@ def upload_single_image(request, question_id):
     Handle single image upload for an existing item.
     Updates the image for an existing item instead of creating a new one.
     """
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     
     # if user is poll owner
     if request.user != question.question_owner:
@@ -3517,7 +3531,7 @@ def upload_single_image(request, question_id):
             
             # Get the item to update
             try:
-                item = Item.objects.get(pk=item_id, question=question)
+                item = MockElectionItem.objects.get(pk=item_id, question=question)
                 
                 # Remove any existing image (optional)
                 if item.image:
@@ -3533,7 +3547,7 @@ def upload_single_image(request, question_id):
                 item.save()
                 
                 messages.success(request, f"Successfully updated image for '{item.item_text}'.")
-            except Item.DoesNotExist:
+            except MockElectionItem.DoesNotExist:
                 messages.error(request, "The specified item was not found.")
                 
         except Exception as e:
@@ -3544,7 +3558,7 @@ def upload_single_image(request, question_id):
 
 def delete_items(request, question_id):
     """Delete multiple items or all items from a poll."""
-    question = get_object_or_404(Question, pk=question_id)
+    question = get_object_or_404(MockElectionQuestion, pk=question_id)
     
     # check if user is poll owner
     if request.user != question.question_owner:
@@ -3572,7 +3586,8 @@ def delete_items(request, question_id):
 class DemoView(views.generic.DetailView):
     """Define demo poll for course matching functionality."""
     
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'events/CourseMatch/coursematchdemo.html'
     
     def is_student(self, email: str) -> bool:
@@ -3681,12 +3696,13 @@ class DemoView(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())
 
 class CourseMatchDemoView(views.generic.DetailView):
     """Define demo poll for course matching functionality."""
     
-    model = Question
+    model = MockElectionQuestion
+    context_object_name = 'question'
     template_name = 'events/CourseMatch/coursematchdemo.html'
     
     def is_student(self, email: str) -> bool:
@@ -3795,4 +3811,4 @@ class CourseMatchDemoView(views.generic.DetailView):
         """
         Excludes any questions that aren't published yet.
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return MockElectionQuestion.objects.filter(pub_date__lte=timezone.now())

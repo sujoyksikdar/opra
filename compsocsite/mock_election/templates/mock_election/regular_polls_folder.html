@@ -15,12 +15,12 @@
         $('#hidden-table').css('display', 'block');
         $('#search-results').html("");
         var va_mid = "<td style=\"vertical-align:middle\">";
-        var title = "<td><a href=\"/polls/" + item.id + "/pollinfo/\" data-toggle=\"tooltip\" data-placement=\"right\" title=\"Description: " + item.desc + "\">" + item.value + "</a></td>" + va_mid;
+        var title = "<td><a href=\"/mock_election/" + item.id + "/pollinfo/\" data-toggle=\"tooltip\" data-placement=\"right\" title=\"Description: " + item.desc + "\">" + item.value + "</a></td>" + va_mid;
         if(item.status == 2 && item.voter){
-            title +="<a href=\"/polls/" + item.id + "/\" class =\"btn btn-dark\" role=\"button\">Vote</a>";
+            title +="<a href=\"/mock_election/" + item.id + "/\" class =\"btn btn-dark\" role=\"button\">Vote</a>";
         }
         if(item.curr_win){
-            title += "<a href=\"/polls/" + item.id + "/vote/results/\" class =\"btn btn-dark\" role=\"button\" target=\"_blank\" >Current Winners</a>";
+            title += "<a href=\"/mock_election/" + item.id + "/vote/results/\" class =\"btn btn-dark\" role=\"button\" target=\"_blank\" >Current Winners</a>";
         }
         title += "</td>";
         if(item.status == 1 && item.created){
@@ -28,15 +28,15 @@
             title +="<div class=\"modal fade\" id=\"confirm-start" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\">"
             title += "<div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Start Poll " + item.value + "</div>"
             title += "<div class=\"modal-body\">Are you sure you want to start poll " + item.value + "? Once a poll is started, you cannot modify the settings or remove users.</div>"
-            title += "<div class=\"modal-footer\"><a href=\"/polls/" + item.id + "/start/\"><button type=\"button\" class=\"btn-large btn-success btn-ok\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
+            title += "<div class=\"modal-footer\"><a href=\"/mock_election/" + item.id + "/start/\"><button type=\"button\" class=\"btn-large btn-success btn-ok\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
         }else if(item.status == 2 && item.created){
-            title += "<td style=\"vertical-align:middle\"><div class=\"stop-icon pull-right\"><i class=\"fa fa-stop\" aria-hidden=\"true\" data-toggle=\"modal\" data-target=\"#confirm-stop" + item.id + "\"></i></div><div class=\"pause-icon pull-right\" style=\"position:relative; right:10%;\"><a href=\"/polls/" + item.id + "/pause/\"><i class=\"fa fa-pause\" aria-hidden=\"true\"></i></a></div></td>"
+            title += "<td style=\"vertical-align:middle\"><div class=\"stop-icon pull-right\"><i class=\"fa fa-stop\" aria-hidden=\"true\" data-toggle=\"modal\" data-target=\"#confirm-stop" + item.id + "\"></i></div><div class=\"pause-icon pull-right\" style=\"position:relative; right:10%;\"><a href=\"/mock_election/" + item.id + "/pause/\"><i class=\"fa fa-pause\" aria-hidden=\"true\"></i></a></div></td>"
             title += "<div class=\"modal fade\" id=\"confirm-stop" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\"><div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Stop Poll</div><div class=\"modal-body\">Are you sure you want to stop this poll? Once a poll is stopped, no more preferences can be changed.</div>";
-            title += "<div class=\"modal-footer\"><a href=\"/polls/" + item.id + "/stop/\"><button type=\"button\" class=\"btn-large  btn-ok btn-danger\" style=\"font-size:100%;\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
+            title += "<div class=\"modal-footer\"><a href=\"/mock_election/" + item.id + "/stop/\"><button type=\"button\" class=\"btn-large  btn-ok btn-danger\" style=\"font-size:100%;\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
         }else if(item.status == 3 && item.created){
             title += "<td>";
             if(item.type == 1){
-                title += "<a style=\"float:right;margin:10px\" href=\"/polls/" + item.id + "/vote/results/\" class=\"overflow\">" + item.winner + " wins</a>"
+                title += "<a style=\"float:right;margin:10px\" href=\"/mock_election/" + item.id + "/vote/results/\" class=\"overflow\">" + item.winner + " wins</a>"
             }else if(item.type == 2){
                 //cannot search for allocations yet
             }
@@ -51,7 +51,7 @@
 
     $(function() {
         $("#poll-search").autocomplete({
-            source: "/polls/api/get_polls/",
+            source: "/mock_election/api/get_polls/",
             minLength: 2,
             select: function( event, ui ) {
                 add_buttons(ui.item);
@@ -59,7 +59,7 @@
         });
 
         $("#folder-search").autocomplete({
-            source: "/polls/api/get_polls/",
+            source: "/mock_election/api/get_polls/",
             minLength: 2,
             select: function( event, ui ) {
                 add_option(ui.item);
@@ -70,7 +70,7 @@
 <!-- for folders -->
 <div class="container">
     <div class="panel panel-default">
-        <a href="/polls/regular_polls">
+        <a href="/mock_election/regular_polls">
             <div class="panel-heading">
                 <span class="glyphicon glyphicon-arrow-left"></span>
                 Back to all folders

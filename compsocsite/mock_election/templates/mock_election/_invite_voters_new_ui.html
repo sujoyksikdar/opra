@@ -18,7 +18,7 @@
         $("#user-search").autocomplete({
             source: function(request, response) {
                 $.ajax({
-                    url: "/polls/api/get_voters/",
+                    url: "/mock_election/api/get_voters/",
                     dataType: "json",
                     data: {
                         term : request.term,
@@ -159,14 +159,14 @@
         // populateDefaultText(mailSubEleID, mailBodyEleID, mailSubjectContent, mailBodyContent);
         
 
-        var loginLink = protocol + "//" + host + "/polls/main";
+        var loginLink = protocol + "//" + host + "/mock_election/main";
         var signUpLink = protocol + "//" + host + "/auth/register/";
         mailSubEleID = "mailSubject";
         mailBodyEleID = "mailBody";
         mailSubjectContent = "You have been added to {{ question.question_text | safe }}";
         mailBodyContent = "You have been added to {{ question.question_text | safe }}."+
         "\n\nIf you already have an OPRA account, login in into the account using the below link. "+ 
-        "\nLogin link: "+protocol+"//"+host +"/polls/main"+
+        "\nLogin link: "+protocol+"//"+host +"/mock_election/main"+
         "\n\nIf you do not have an account registered with OPRA, sign up with the below link."+
         "\nSign up link: "+ protocol+"//"+host +"/auth/register/"+
         "\nNote: Please sign in with the same E-mail ID with which you are invited.";

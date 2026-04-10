@@ -219,7 +219,7 @@ Item D,                       , image4.png</pre>
                 
                 $.ajax({
                     type: 'post',
-                    url: '{% url "polls:editchoice" question.id %}',
+                    url: '{% url "mock_election:editchoice" question.id %}',
                     data: formData,
                     processData: false,  // Don't process the data
                     contentType: false,  // Don't set content type
@@ -243,7 +243,7 @@ function uploadSingleImage(input, itemId) {
       formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
       
       $.ajax({
-        url: '{% url "polls:upload_single_image" question.id %}',
+        url: '{% url "mock_election:upload_single_image" question.id %}',
         type: 'POST',
         data: formData,
         processData: false,
@@ -275,7 +275,7 @@ function deleteSelected() {
     if (confirm('Are you sure you want to delete the selected items?')) {
         $.ajax({
             type: 'POST',
-            url: '{% url "polls:delete_items" question.id %}',
+            url: '{% url "mock_election:delete_items" question.id %}',
             data: {
                 'item_ids': JSON.stringify(selectedItems),
                 'csrfmiddlewaretoken': '{{ csrf_token }}'
@@ -292,7 +292,7 @@ function deleteAll() {
     if (confirm('Are you sure you want to delete ALL items? This cannot be undone.')) {
         $.ajax({
             type: 'POST',
-            url: '{% url "polls:delete_items" question.id %}',
+            url: '{% url "mock_election:delete_items" question.id %}',
             data: {
                 'delete_all': 'true',
                 'csrfmiddlewaretoken': '{{ csrf_token }}'

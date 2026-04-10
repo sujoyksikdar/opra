@@ -24,17 +24,17 @@ import threading
 
 def switchModel(type, question, request):
     if type == 'invite' or type == 'invite-group':
-        email = Email.objects.filter(question=question, type=1)
+        email = MockElectionEmail.objects.filter(question=question, type=1)
     if type == 'remove' or type == 'remove-group':
-        email = Email.objects.filter(question=question, type=2)
+        email = MockElectionEmail.objects.filter(question=question, type=2)
     if type == 'start':
-        email = Email.objects.filter(question=question, type=3)
+        email = MockElectionEmail.objects.filter(question=question, type=3)
     if type == 'stop':
-        email = Email.objects.filter(question=question, type=4)
+        email = MockElectionEmail.objects.filter(question=question, type=4)
     if type == 'now':
         return [request.POST.get('subject'), request.POST.get('message')]
     if type == 'invite-csv':
-        email = Email.objects.filter(question=question, type=5)
+        email = MockElectionEmail.objects.filter(question=question, type=5)
     if len(email) != 1:
         setupEmail(question)
     return [email[0].subject, email[0].message]
@@ -43,10 +43,10 @@ def setupEmail(question):
     title = question.question_text
     creator = question.question_owner.username
 
-    # Setup/Update the Email subject and body for inviting users
-    emailInvite = Email.objects.filter(question=question, type=1)
+    # Setup/Update the MockElectionEmail subject and body for inviting users
+    emailInvite = MockElectionEmail.objects.filter(question=question, type=1)
     if not emailInvite.exists():
-        emailInvite = Email(question=question, type=1,
+        emailInvite = MockElectionEmail(question=question, type=1,
             subject="",
             message="<p>Hello [user_name],</p>"
                     f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
@@ -58,10 +58,10 @@ def setupEmail(question):
                     f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
                     "<p>Sincerely,<br>OPRA Staff</p>")
         
-    # Setup/Update the Email subject and body for removing users
-    emailRemove = Email.objects.filter(question=question, type=2)
+    # Setup/Update the MockElectionEmail subject and body for removing users
+    emailRemove = MockElectionEmail.objects.filter(question=question, type=2)
     if not emailRemove.exists():
-        emailRemove = Email(question=question, type=2,
+        emailRemove = MockElectionEmail(question=question, type=2,
             subject="You have been removed from " + title,
             message='Hello [user_name],\n\n' + creator
                     + ' has deleted you from a poll.\n\nSincerely,\nOPRAH Staff')
@@ -71,10 +71,10 @@ def setupEmail(question):
             message='Hello [user_name],\n\n' + creator
                     + ' has deleted you from a poll.\n\nSincerely,\nOPRAH Staff')
     
-    # Setup/Update the Email subject and body while starting an instance
-    emailStart = Email.objects.filter(question=question, type=3)
+    # Setup/Update the MockElectionEmail subject and body while starting an instance
+    emailStart = MockElectionEmail.objects.filter(question=question, type=3)
     if not emailStart.exists():
-        emailStart = Email(question=question, type=3,
+        emailStart = MockElectionEmail(question=question, type=3,
             subject=title + ' has started!',
             message='Hello [user_name],\n\n' + creator
                     + ' has started a poll. It is now available to vote on at [url] \n\nSincerely,\nOPRA Staff')
@@ -84,10 +84,10 @@ def setupEmail(question):
             message='Hello [user_name],\n\n' + creator
                     + ' has started a poll. It is now available to vote on at [url] \n\nSincerely,\nOPRA Staff')
     
-    # Setup/Update the Email subject and body while stopping an instance
-    emailStop = Email.objects.filter(question=question, type=4)
+    # Setup/Update the MockElectionEmail subject and body while stopping an instance
+    emailStop = MockElectionEmail.objects.filter(question=question, type=4)
     if not emailStop.exists():
-        emailStop = Email(question=question, type=4,
+        emailStop = MockElectionEmail(question=question, type=4,
             subject=title + ' has stopped',
             message='Hello [user_name],\n\n' + creator
                     + ' has ended a poll. Please visit [url] to view the decision.\n\nSincerely,\nOPRA Staff')
@@ -97,10 +97,10 @@ def setupEmail(question):
             message='Hello [user_name],\n\n' + creator
                     + ' has ended a poll. Please visit [url] to view the decision.\n\nSincerely,\nOPRA Staff')
         
-    # Setup/Update the Email subject and body inviting users by giving CSV email-IDs
-    emailInviteCSV = Email.objects.filter(question=question, type=5)
+    # Setup/Update the MockElectionEmail subject and body inviting users by giving CSV email-IDs
+    emailInviteCSV = MockElectionEmail.objects.filter(question=question, type=5)
     if not emailInviteCSV.exists():
-        emailInviteCSV = Email(question=question, type=5,
+        emailInviteCSV = MockElectionEmail(question=question, type=5,
             subject="You have been invited to vote on " + title,
             message="<p>Hello [user_name],</p>"
                     f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
@@ -116,35 +116,35 @@ def setupEmail(question):
 def emailSettings(request, question_id):
     question = get_object_or_404(MockElectionQuestion, pk=question_id)
     if(request.POST.get('mailNotificationSubject1') is not None): 
-        emailInvite = Email.objects.filter(question=question, type=1)[0]
+        emailInvite = MockElectionEmail.objects.filter(question=question, type=1)[0]
         emailInvite.subject = request.POST.get('mailNotificationSubject1')
         emailInvite.message = request.POST.get('mailNotificationBody1')
         emailInvite.save()
         question.emailInvite = request.POST.get('email') == 'email'
     
     if(request.POST.get('mailNotificationSubject') is not None): 
-        emailDelete = Email.objects.filter(question=question, type=2)[0]
+        emailDelete = MockElectionEmail.objects.filter(question=question, type=2)[0]
         emailDelete.subject = request.POST.get('mailNotificationSubject')
         emailDelete.message = request.POST.get('mailNotificationBody')
         emailDelete.save()
         question.emailDelete = request.POST.get('email') == 'email'
     
     if(request.POST.get('startSubject') is not None): 
-        emailStart = Email.objects.filter(question=question, type=3)[0]
+        emailStart = MockElectionEmail.objects.filter(question=question, type=3)[0]
         emailStart.subject = request.POST.get('startSubject')
         emailStart.message = request.POST.get('startMessage')
         emailStart.save()
         question.emailStart = request.POST.get('emailStart') == 'email'
     
     if(request.POST.get('stopSubject') is not None): 
-        emailStop = Email.objects.filter(question=question, type=4)[0]
+        emailStop = MockElectionEmail.objects.filter(question=question, type=4)[0]
         emailStop.subject = request.POST.get('stopSubject')
         emailStop.message = request.POST.get('stopMessage')
         emailStop.save()
         question.emailStop = request.POST.get('emailStop') == 'email'
 
     if(request.POST.get('mailSubject') is not None): 
-        emailInviteCSV = Email.objects.filter(question=question, type=5)[0]
+        emailInviteCSV = MockElectionEmail.objects.filter(question=question, type=5)[0]
         emailInviteCSV.subject = request.POST.get('mailSubject')
         emailInviteCSV.message = request.POST.get('mailBody')
         emailInviteCSV.save()
@@ -164,8 +164,8 @@ def voteEmail(request, key, resp_id):
         for a in arr:
             prefOrder.append("item" + a.item_text)
         
-        # make Response object to store data
-        response = Response(question=question, user=eResp.user, timestamp=timezone.now())
+        # make MockElectionResponse object to store data
+        response = MockElectionResponse(question=question, user=eResp.user, timestamp=timezone.now())
         response.save()
         d = response.dictionary_set.create(name = eResp.user.username + " Preferences")
 
@@ -186,7 +186,7 @@ def voteEmail(request, key, resp_id):
             item_num += 1
 
         #get current winner
-        old_winner = OldWinner(question=question, response=response)
+        old_winner = MockElectionOldWinner(question=question, response=response)
         old_winner.save()
 
         return HttpResponseRedirect(reverse('mock_election:confirmation', args=(question.id,)))
@@ -209,7 +209,7 @@ def translateHTML(text, uname, url, options):
 def emailNow(request, question_id):
     email_class = EmailThread(request, question_id, "now")
     email_class.start()
-    messages.success(request, "The Email has been sent to all the participants of the poll.")
+    messages.success(request, "The MockElectionEmail has been sent to all the participants of the poll.")
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 #function to send email
@@ -268,7 +268,7 @@ class EmailThread(threading.Thread):
             name = voter.username
             uname = voter.username
             # if self.question.poll_algorithm == 1 and self.type == 'start':
-            #     items = Item.objects.all().filter(question=self.question)
+            #     items = MockElectionItem.objects.all().filter(question=self.question)
             #     item_array = getOptions(items)
             #     options = ''
             #     for i in items:

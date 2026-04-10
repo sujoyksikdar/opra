@@ -15,7 +15,7 @@
 			<b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
 		{% endif %}
 		
-		{% include 'polls/_display_vote.html' %}
+		{% include 'mock_election/_display_vote.html' %}
 	{% endfor %} <!-- for response-->
 	<br />
 	<br />
@@ -32,7 +32,7 @@
 						<b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
 					{% endif %} 
 
-					{% include 'polls/_display_vote.html' %}
+					{% include 'mock_election/_display_vote.html' %}
 				</div>
 			{% endfor %}
 			</div>
