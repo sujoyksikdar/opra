@@ -45,6 +45,7 @@ class AllocationQuestion(models.Model):
     budgetUI_enabled = models.BooleanField(default=False)
     ListUI_enabled = models.BooleanField(default=False)
     infiniteBudgetUI_enabled = models.BooleanField(default=False)
+    allowties = models.BooleanField(default=True)
 
     # Polls templates check question.question_type to branch between regular polls
     # (type 1) and allocation polls (type 2). AllocationQuestion is always type 2.

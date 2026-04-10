@@ -509,13 +509,8 @@ def AddStep1View(request):
     if request.method == 'POST':
         questionString = request.POST['questionTitle']
         questionDesc = request.POST['desc']
-        questionType = request.POST['questiontype']
+        questionType = request.POST.get('questiontype', '1')
         imageURL = request.POST['imageURL']
-
-        # Allocation questions are now managed by the allocation app exclusively.
-        # Forward the POST to the allocation creation endpoint.
-        if questionType == '2':
-            return HttpResponseRedirect(reverse('allocation:AddStep1'))
 
         tie=False
         t = request.POST.getlist('allowties')

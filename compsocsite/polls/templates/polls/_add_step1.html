@@ -30,51 +30,7 @@
         <label for="desc">Question description:</label> <br />
         <textarea type="text" class="form-control" id="desc" name="desc" value=""></textarea> <br />
 
-        <label for="questiontype">Question Type: </label> <small class="text-muted"> * </small>  <i class="fa fa-question-circle" aria-hidden="true" data-toggle="modal" data-target=".bs-example-modal-lg" style="color:GoldenRod;"></i> <br />
-        <!--Explaination Model-->
-        <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
-          <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title">Question Type</h4>
-            </div>
-            <div class="modal-body">
-                <p><strong>Poll: </strong><br/>
-                Polls are used to rank candidates to find which one is the most preferred. Select this if you are unsure.<br/>
-                <strong>Allocation:</strong><br/>
-                Allocation is used to assign multiple tasks to multiple people.</p><br/>
-            </div>
-            </div> <!--modal content-->
-          </div>
-        </div>
-
-        <div class="btn-group" data-toggle="buttons">
-            <label class="btn btn-default {% if request.session.questionType == 1 %} active {% endif %}">
-            <input type="radio" name="questiontype" value="1" {% if request.session.questionType == 1 %} checked {% endif %}>Poll</option>
-            </label>
-            <label class="btn btn-default {% if request.session.questionType == 2 %} active {% endif %}">
-            <input type="radio" name="questiontype" value="2" {% if request.session.questionType == 2 %} checked {% endif %}>Allocation</option>
-            </label>
-        </div>
-        <script>
-        (function() {
-            var ALLOC_URL = "{% url 'allocation:AddStep1' %}";
-            var POLL_URL = "/polls/add_step1/";
-            function updateFormAction() {
-                var selected = document.querySelector('input[name="questiontype"]:checked');
-                var form = document.getElementById('add_poll');
-                if (form && selected) {
-                    form.action = selected.value === '2' ? ALLOC_URL : POLL_URL;
-                }
-            }
-            document.querySelectorAll('input[name="questiontype"]').forEach(function(r) {
-                r.addEventListener('change', updateFormAction);
-            });
-            updateFormAction();
-        })();
-        </script>
-        <br /><br />
+        <br />
 
 				<!-- Use proper form name/values when available -->
 	  <label for="allowties">Allow Ties: </label> <br />

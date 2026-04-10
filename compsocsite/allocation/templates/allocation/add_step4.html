@@ -10,7 +10,9 @@
         <p class="sameline" style="color:grey;"><span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
     </div>
     <div class="progress">
-        <div class="progress-bar progress-bar-info" style="width: 100%"></div>
+        <div class="progress-bar progress-bar-info" role="progressbar" style="width: 100%">
+            <span class="sr-only">100% Complete</span>
+        </div>
     </div>
     <br/>
 
@@ -28,13 +30,13 @@
                 </select>
                 <br/>
                 <label>Allocation algorithms to show in results</label>
-                <div>
-                    <label class="checkbox-inline"><input type="checkbox" value="1" name="alloc_algorithms"> Round Robin</label>
-                    <label class="checkbox-inline"><input type="checkbox" value="2" name="alloc_algorithms"> Max Nash Welfare</label>
-                    <label class="checkbox-inline"><input type="checkbox" value="4" name="alloc_algorithms"> Market (EF1)</label>
-                    <label class="checkbox-inline"><input type="checkbox" value="8" name="alloc_algorithms"> MarketEq (EQ1)</label>
-                    <label class="checkbox-inline"><input type="checkbox" value="16" name="alloc_algorithms"> Leximin</label>
-                    <label class="checkbox-inline"><input type="checkbox" value="32" name="alloc_algorithms"> MNW Binary</label>
+                <div id="visible">
+                    <label class="checkbox-inline"><input id="vis1"  type="checkbox" value="1"  name="alloc_algorithms"> Round Robin</label>
+                    <label class="checkbox-inline"><input id="vis2"  type="checkbox" value="2"  name="alloc_algorithms"> Max Nash Welfare</label>
+                    <label class="checkbox-inline"><input id="vis4"  type="checkbox" value="4"  name="alloc_algorithms"> Market (EF1)</label>
+                    <label class="checkbox-inline"><input id="vis8"  type="checkbox" value="8"  name="alloc_algorithms"> MarketEq (EQ1)</label>
+                    <label class="checkbox-inline"><input id="vis16" type="checkbox" value="16" name="alloc_algorithms"> Leximin</label>
+                    <label class="checkbox-inline"><input id="vis32" type="checkbox" value="32" name="alloc_algorithms"> MNW Binary</label>
                 </div>
             </div>
         </div>
@@ -42,49 +44,120 @@
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Visibility:</h4></div>
             <div class="panel-body">
-                <label>Visibility for preferences</label>
+                <label>Visibility setting for displaying preferences</label>
                 <select name="viewpreferences" class="form-control">
                     <option value="1">Everyone can see all preferences</option>
                     <option value="2">Everyone can only see own preference</option>
                     <option value="3">Nothing</option>
                 </select>
                 <br/>
-                <label>Visibility for user info</label>
+                <label>Visibility setting for displaying user info</label>
                 <select name="viewuserinfo" class="form-control">
-                    <option value="1">Username shown</option>
-                    <option value="2">Only numbers shown</option>
+                    <option value="1">Username of users will be shown</option>
+                    <option value="2">Only numbers of users will be shown</option>
                     <option value="3">Nothing</option>
                 </select>
+                <br/>
+                <label>Information visible to the creator</label>
+                <select name="creatorpreferences" class="form-control">
+                    <option value="1" selected>Creator can see everyone's vote</option>
+                    <option value="2">Creator has the same visibility setting as all users</option>
+                </select>
+                <br/>
+                <label>Make results visible after (optional):</label>
+                <input type="datetime-local" name="results_visible_after" class="form-control">
+                <small>Leave empty if you don't want to schedule release by time.</small>
             </div>
         </div>
 
         <div class="panel panel-default">
-            <div class="panel-heading"><h4>Interfaces:</h4></div>
+            <div class="panel-heading"><h4>Accessibility:</h4></div>
             <div class="panel-body">
-                <label class="checkbox-inline"><input type="checkbox" value="twocol" name="ui" checked> Two Column</label>
-                <label class="checkbox-inline"><input type="checkbox" value="onecol" name="ui"> One Column</label>
-                <label class="checkbox-inline"><input type="checkbox" value="BUI_slider" name="ui" checked> Budget UI</label>
-                <label class="checkbox-inline"><input type="checkbox" value="LUI" name="ui"> List UI</label>
-                <label class="checkbox-inline"><input type="checkbox" value="IBUI" name="ui"> Infinite Budget UI</label>
+                <label>Who can participate? (QR Code can be accessed in settings)</label><br/>
+                <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-default active">
+                        <input type="radio" name="openpoll" value="anon" checked>Anonymous
+                    </label>
+                    <label class="btn btn-default">
+                        <input type="radio" name="openpoll" value="invite">Invited
+                    </label>
+                    <label class="btn btn-default">
+                        <input type="radio" name="openpoll" value="uninvite">Users-Only
+                    </label>
+                </div>
+                <br/><br/>
+                <label>Allow Self Sign Up</label><br/>
+                <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-default active">
+                        <input type="radio" name="selfsignup" value="allow" checked>Allow
+                    </label>
+                    <label class="btn btn-default">
+                        <input type="radio" name="selfsignup" value="notallow">Don't Allow
+                    </label>
+                </div>
+                <br/><br/>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Interfaces to get Preferences:</h4></div>
+            <div class="panel-body">
+                <label>Allowed Interfaces</label>
+                <div>
+                    <label class="checkbox-inline"><input id="twocol_checkbox"   type="checkbox" value="twocol"     name="ui" checked> Two Column</label>
+                    <label class="checkbox-inline"><input id="onecol_checkbox"   type="checkbox" value="onecol"     name="ui"> One Column</label>
+                    <label class="checkbox-inline"><input id="budgetUI_checkbox" type="checkbox" value="BUI_slider" name="ui" checked> Budget UI</label>
+                    <label class="checkbox-inline"><input id="listUI_checkbox"   type="checkbox" value="LUI"        name="ui"> List UI</label>
+                    <label class="checkbox-inline"><input id="ibui_checkbox"     type="checkbox" value="IBUI"       name="ui"> Infinite Budget UI</label>
+                </div>
             </div>
         </div>
 
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Allocation Results:</h4></div>
             <div class="panel-body">
-                <label class="checkbox-inline"><input type="checkbox" value="1" name="alloc_res_tables" checked> My Preferences</label>
-                <label class="checkbox-inline"><input type="checkbox" value="2" name="alloc_res_tables"> All Preferences</label>
-                <label class="checkbox-inline"><input type="checkbox" value="4" name="alloc_res_tables" checked> Items Bundle</label>
-                <label class="checkbox-inline"><input type="checkbox" value="8" name="alloc_res_tables" checked> Allocation Result Table</label>
-                <label class="checkbox-inline"><input type="checkbox" value="16" name="alloc_res_tables" checked> Envy Matrix</label>
+                <strong>Preference View Options</strong><br>
+                <label class="checkbox-inline"><input type="checkbox" value="1"  name="alloc_res_tables" checked> My Preferences</label>
+                <label class="checkbox-inline"><input type="checkbox" value="2"  name="alloc_res_tables"> All Preferences</label>
+                <br/><br/>
+                <strong>Allocation View Options</strong><br>
+                <label class="checkbox-inline"><input type="checkbox" value="4"  name="alloc_res_tables" checked> Items Bundle</label>
+                <label class="checkbox-inline"><input type="checkbox" value="8"  name="alloc_res_tables" checked> Allocation Result Table</label>
+                <br/><br/>
+                <strong>Allocation Property View Options</strong><br>
+                <label class="checkbox-inline"><input type="checkbox" value="16"  name="alloc_res_tables" checked> Envy Matrix</label>
+                <label class="checkbox-inline"><input type="checkbox" value="32"  name="alloc_res_tables"> Equitability</label>
+                <label class="checkbox-inline"><input type="checkbox" value="64"  name="alloc_res_tables"> Fractional Share</label>
+                <label class="checkbox-inline"><input type="checkbox" value="128" name="alloc_res_tables"> Welfare</label>
+                <label class="checkbox-inline"><input type="checkbox" value="256" name="alloc_res_tables"> Pareto Optimality</label>
+                <label class="checkbox-inline"><input type="checkbox" value="512" name="alloc_res_tables"> First-choices</label>
             </div>
         </div>
+
+        <script>
+        $(document).ready(function() {
+            lockSelectedAlgorithm();
+        });
+        $('#pollpreferences').change(function() {
+            lockSelectedAlgorithm();
+        });
+        function lockSelectedAlgorithm() {
+            $("#visible").find('input[type=checkbox]').each(function() {
+                $(this).prop("disabled", false).prop("checked", false);
+            });
+            var selectedVal = parseInt($('#pollpreferences option:selected').val());
+            if (!isNaN(selectedVal)) {
+                var changed = Math.pow(2, selectedVal - 1);
+                $('#vis' + changed).prop("checked", true).prop("disabled", true);
+            }
+        }
+        </script>
 
         <br/>
         <div class="col-md-6 col-md-offset-3" align="center">
             <input type="submit" value="Finish" class="btn btn-primary"/>
         </div>
-        <br><br><br>
+        <br/><br/><br/>
     </form>
 </div>
 {% endif %}

@@ -12,47 +12,12 @@
         <p class="sameline">3. Invite <span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
     </div>
     <div class="progress">
-        <div class="progress-bar progress-bar-info" style="width: 50%"></div>
+        <div class="progress-bar progress-bar-info" role="progressbar" style="width: 50%">
+            <span class="sr-only">50% Complete</span>
+        </div>
     </div>
     <br/>
-
-    <ul class="list-group" id="choicesetting">
-        <form id="choiceform" action="{% url 'allocation:editchoice' question.id %}" method="post">
-            {% csrf_token %}
-            {% for item in items %}
-            <li class="list-group-item">
-                <div class="row">
-                    <div class="col-xs-8 form-group">
-                        <input type="text" class="form-control input-sm auto_submit" name="item{{item.id}}" value="{{ item }}"/>
-                        <input type="hidden" name="itemdescription{{item.id}}" value="{{ item.item_description }}"/>
-                        <input type="hidden" name="imageURL{{item.id}}" value="{{ item.imageURL }}"/>
-                    </div>
-                    <div class="col-xs-2">
-                        <a href="{% url 'allocation:delchoice' item.id %}">
-                            <button type="button" class="btn btn-sm btn-danger"><span class="glyphicon glyphicon-remove"></span></button>
-                        </a>
-                    </div>
-                </div>
-            </li>
-            {% endfor %}
-        </form>
-
-        <li class="list-group-item">
-            <form action="{% url 'allocation:addchoice' question.id %}" method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-xs-8 form-group">
-                        <input type="text" class="form-control input-sm" name="choice" placeholder="Add new item..." autofocus/>
-                        <input type="hidden" name="imageURL" value=""/>
-                    </div>
-                    <div class="col-xs-2 form-group">
-                        <button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-plus"></span></button>
-                    </div>
-                </div>
-            </form>
-        </li>
-    </ul>
-
+    {% include 'allocation/_add_choice.html' %}
     <div class="col-md-6 col-md-offset-3" align="center">
         <a href="{% url 'allocation:AddStep3' question.id %}">
             <input type="submit" value="Next" class="btn btn-primary"/>

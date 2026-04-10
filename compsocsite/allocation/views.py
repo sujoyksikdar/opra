@@ -179,6 +179,7 @@ def AllocationAddStep1(request):
         question_desc = request.POST['desc']
         image_url = request.POST['imageURL']
 
+        allowties = request.POST.get('allowties', '1') != '2'
         question = AllocationQuestion(
             question_text=question_text,
             question_desc=question_desc,
@@ -190,6 +191,7 @@ def AllocationAddStep1(request):
             emailStart=request.user.userprofile.emailStart,
             emailStop=request.user.userprofile.emailStop,
             creator_pref=1,
+            allowties=allowties,
         )
         if request.FILES.get('docfile') is not None:
             question.image = request.FILES.get('docfile')
