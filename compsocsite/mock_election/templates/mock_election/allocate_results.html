@@ -1,0 +1,90 @@
+{% extends 'polls/base.html' %}
+{% load mock_election_extra %}
+{% load static%}
+
+{% block content %}
+<style>
+    .color-green{
+        background-color: #66B032;
+    }
+    
+    .color-red{
+        background-color: #FE8176;
+    }
+    
+    .color-grey{
+        background-color: #C4CCA7;
+    }
+    
+    .color-yellow{
+        background-color: #FBA90A;
+    }
+    
+    .show-sum{
+        display: block;
+    }
+    
+    .hide-sum{
+        display: none;
+    }
+    </style>
+    <script>
+    
+    $(window).load(function(){
+    
+    var table = document.getElementById("envy_matrix");
+    
+    for (var i = 0; i < table.rows.length; i++) {
+        for (var j = 0; j < table.rows[i].cells.length; j++) {
+            // var cellValue = table.rows[i].cells[j].innerText;
+            var cellValue = table.rows[i].cells[j]?.children[0]?.children[0]?.value;
+            if (!isNaN(parseFloat(cellValue)) && isFinite(cellValue)) {
+                if (parseFloat(cellValue) > 0) {
+                    // green
+                    table.rows[i].cells[j].classList.add("color-green");
+                } else if (parseFloat(cellValue) < 0) {
+                    // red
+                    table.rows[i].cells[j].classList.add("color-red");
+                }else if (parseFloat(cellValue) === 0) {
+                    // grey
+                    table.rows[i].cells[j].classList.add("color-grey");
+                }
+            } else if (cellValue === "EF1") {
+                // Cell value is "EF1" // yellow
+                table.rows[i].cells[j].classList.add("color-yellow");
+            }
+        }
+    }
+    
+    
+    });
+    
+    /*
+    function displaySum(element){
+        // console.log(element);
+        element.children[0].children[2].classList.remove('hide-sum');
+        element.children[0].children[2].classList.add('show-sum');
+    }
+    
+    function hideSum(element){
+        // console.log(element);
+        element.children[0].children[2].classList.remove('show-sum');
+        element.children[0].children[2].classList.add('hide-sum');
+    }
+    */
+    
+    </script>
+
+<div id="tabs" class="row">
+    
+    <ul>
+        <!-- {% if alloc_algorithms|bitwise_and:1 != 0%}<li><a href="#RoundRobinSection">Two Columns</a></li> {% endif %} -->
+    </ul>
+
+    {% if alloc_algorithms|bitwise_and:1 != 0%}{% include 'polls/allocationResults/round_robin_results.html' %}{% endif %}
+    
+</div>
+    
+
+
+{% endblock %}

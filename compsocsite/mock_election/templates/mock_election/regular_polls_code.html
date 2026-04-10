@@ -1,0 +1,43 @@
+{% extends 'polls/base.html' %}
+{% load mock_election_extra %}
+
+
+{% block content %}
+<div class="container">
+  <div class="panel panel-default">
+    <div class="panel-body">
+      <table class="table">
+        <thead>
+          <tr><th>Participated in ({{ polls_participated|length }})</th><th></th><th></th></tr>
+        </thead>
+        {% for question in polls_participated %}
+          <tr>
+            <td>
+              <a href="{% url 'mock_election:pollinfo' question.id %}">{{ question.question_text }}</a>
+            </td>
+            <td>
+              {% if question.status == 2 %}
+                <a href="{% url 'mock_election:detail' question.id %}" class="btn btn-dark">Vote</a>
+              {% endif %}
+					    {% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.response_set.all.count > 0 and question|can_show_results%}
+                <a href="{% url 'mock_election:voteresults' question.id %}" target="_blank" class="btn btn-dark">Current Winners</a>
+              {% endif %}
+            </td>
+            <td>
+              {% if question.status == 1 %}Poll not started
+              {% elif question.status == 2 %}In session
+              {% elif question.status == 3 %}
+                {% if question.question_type == 1 %}
+                  <a href="{% url 'mock_election:voteresults' question.id %}" style="float:right;margin:10px">{{ question.winner }} wins</a>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3"><em>No poll available for this code.</em></td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

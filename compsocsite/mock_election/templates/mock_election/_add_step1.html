@@ -1,0 +1,55 @@
+    <div class="steps"  align="center">
+
+        <p class="sameline" style="color:grey;">
+            1. General
+            <span class="glyphicon glyphicon-chevron-right"> </span>
+        </p>
+        <p class="sameline">
+            2. Choices
+            <span class="glyphicon glyphicon-chevron-right"> </span>
+            3. Invite
+            <span class="glyphicon glyphicon-chevron-right"> </span>
+            4. Settings
+        </p>
+    </div>
+
+
+    <div class="progress">
+        <div class="progress-bar progress-bar-info" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" style="width: 25%">
+            <span class="sr-only">25% Complete</span>
+        </div>
+    </div>
+    <br/>
+
+    <form id="add_poll" method="post" action="/polls/add_step1/" name="add_step1" onsubmit="return validateForm() " style="font-size:100%" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="questionTitle">Title:</label> <small class="text-muted"> * </small> <br />
+        <input type="text" class="form-control" id="questionTitle" name="questionTitle" value="" maxlength="80" size="50" autofocus/>
+        <small class="text-muted">Required (at most 80 characters) </small> <br/><br/>
+
+        <label for="desc">Question description:</label> <br />
+        <textarea type="text" class="form-control" id="desc" name="desc" value=""></textarea> <br />
+
+        <br />
+
+				<!-- Use proper form name/values when available -->
+	  <label for="allowties">Allow Ties: </label> <br />
+		<div class="btn-group" data-toggle="buttons">
+				<label class="btn btn-default active">
+				<input type="radio" name="allowties" value="1" checked>Yes
+				</label>
+				<label class="btn btn-default">
+				<input type="radio" name="allowties" value="2">No
+				</label>
+		</div>
+		<br /><br />
+
+        <div style="display:none"> 
+        <label for="imageURL">Image:</label> <br />
+        <input type="text" class="form-control input-sm" id="imageURL" name="imageURL" value="" />
+
+        <label for="image" class="btn btn-default"><span class="glyphicon glyphicon-camera"></span></label>
+        <input style="display:none" id="image" type="file" name="docfile" accept="image/*">
+        </div>
+
+        <br /><br />

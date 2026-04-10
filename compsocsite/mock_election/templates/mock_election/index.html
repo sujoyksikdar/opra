@@ -1,0 +1,204 @@
+{% extends 'polls/base.html' %}
+{% load static%}
+{% block extra_head %}
+
+{% endblock %}
+
+{% block content %}
+<style>
+    p.sameline{
+        display:inline-block;
+    }
+    .panel-default > .panel-heading {
+      color: #fff;
+      background-color: #4c94cc;
+      border-color: transparent;
+        border:0px;
+    }
+    .readable{
+        background-color:rgba(0, 0, 0, 0.5);
+    }
+    body, html {
+    height: 100%;
+    line-height: 1.8;
+    }
+
+    img {margin-bottom: -8px;}
+    
+</style>
+
+
+<!-- Header -->
+
+<header class="bgimg w3-display-container"  id="home">
+  <!-- <img class="w3-image" src="/static/img/bg.jpg" style="opacity: 0.45;"> -->
+  <div class="w3-display-middle w3-margin-top w3-center">
+    <div class="w3-display-middle" style="white-space:nowrap; background-color:rgba(255, 255, 255, 0.9); padding:16px 16px 16px 16px;">
+      <div>
+        <h4 class="w3-xxlarge bu-text-green"><b>Fair. Efficient. Secure.</b></h4>
+      </div> 
+      <br>
+      <div><img src="/static/img/oprafullname.png" style="width:100%"></div>
+      <br>
+      <div>
+        <h3 class="w3-xxlarge rpi-text-red"><b>Make Informed Decisions</b></h3>
+      </div>
+      <br>
+      <div><p style="color:black">	Supported by:
+        <br> <a href="https://people.cs.rutgers.edu/~lirong.xia/" style="color: rgb(191,7,17); "> Lirong Xia's group </a> at Rutgers University 
+        <br> and
+        <br> <a href="https://cs.binghamton.edu/~sikdar/" style="color: rgb(0,93,64); "> Sujoy Sikdar's group </a> at Binghamton University
+      </p></div>
+      </span>
+    </div>
+  </div>
+</header>
+
+<!-- Single Poll Section -->
+<div class="w3-padding-64 w3-light-grey"  style="padding:128px 16px">
+  <div class="w3-row-padding">
+    <div class="w3-col l4 m6">
+      <img class="w3-image w3-round-large" src="{% static 'img/sranking.png' %}" width="335" height="471">
+    </div>
+    <div class="w3-col l8 m6">
+      <h1 class="w3-xxlarge rpi-text-red"><b>Customized Singular Polls</b></h1>
+      <p class="w3-large"><span class="w3-xlarge">OPRA</span> allows you to customize your poll by choosing question types (Poll or Allocation), voting algorithms and visibility. Also, OPRA allows anonymous voters to join singular polls. You must set a question title (keep it short and concise). You can also add a description if you need to add more information. It will be shown when you hover over the title in the index page.</p>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- The Result Section -->
+<div class="w3-padding-64 w3-white"  style="padding:128px 16px">
+  <div class="w3-row-padding">
+    <div class="w3-col l8 m6">
+      <h1 class="w3-xxlarge rpi-text-red"><b>Organized & Analyzed Results</b></h1>
+      <p w3-large><span class="w3-xlarge">OPRA </span> helps you make better decisions. After a poll ends, OPRA will compute and analyze, using powerful voting algorithms, the results for you. </p>
+    </div>
+      
+    <div class="w3-col l4 m6">
+        <img src="{% static 'img/analysis.png' %}" class="w3-image w3-margin-top" width="335" height="471">
+    
+    </div>
+      
+  </div>
+</div>
+
+
+
+
+<!-- Features Section -->
+<div class="w3-container w3-dark-grey w3-center"  style="padding:128px 16px">
+  <h1><b>Features</b></h1>
+  <p class="w3-center w3-large">More About OPRA</p>
+
+  <div class="w3-row" style="margin-top:64px">
+    <div class="w3-col s3">
+      <i class="fa fa-users w3-text-orange w3-jumbo"></i>
+      <p>Group</p>
+    </div>
+    <div class="w3-col s3">
+      <i class="fa fa-envelope w3-text-red w3-jumbo"></i>
+      <p>Notification</p>
+    </div>
+    <div class="w3-col s3">
+      <i class="fa fa-qrcode w3-text-yellow w3-jumbo"></i>
+      <p>QR Code</p>
+    </div>
+    <div class="w3-col s3">
+      <i class="fa fa-eye-slash w3-text-green w3-jumbo"></i>
+      <p>Anonymity</p>
+    </div>
+  </div>
+
+  <div class="w3-row" style="margin-top:64px">
+    <div class="w3-col s3">
+      <i class="fa fa-user w3-text-sand w3-jumbo"></i>
+      <p>Safe</p>
+    </div>
+    <div class="w3-col s3">
+      <i class="fa fa-shield w3-text-blue w3-jumbo"></i>
+      <p>Stable</p>
+    </div>
+    <div class="w3-col s3">
+      <i class="fa fa-wifi w3-text-grey w3-jumbo"></i>
+      <p>Connected</p>
+    </div>
+    <div class="w3-col s3">
+      <i class="fa fa-bolt w3-text-pink w3-jumbo"></i>
+      <p>Fast</p>
+    </div>
+  </div>
+</div>
+
+
+    
+
+<!-- Contact Section -->
+<div class="w3-container w3-light-grey" style="padding:128px 16px" id="contact">
+  <h1 class="w3-center"><b>Contact Us</b></h1>
+  <p class="w3-center w3-large">Lets get in touch. Send us a message:</p>
+  <div class="w3-row-padding" style="margin-top:64px">
+    <div class="w3-half">
+      <p><i class="fa fa-map-marker fa-fw w3-xxlarge w3-margin-right rpi-text-red"></i> Binghamton, NY, US</p>
+      <p><i class="fa fa-envelope fa-fw w3-xxlarge w3-margin-right rpi-text-red"> </i> Email: opra@cs.binghamton.edu</p>
+      <br>
+    <!-- <hr style="border:1px solid" class="w3-round rpi-text-red">
+      <form action="/message" method="post">
+		{% csrf_token %}
+        <p><input class="w3-input w3-border" type="text" placeholder="Name" required name="name"></p>
+        <p><input class="w3-input w3-border" type="text" placeholder="Email" required name="email"></p>
+        <p><input class="w3-input w3-border" type="text" placeholder="Message" required name="message"></p>
+        <p>
+          <button class="w3-button w3-black" type="submit">
+            <i class="fa fa-paper-plane"></i> SEND MESSAGE
+          </button>
+        </p>
+      </form> -->
+    </div>
+    <!-- Add Google Maps -->
+    <!-- <div class="w3-half">
+      <div id="googleMap" style="width:100%;height:510px;"></div>
+    </div> -->
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-10 col-lg-offset-1 text-center">
+                    <p class="text-muted">Copyright &copy; 2017</p>
+                </div>
+            </div>
+        </div>
+        <a id="to-top" href="#top" class="btn btn-dark btn-lg"><i class="fa fa-chevron-up fa-fw fa-1x"></i></a>
+    </footer>
+
+
+<!-- Add Google Maps
+<script>
+function myMap()
+{
+  myCenter=new google.maps.LatLng(42.7302, -73.6788);
+  var mapOptions= {
+    center:myCenter,
+    zoom:12, scrollwheel: false, draggable: false,
+    mapTypeId:google.maps.MapTypeId.ROADMAP
+  };
+  var map=new google.maps.Map(document.getElementById("googleMap"),mapOptions);
+
+  var marker = new google.maps.Marker({
+    position: myCenter,
+  });
+  marker.setMap(map);
+}
+
+
+
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBLFl_jwXM6BXWI3Ne5SlI2BXOtHhUGjR0&callback=myMap"></script>
+-->
+{% endblock %}

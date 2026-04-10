@@ -1,0 +1,526 @@
+{% extends 'polls/base.html' %}
+{% block extra_head %}
+{% load qr_code %}
+
+<script src='/static/js/qrcodejs/qrcode.js'></script>
+
+<style>
+/*
+ * Global add-ons
+ */
+.sub-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+/*
+ * Sidebar
+ */
+
+/* Hide for mobile, show later */
+.sidebar {
+  margin-top:53px;
+}
+@media (min-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 51px;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    display: block;
+    padding: 20px;
+    overflow-x: hidden;
+    overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+    background-color: #f5f5f5;
+    border-right: 1px solid #eee;
+  }
+}
+
+/* Sidebar navigation */
+.nav-sidebar {
+  margin-right: -21px; /* 20px padding + 1px border */
+  margin-bottom: 20px;
+  margin-left: -20px;
+  
+}
+.nav-sidebar > li > a {
+  padding-right: 20px;
+  padding-left: 20px;
+}
+.nav-sidebar > .active > a,
+.nav-sidebar > .active > a:hover,
+.nav-sidebar > .active > a:focus {
+  color: #fff;
+  background-color: #428bca;
+}
+
+
+/*
+ * Main content
+ */
+
+.main {
+  padding: 20px;
+}
+@media (min-width: 768px) {
+  .main {
+    padding-right: 40px;
+    padding-left: 40px;
+  }
+}
+.main .page-header {
+  margin-top: 0;
+}
+
+
+/*
+ * Placeholder dashboard ideas
+ */
+
+.placeholders {
+  margin-bottom: 30px;
+  text-align: center;
+}
+.placeholders h4 {
+  margin-bottom: 0;
+}
+.placeholder {
+  margin-bottom: 20px;
+}
+.placeholder img {
+  display: inline-block;
+  border-radius: 50%;
+}
+    
+  #feedback { font-size: 1.4em; }
+  #selectable .ui-selecting { background: #FECA40; }
+  #selectable .ui-selected { background: #F39814; color: white; }
+  #selectable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+  #selectable li { margin: 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }
+
+  </style>
+  <script>
+  $(function() {
+      $( "#selectable" ).selectable();
+  });
+  </script>
+<script>
+    $(function() {
+        $(".auto_submit").change(function() {
+            $("#choiceform").submit();
+        });
+    });
+    $('#choiceform').submit(function(event){
+        event.preventDefault();
+        var url = $(location).attr('href');
+        $.ajax({
+            type:'post',
+            url:url,
+            data: $('#choiceform').serialize(),
+            success: function(event){
+                $('ul').load();
+            }
+        });
+    });
+</script>
+
+
+
+{% endblock %}
+{% load static%}
+{% block content %}
+
+
+
+<div class="col-xs-3 col-md-2 sidebar">
+    <ul class="nav nav-sidebar">
+        {% if question.question_owner == request.user %}
+            <li {% if request.session.setting == 8 %} class="active" {% endif %}><a data-toggle="tab" href="#title">General Info</a></li>
+            <li {% if request.session.setting == 0 %} class="active" {% endif %}><a data-toggle="tab" href="#choices" >Alternatives</a></li>
+            <li {% if request.session.setting == 2 %} class="active" {% endif %}><a data-toggle="tab" href="#algorithm">Algorithms</a></li>
+            <li {% if request.session.setting == 10 %} class="active" {% endif %}><a data-toggle="tab" href="#visibility">Visibility</a></li>
+            <li {% if request.session.setting == 6 %} class="active" {% endif %}><a data-toggle="tab" href="#historyinfo">Preference Management</a></li>
+			<li {% if request.session.setting == 7 %} class="active" {% endif %}><a data-toggle="tab" href="#recycle">Deleted Preference Management</a></li>
+            <!-- <li {% if request.session.setting == 9 %} class="active" {% endif %}><a data-toggle="tab" href="#approverequest">Self Sign Up</a></li> -->
+           
+            {% if question.m_poll == False %}
+                <li {% if request.session.setting == 1 %} class="active" {% endif %}><a data-toggle="tab" href="#voters">User Management</a></li>
+                <li {% if request.session.setting == 5 %} class="active" {% endif %}><a data-toggle="tab" href="#emailsetting">Email</a></li>
+                <li {% if request.session.setting == 4 %} class="active" {% endif %}><a data-toggle="tab" href="#qr">Access Management</a></li>
+				<li><a data-toggle="tab" href="#duplicate">Duplicate Instance</a></li>
+                <li><a data-toggle="tab" href="#delete" style="color: #a94442;">Delete Instance</a></li>
+                <li><a href="{% url 'mock_election:recordView' question.id %}">User Records</a></li>
+            {% endif %}
+            
+        {% else %}  
+            <li class="active"><a data-toggle="tab" href="#general">General Info</a></li>
+            <li><a data-toggle="tab" href="#historyinfo">History</a></li>
+            <li><a data-toggle="tab" href="#quit">Quit</a></li>
+        {% endif %}
+        
+    </ul>  
+</div>
+<!-- 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2">
+<p>
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>
+        {{ message }} 
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endfor %}
+</ul>
+{% endif %}
+</p>
+</div>
+
+<div class="tab-content">
+{% if question.question_owner == request.user %}
+    <div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 0 %}active{% endif %}" id="choices">
+        <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+        
+        {% include 'polls/_add_choice.html' %}
+    </div>
+    
+    <!-- only for the regular vote-->
+    {% if question.m_poll == False %}
+    <div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 1 %}active{% endif %}" id="voters">
+        <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+
+        {% include 'polls/_invite_voters_new_ui.html' %}
+    </div>
+    {% endif %}
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 2 %}active{% endif %}" id="algorithm">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+    
+    {% include 'polls/_set_polling_settings.html' %}
+</div>
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 10 %}active{% endif %}" id="visibility">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+    
+    {% include 'polls/_visibility.html' %}
+</div>
+            
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 8 %}active{% endif %}" id="title">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+    
+    {% include 'polls/_change_title_and_desc.html' %}
+	{% if request.user == question.question_owner and question.status != 1 %}
+				<a  class="pull-right" href="{% url 'mock_election:recalcResult' question.id %}" style="position:relative; bottom:4px;right:5%;"><button type="button" class="btn btn-primary" >Recalculate Result</button></a>
+		{% endif %}
+</div>
+    
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 4 %}active{% endif %}" id="qr">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">QR code:</div>
+        <div class="panel-body">
+            <div id="qrcode" style="margin-top:15px;">
+                {% url 'mock_election:detail' question.id as detail_url %}
+                {% qr_from_text request.scheme|add:"://"|add:request.get_host|add:detail_url size="s" image_format="png" error_correction="L" %}
+            </div>
+            <a href="#" id="showQRLink">Show Link</a>
+            <a href="#" id="hideQRLink">Hide Link</a>
+            <br />
+            <h3 href="{% url 'mock_election:detail' question.id %}" id="QRLink">{{ request.scheme }}://{{ request.get_host }}{% url 'mock_election:detail' question.id %}</h3>
+            <br />
+            <form class="form-group" method="post" action="{% url 'mock_election:changeType' question.id %}">
+                {% csrf_token %}
+
+                <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-default {% if question.open == 1 %}active{% endif %}">
+                    <input type="radio" name="openpoll" value="anon" {% if question.open == 1 %}checked{% endif %}>Anonymous</option>
+                    </label>
+                    <label class="btn btn-default {% if question.open == 0 %}active{% endif %}">
+                    <input type="radio" name="openpoll" value="invite" {% if question.open == 0 %}checked{% endif %}>Invited</option>
+                    </label>
+                    <label class="btn btn-default {% if question.open == 2 %}active{% endif %}">
+                    <input type="radio" name="openpoll" value="uninvite" {% if question.open == 2 %}checked{% endif %}>Users-Only</option>
+                    </label>
+                </div>
+
+                <input type="submit" value="Finish" class="btn btn-primary">
+            </form>
+        </div>
+    </div>
+
+    <br><br>
+    {% include 'polls/_approve_request.html' %}
+</div>
+
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 5 %}active{% endif %}" id="emailsetting">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+
+    <div class="col-md-10">
+        <div class="panel panel-default">
+    
+            <div class="panel-heading">Email Settings:</div>
+            <div class="panel-body">
+                <form action="{% url 'mock_election:emailSettings' question.id %}" method="post">
+                    {% csrf_token %}
+                    <!-- <div class="row">
+                        <div class="col-md-6" id="invite">
+                            <a href="#" id="inviteButtonShow">Show Invite Message</a>
+                            <a href="#" id="inviteButtonHide">Hide Invite Message</a>
+                            <br />
+                            <div id="editInvite" style="display:none;">
+                                <label for="inviteSubject">Subject:</label> <br />
+                                <input type="text" class="form-control" id="inviteSubject" name="inviteSubject" value="{{emailInvite.subject}}" maxlength="100" size="100" />
+                                <label for="inviteMessage">Email body:</label> <br />
+                                <textarea type="text" class="form-control" id="inviteMessage" name="inviteMessage" value="" maxlength="500">{{emailInvite.message}}</textarea> <br />
+                            </div>
+                            <label for="emailInvite">Send email when inviting users</label>
+                            <input type="checkbox" name="emailInvite" id="emailInvite" value="email" {% if question.emailInvite == True %} checked {% endif %} onchange="this.form.submit()">
+                        </div>
+                        <div class="col-md-6">
+                            <a href="#" id="deleteButtonShow">Show Delete Message</a>
+                            <a href="#" id="deleteButtonHide">Hide Delete Message</a>
+                            <br />
+                            <div id="editDelete" style="display:none;">
+                                <label for="deleteSubject">Subject:</label> <br />
+                                <input type="text" class="form-control" id="deleteSubject" name="deleteSubject" value="{{emailDelete.subject}}" maxlength="100" size="100" />
+                                <label for="deleteMessage">Email body:</label> <br />
+                                <textarea type="text" class="form-control" id="deleteMessage" name="deleteMessage" value="" maxlength="500">{{emailDelete.message}}</textarea> <br />
+                            </div>
+                            <label for="emailDelete">Send email when deleting users</label>
+                            <input type="checkbox" name="emailDelete" id="emailDelete" value="email" {% if question.emailDelete %} checked {% endif %} onchange="this.form.submit()">
+                        </div>
+                    </div> -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="emailStart">Send email when the poll starts</label>
+                            <input type="checkbox" name="emailStart" id="emailStart" value="email" {% if question.emailStart %} checked {% endif %} onchange="this.form.submit()">
+                            <br>
+                            <a href="#" id="startButtonShow">Show Start Message</a>
+                            <a href="#" id="startButtonHide">Hide Start Message</a>
+                            <br />
+                            <div id="editStart" style="display:none;">
+                                <label for="startSubject">Subject:</label> <br />
+                                <input type="text" class="form-control" id="startSubject" name="startSubject" value="{{emailStart.subject}}" maxlength="100" size="100" />
+                                <label for="startMessage">Email body:</label> <br />
+                                <textarea type="text" class="form-control" id="startMessage" name="startMessage" value="" maxlength="500" rows="9">{{emailStart.message}}</textarea> <br />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="emailStop">Send email when the poll stops</label>
+                            <input type="checkbox" name="emailStop" id="emailStop" value="email" {% if question.emailStop %} checked {% endif %} onchange="this.form.submit()">
+                            <br>
+                            <a href="#" id="stopButtonShow">Show Stop Message</a>
+                            <a href="#" id="stopButtonHide">Hide Stop Message</a>
+                            <br />
+                            <div id="editStop" style="display:none;">
+                                <label for="stopSubject">Subject:</label> <br />
+                                <input type="text" class="form-control" id="stopSubject" name="stopSubject" value="{{emailStop.subject}}" maxlength="100" size="100" />
+                                <label for="stopMessage">Email body:</label> <br />
+                                <textarea type="text" class="form-control" id="stopMessage" name="stopMessage" value="" maxlength="500" rows="9">{{emailStop.message}}</textarea> <br />
+                            </div>
+                        </div>
+                    </div>
+                    <br>
+                    <input type="submit" value="Save Settings" class="btn btn-success">
+                </form>
+
+            </div>
+        </div>
+        
+        <div class="panel panel-default">
+    
+            <div class="panel-heading">Send Email Now:</div>
+            <div class="panel-body">
+                <form action="{%url 'polls:emailNow' question.id%}" method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="subject">Subject:</label> <br />
+                            <input type="text" class="form-control" id="subject" name="subject" value="" maxlength="100" size="100" />
+                            <label for="message">Email body:</label> <br />
+                            <textarea type="text" class="form-control" id="message" name="message" value="" maxlength="500" rows="9"></textarea> <br />
+                        </div>
+                    </div>
+                    <input type="submit" value="Send Now" class="btn btn-success">
+                </form>
+            </div>
+        </div>
+            
+        <!-- <form action="{%url 'polls:emailOptions' question.id%}" method="post">
+            {% csrf_token %}
+            <input type="submit" value="Send Options" class="btn btn-success">
+        </form> -->
+    </div>
+</div>
+
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane" id="delete">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+
+<div class="panel panel-danger">
+    <div class="panel-heading">Danger Zone</div>
+    <div class="panel-body" align="center">
+        <p>
+            Make sure you are very certain before you make a decision. Once a poll is deleted, it cannot be recovered.<br /><br/>
+            <span class="btn btn-danger" data-toggle="modal" data-target="#confirm-delete"><span class="glyphicon glyphicon-trash"></span> Delete this Instance</span>
+        </p>
+
+        <div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        Confirm Delete Poll
+                    </div>
+                    <div class="modal-body">
+                        Are you absolutely sure you want to delete this poll? All voting information, settings, etc. will be erased permanently. 
+                    </div>
+                    <div class="modal-footer">
+                        <a class="btn btn-danger btn-ok" href="{% url 'mock_election:delpoll' question.id %}">Yes</a>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane" id="duplicate">
+    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+    <div class="panel panel-default">
+        <div class="panel-heading"><h4>Duplicate Instance<h4></div>
+        <div class="panel-body" align="center">
+            A new instance will be created and inherits the properties of this instance by clicking the below button.<br /><br/>
+            <a class="btn btn-ok" href="{% url 'mock_election:duppoll' question.id %}" style="background-color: #428bca; color: white;">Duplicate Instance</a>
+        </div>
+    </div>
+</div>
+
+
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 7 %}active{% endif %}" id="recycle">
+	{% include 'polls/_view_deleted_votes.html' %}
+</div>
+
+<!-- <div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 9 %}active{% endif %}" id="approverequest">
+    {% include 'polls/_approve_request.html' %}
+</div> -->
+    
+{% else %}
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane" id="quit">
+    <h3 class="page-header">Quit {{ question.question_text }} </h3>
+    <div class="panel panel-danger">
+    <div class="panel-heading">Danger Zone</div>
+    <div class="panel-body" align="center">
+        <p>
+            Make sure you are very certain before you make a decision. Once you quit the poll, it cannot be recovered.<br /><br/>
+            <span class="btn btn-danger" data-toggle="modal" data-target="#confirm-quit"><span class="glyphicon glyphicon-trash"></span> Quit this poll</span>
+        </p>
+
+        <div class="modal fade" id="confirm-quit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        Confirm Quit Poll
+                    </div>
+                    <div class="modal-body">
+                        Are you absolutely sure you want to quit this poll? All voting information, settings, etc. will be erased permanently. 
+                    </div>
+                    <div class="modal-footer">
+                        <a class="btn btn-danger btn-ok" href="{% url 'mock_election:quitpoll' question.id %}">Yes</a>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+    
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane active" id="general">
+    {% include 'polls/_voters_generalinfo.html' %}
+</div>
+
+{% endif %}  
+                                    
+<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 6 %}active{% endif %}" id="historyinfo">
+    {% include 'polls/_view_history.html' %}
+</div>
+
+
+
+<script>
+    $("#editInvite").hide();
+    $( "#inviteButtonHide" ).hide();
+    $( "#inviteButtonShow" ).click(function(){
+        $("#editInvite").show();
+        $( "#inviteButtonShow" ).hide();
+        $( "#inviteButtonHide" ).show();
+    });
+    $( "#inviteButtonHide" ).click(function(){
+        $("#editInvite").hide();
+        $( "#inviteButtonShow" ).show();
+        $( "#inviteButtonHide" ).hide();
+    });
+    $("#editDelete").hide();
+    $( "#deleteButtonHide" ).hide();
+    $( "#deleteButtonShow" ).click(function(){
+        $("#editDelete").show();
+        $( "#deleteButtonShow" ).hide();
+        $( "#deleteButtonHide" ).show();
+    });
+    $( "#deleteButtonHide" ).click(function(){
+        $("#editDelete").hide();
+        $( "#deleteButtonShow" ).show();
+        $( "#deleteButtonHide" ).hide();
+    });
+    $("#editStart").hide();
+    $( "#startButtonHide" ).hide();
+    $( "#startButtonShow" ).click(function(){
+        $("#editStart").show();
+        $( "#startButtonShow" ).hide();
+        $( "#startButtonHide" ).show();
+    });
+    $( "#startButtonHide" ).click(function(){
+        $("#editStart").hide();
+        $( "#startButtonShow" ).show();
+        $( "#startButtonHide" ).hide();
+    });
+    $("#editStop").hide();
+    $( "#stopButtonHide" ).hide();
+    $( "#stopButtonShow" ).click(function(){
+        $("#editStop").show();
+        $( "#stopButtonShow" ).hide();
+        $( "#stopButtonHide" ).show();
+    });
+    $( "#stopButtonHide" ).click(function(){
+        $("#editStop").hide();
+        $( "#stopButtonShow" ).show();
+        $( "#stopButtonHide" ).hide();
+    });
+    $("#QRLink").hide();
+    $("#hideQRLink").hide();
+    $("#showQRLink").click(function(){
+        $("#QRLink").show();
+        $("#showQRLink").hide();
+        $("#hideQRLink").show();
+    });
+    $("#hideQRLink").click(function(){
+        $("#QRLink").hide();
+        $("#showQRLink").show();
+        $("#hideQRLink").hide();
+    });
+</script>
+
+
+  
+{% endblock %}

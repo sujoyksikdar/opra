@@ -163,20 +163,17 @@
           {% if request.user.userprofile.is_code_user %}
             {% if request.user.userprofile.code_source == "allocation" %}
               <li><a href="{% url 'allocation:allocation_tab_code' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
-            {% elif request.user.userprofile.code_source == "mock_election" %}
-              <li><a href="{% url 'mock_election:regular_polls_code' %}"><span class="fa fa-check-square"></span>Mock Election</a></li>
             {% else %}
-              <li><a href="{% url 'polls:regular_polls_code' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+              <li><a href="{% url 'mock_election:regular_polls_code' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
             {% endif %}
           {% else %}
-            <li><a href="{% url 'polls:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
+            <li><a href="{% url 'mock_election:regular_polls' %}"><span class="fa fa-object-ungroup"></span>Polls</a></li>
             <li><a href="{% url 'allocation:allocation_tab' %}"><span class="fa fa-balance-scale"></span>Allocation</a></li>
-            <li><a href="{% url 'mock_election:regular_polls' %}"><span class="fa fa-check-square"></span>Mock Election</a></li>
           {% endif %}
             <!-- <li><a href="{% url 'groups:index' %}"><span class="glyphicon glyphicon-user"></span>Groups</a></li> -->
 
 
-          <!-- <li><a href="{% url 'polls:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li> -->
+          <!-- <li><a href="{% url 'mock_election:m_polls' %}"><span class="fa fa-object-group"></span> Multi-Polls</a></li> -->
           <!-- <li><a href="#"><span class="fa fa-object-group"></span>Classes</a></li> -->
           
           {% if not request.flavour == "mobile" %}

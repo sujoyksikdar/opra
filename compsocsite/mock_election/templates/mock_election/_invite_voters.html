@@ -1,0 +1,92 @@
+<script>
+    function add_voter(username){
+        $.ajax({
+            url: "{% url 'mock_election:addvoter' question.id %}",
+            data: {
+                'voters': username,
+                'email': $("#email1").val()
+            },
+            dataType: 'json',
+            success: function (data) {
+                $('#user-search').val("");
+                $('#currentVoters').html($('#currentVoters').html() + "<option value=\"" + username + "\">" + username + "</option>");
+            }
+        });
+    }
+
+    $(function() {
+        $("#user-search").autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "/polls/api/get_voters/",
+                    dataType: "json",
+                    data: {
+                        term : request.term,
+                        poll_id : {{question.id}}
+                    },
+                    success: function(data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2,
+            select: function( event, ui ) {
+                add_voter(ui.item.value);
+            }
+        });
+    });
+</script>
+
+<div class="col-md-4">
+    <b>Current Voters: </b>
+    <form action="{% url 'mock_election:delvoter' question.id %}" method="post">
+        {% csrf_token %}
+        <select id="currentVoters" name="voters" class="form-control" multiple>
+            {% for user in question.question_voters.all %}
+                <option value="{{ user.username }}">{{ user.username }}</option>
+            {% endfor %}
+        </select>
+        <br />
+        {% if question.status == 1 %}
+            <label for="email2">Email announcement</label>
+            <input type="checkbox" name="email" id="email2" value="email" {% if question.emailDelete == True or question.emailDelete == None %} checked {% endif %} onchange="this.form.submit()">
+            <br />
+            <input type="submit" class="btn btn-danger" value="&#xf068;">
+        {% endif %}
+    </form> 
+</div>     
+<div class="col-md-4">
+    <b>Add Voter: </b>
+    <form id="addUserForm" action="{% url 'mock_election:addvoter' question.id %}" method="post">
+        {% csrf_token %}
+        <input name="voters" type="text" class="form-control" id="user-search">
+
+        <br />
+        <label for="email1">Email announcement</label>
+        <input type="checkbox" name="email" id="email1" value="email" {% if question.emailInvite == True %} checked {% endif %}>
+        <br />
+    </form>     
+</div>
+<div class="col-md-4">
+    <b>Add Group: </b>
+    <form action="{% url 'groups:addgroupvoters' question.id %}" method="post">
+        {% csrf_token %}
+        <div class="input-group">
+            <select name="groups" class="form-control multiple-select" multiple>
+                {% for group in groups %}
+                    {% if group.owner == request.user %}
+                        <option value="{{ group.name }}">{{group.name}}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <input type="submit" class="btn btn-success" value="&#xf067;"/>
+                {% if question.status == 1 %}
+                <input type="submit" class="btn btn-danger" value="&#xf068;" formaction="{% url 'groups:removegroupvoters' question.id %}">
+            {% endif %}
+        </div>
+        <br />
+        <label for="email">Email announcement</label>
+        <input type="checkbox" name="email" id="email" value="email" {% if question.emailInvite == True or question.emailInvite == None %} checked {% endif %} onchange="this.form.submit()">
+        <br />
+    </form>
+</div>

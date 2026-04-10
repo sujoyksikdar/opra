@@ -1,0 +1,427 @@
+<script>
+    function add_voter(username){
+        $.ajax({
+            url: "{% url 'mock_election:addvoter' question.id %}",
+            data: {
+                'voters': username,
+                'email': $("#email1").val()
+            },
+            dataType: 'json',
+            success: function (data) {
+                $('#user-search').val("");
+                $('#currentVoters').html($('#currentVoters').html() + "<option value=\"" + username + "\">" + username + "</option>");
+            }
+        });
+    }
+
+    $(function() {
+        $("#user-search").autocomplete({
+            source: function(request, response) {
+                $.ajax({
+                    url: "/polls/api/get_voters/",
+                    dataType: "json",
+                    data: {
+                        term : request.term,
+                        poll_id : {{question.id}}
+                    },
+                    success: function(data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 2,
+            select: function( event, ui ) {
+                add_voter(ui.item.value);
+            }
+        });
+    });
+
+
+    function toggleTextbox(){
+        const textAreaForCustomMails = document.getElementById("textAreaForCustomMails");
+        const customEmailsRadioButton = document.getElementById("customEmailsRadioButton");
+
+        if (customEmailsRadioButton.checked) {
+            // textAreaForCustomMails.style.display = 'block'; // Show the textbox
+            textAreaForCustomMails.classList.remove('hide');
+            textAreaForCustomMails.classList.add('show');
+        } else {
+            // textAreaForCustomMails.style.display = 'none'; // Hide the textbox
+            textAreaForCustomMails.classList.remove('show');
+            textAreaForCustomMails.classList.add('hide');
+        }
+    }
+
+    function toggleMailDiv(emailNotification, mailNotificationDiv){
+
+        if(emailNotification.checked) {
+            mailNotificationDiv.classList.remove('hide');
+            mailNotificationDiv.classList.add('show');
+        } else {
+            mailNotificationDiv.classList.remove('show');
+            mailNotificationDiv.classList.add('hide');
+        }
+    }
+
+    function populateDefaultText(mailSubjectElementId, mailContentElementId, subjectText, mailText){
+        const mailSubEle = document.getElementById(mailSubjectElementId);
+        const mailBodyEle = document.getElementById(mailContentElementId);
+
+        mailSubEle.value = subjectText || '';
+        mailBodyEle.innerHTML = mailText;
+    }
+
+    function validateEmailAddress(email){
+        var regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return regex.test(email)
+    }
+
+    function validateCSV(){
+        const csvTextAreaEle = document.getElementById('csvTextArea');
+        csvText = csvTextAreaEle.value;
+        emailAddresses = csvText.split(',')
+        for(var i=0; i<emailAddresses.length; i+=1){
+            if(!validateEmailAddress(emailAddresses[i].trim())){
+                let csvError = document.getElementById("csv_error")
+                csvError.innerHTML = "The input format is wrong (OR) The csv text contains Invalid email address!"
+                // alert("The text contains Invalid email address or the input format is wrong")
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function switchAddTab(tabId) {
+        document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('show'));
+        document.getElementById(tabId).classList.add('show');
+    }
+    function switchViewTab(tabId) {
+        document.querySelectorAll('.tab-section-view').forEach(sec => sec.classList.remove('show'));
+        document.getElementById(tabId).classList.add('show');
+    }
+
+   
+    $(window).load(function(){
+        function toggleSelectAll(selectAllCheckbox, multiSelect) {
+        const options = multiSelect.options;
+        const isChecked = selectAllCheckbox.checked;
+
+        for (let i = 0; i < options.length; i++) {
+            options[i].selected = isChecked;
+            }
+        }
+
+        // Get the "Select All" checkbox and the multiple select element
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const multiSelect = document.getElementById('currentVoters');
+
+        // Add event listener to the "Select All" checkbox
+        selectAllCheckbox?.addEventListener('change', () => {
+            toggleSelectAll(selectAllCheckbox, multiSelect);
+        });
+
+        const radioButtons = document.querySelectorAll('input[name="recepients"]');
+        radioButtons?.forEach(radio => {
+            radio.addEventListener('change', toggleTextbox);
+        });
+
+        const emailNotification = document.getElementById('emailNotification');
+        const mailNotificationDiv = document.getElementById("mailNotificationDiv");
+        emailNotification?.addEventListener('change', ()=>{
+            toggleMailDiv(emailNotification, mailNotificationDiv);
+        });
+
+        const emailNotificationToRemove = document.getElementById('emailNotificationToRemove');
+        const mailNotificationDivToRemove = document.getElementById("mailNotificationDivToRemove");
+        emailNotificationToRemove?.addEventListener('change', ()=>{
+            toggleMailDiv(emailNotificationToRemove, mailNotificationDivToRemove);
+        });
+
+        var url = window.location;
+        var protocol = url.protocol;
+        var host = url.host; 
+        let instanceURL = protocol + "//" + host + "{% url 'mock_election:detail' question.id %}";
+        let question_text = ""+ "{{ question.question_text | safe }}";
+
+        //Pre-populate default text into E-mail subject and body
+        var mailSubEleID = "mailNotificationSubject";
+        var mailBodyEleID = "mailNotificationBody";
+        var mailSubjectContent = "You have been removed from {{ question.question_text | safe }}";
+        var mailBodyContent = "You have been removed from {{ question.question_text | safe }}."+ 
+        "\nInstance link: "+instanceURL;
+        // populateDefaultText(mailSubEleID, mailBodyEleID, mailSubjectContent, mailBodyContent);
+
+        mailSubEleID = "mailNotificationSubject1";
+        mailBodyEleID = "mailNotificationBody1";
+        mailSubjectContent = "You have been added to {{ question.question_text | safe }}";
+        mailBodyContent = "You have been added to {{ question.question_text | safe }}. "+
+        "\nTo access it, follow the link : "+ instanceURL;
+        // populateDefaultText(mailSubEleID, mailBodyEleID, mailSubjectContent, mailBodyContent);
+        
+
+        var loginLink = protocol + "//" + host + "/polls/main";
+        var signUpLink = protocol + "//" + host + "/auth/register/";
+        mailSubEleID = "mailSubject";
+        mailBodyEleID = "mailBody";
+        mailSubjectContent = "You have been added to {{ question.question_text | safe }}";
+        mailBodyContent = "You have been added to {{ question.question_text | safe }}."+
+        "\n\nIf you already have an OPRA account, login in into the account using the below link. "+ 
+        "\nLogin link: "+protocol+"//"+host +"/polls/main"+
+        "\n\nIf you do not have an account registered with OPRA, sign up with the below link."+
+        "\nSign up link: "+ protocol+"//"+host +"/auth/register/"+
+        "\nNote: Please sign in with the same E-mail ID with which you are invited.";
+        // mailBodyContent = `\n<p>Login link: <a href="${loginLink}">${loginLink}</a></p> some new text`;
+        // populateDefaultText(mailSubEleID, mailBodyEleID, mailSubjectContent, mailBodyContent);
+
+
+        const emailNotificationToInvite = document.getElementById("emailNotificationToInvite");
+        const emailDivForInvite = document.getElementById("emailDivForInvite");
+        emailNotificationToInvite?.addEventListener('change', ()=>{
+            toggleMailDiv(emailNotificationToInvite, emailDivForInvite);
+        });
+
+    });
+
+
+</script>
+<style>
+.height-100{
+ height: 100px;
+}
+
+.hide{
+    display: none;
+}
+
+.show{
+    display: block;
+}
+.tab-btn {
+    margin-right: 10px;
+}
+.tab-section, .tab-section-view{
+    display: none;
+}
+.tab-section.show ,.tab-section-view.show{
+    display: block;
+}
+trix-editor {
+    min-height: 200px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 10px;
+}
+/*hide uplaod file option in toolbar-> not supported */
+trix-toolbar .trix-button-group--file-tools {
+    display: none;
+}
+
+
+</style>
+
+<div class="panel panel-default">
+    <div class="panel-heading"><h4>Add Users:<h4></div>
+    <div class="panel-body">
+        <div class="row">
+
+            <div style="margin-bottom: 15px;">
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addRegistered')">Add Registered Users</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaGroups')">Add via Groups</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaCSV')">Add via CSV</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addCode')">Add Codes</button>
+            </div>
+
+            <!-- Add Registered -->
+            <div id="addRegistered" class="tab-section show col-md-6">
+                <form id="addUsersForm" action="{% url 'mock_election:addvoters' question.id %}" method="post">
+                    <label style="width: 100%;">Add users registered with OPRA: </label>
+                    {% csrf_token %}
+                    <select name="voters" class="form-control multiple-select" style="width: 100%;" multiple>
+                        {% for user in users %}
+                            <option value="{{ user.username }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <br>
+                    <input type="submit" value="Add Users" class="btn btn-success" style="margin-top: 15px;">
+                </form>
+            </div>
+
+            <!-- Add via Groups -->
+            <div id="addViaGroups" class="tab-section col-md-6">
+                <form action="{% url 'mock_election:addvoters' question.id %}" method="post">
+                    <label style="width: 100%;">Add{% if question.status == 1 %}/Remove{% endif %} groups of users registered with OPRA: </label>
+                    {% csrf_token %}
+                    <select name="groups" class="form-control multiple-select" style="width: 100%;" multiple>
+                        {% for group in groups %}
+                            {% if group.owner == request.user %}
+                                <option value="{{ group.name }}">{{ group.name }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <br>
+                    <input type="submit" class="btn btn-success" value="Add" style="margin-top: 15px;" />
+                    {% if question.status == 1 %}
+                        <input type="submit" class="btn btn-danger" value="Remove" style="margin-top: 15px;" formaction="{% url 'groups:removegroupvoters' question.id %}">
+                    {% endif %}
+                </form>
+            </div>
+
+            <!-- Add via CSV -->
+            <div id="addViaCSV" class="tab-section col-md-6">
+                <form id="csvTextAreaForm" action="{% url 'mock_election:savelatestcsv' question.id %}" method="post" onsubmit="return validateCSV()">
+                    {% csrf_token %}
+                    <label>Enter CSV Email List:</label>
+                    <textarea class="form-control" id="csvTextArea" name="votersCSVText" rows="5" style="height: 221px;">{{ recentCSVText }}</textarea>
+                    <br>
+                    <div id="csv_error" style="color: #ff4d4d;"></div>
+                    <div class="alert alert-info">
+                        <p><strong>Note:</strong> 
+                            Input email addresses as CSV as shown in below example. Need not worry about white spaces!<br> 
+                            Example: user1@gmail.com,user2@gmail.com,user3@gmail.com<br> 
+                        </p>
+                    </div>
+                    <input type="submit" value="Submit CSV" class="btn btn-primary" style="margin-top: 10px;">
+                </form>
+            </div>
+            <div id="addCode" class="tab-section col-md-6">
+            <form method="post" action="{% url 'mock_election:addcodes' question.id %}" style="display:inline-block; margin-left:10px;">
+            {% csrf_token %}
+            <label style="width: 100%;">Add Login Codes: </label>
+            <input type="number" name="count" class="form-control"
+               min="1" max="100" placeholder="Enter number of codes"
+               style="width:250px; display:inline-block;" required>
+            <button type="submit" class="btn btn-info">Add Codes</button>
+            </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!--View Users -->
+<div class="panel panel-default">
+    <div class="panel-heading"><h4>View Users</h4></div>
+    <div class="panel-body">
+        <div style="margin-bottom: 15px;">
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewAllUsers')">View All</button>
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewRegistered')">Registered</button>
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewUnregistered')">Unregistered</button>
+        </div>
+
+        <!-- All Added Users -->
+        <div id="viewAllUsers" class="tab-section-view show">
+            <form action="{% url 'mock_election:delvoter' question.id %}" method="post">
+                {% csrf_token %}
+                <label>Users added to the instance:</label>
+                <div style="margin-bottom:15px; max-width:400px;">
+                    <input type="text" id="userSearchInput" class="form-control" placeholder="Search users...">
+                </div>             
+                <input type="checkbox" id="selectAllUsers" style="margin-right:5px;">
+                <label for="selectAllUsers">Select All</label>
+               <div id="userListBox" style="max-height:220px; overflow-y:auto; border:1px solid #ddd; border-radius:4px; padding:8px; background:#fff;">
+                {% for user in question.question_voters.all %}
+                <div class="user-item" style="padding:4px 0;">
+                    <input type="checkbox" name="voters" value="{{ user.username }}" class="userCheckbox" style="margin-right:6px;">
+                    <span>{{ user.username }}</span>
+                </div>
+                {% empty %}
+                    <!-- If no registered, skip silently -->
+                {% endfor %}
+                {% for email in unRegisteredUsers %}
+                    {% if email %}
+                    <div class="user-item" style="padding:4px 0;">
+                        <input type="checkbox" name="voters" value="{{ email }}" class="userCheckbox" style="margin-right:6px;">
+                            <span>{{ email }}</span> <small style="color:#999;">(unregistered)</small>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                {% endfor %}
+
+                    {% if question.question_voters.count == 0 and unRegisteredUsers|length == 0 %}
+                        <em>No users added yet.</em>
+                    {% endif %}
+                </div>
+
+                <div style="margin-top:15px;">
+                    <input type="checkbox" name="email" id="emailCheckbox" style="margin-right:6px;" 
+                    {% if request.user.userprofile.emailDelete %}checked{% endif %}>
+                    <label for="emailCheckbox">Send email notification to removed users</label>
+                </div>
+
+                <div style="margin-top:15px;">
+                <button type="submit" class="btn btn-danger">Delete Selected Users</button>
+                <a class="btn btn-warning" href="{% url 'mock_election:exportcodes' question.id %}">
+                    Export Codes (CSV)
+                </a>
+                </div>
+            </form>
+
+            <script>
+                document.getElementById('userSearchInput').addEventListener('keyup', function() {
+                const filter = this.value.toLowerCase().trim();
+                const users = document.querySelectorAll('#userListBox .user-item');
+                users.forEach(div => {
+                    const text = div.innerText.toLowerCase();
+                    div.style.display = text.includes(filter) ? '' : 'none';
+                });
+                });
+
+                const selectAll = document.getElementById('selectAllUsers');
+                selectAll?.addEventListener('change', function() {
+                const allBoxes = document.querySelectorAll('.userCheckbox');
+                allBoxes.forEach(cb => cb.checked = selectAll.checked);
+                });
+            </script>
+          
+             <hr>
+        </div>
+
+        <!-- Registered Users -->
+        <div id="viewRegistered" class="tab-section-view">
+            <label>Users registered with OPRA:</label>
+            <select id="registeredVoters" name="registeredVoters" class="form-control" multiple>
+                {% for username in registeredUsers %}
+                    <option value="{{ username }}">{{ username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Unregistered Users -->
+        <div id="viewUnregistered" class="tab-section-view">
+            <label>Users not registered with OPRA:</label>
+            <select id="unregisteredVoters" name="unregisteredVoters" class="form-control" multiple>
+                {% for username in unRegisteredUsers %}
+                    <option value="{{ username }}">{{ username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Section 3: Email -->
+<div class="panel panel-default" style="margin-top: 30px;">
+    <div class="panel-heading">Send E-mail to users:</div>
+    <div class="panel-body">
+        <form action="{% url 'mock_election:send_email_invites' question.id %}" method="post">
+            {% csrf_token %}
+            <label>Recipients:</label>
+            <div style="margin-left: 15px;">
+                <input type="radio" name="recepients" value="regVotersOnly"> Users registered with OPRA
+                <input type="radio" name="recepients" value="unregVotersOnly"> Users not registered with OPRA
+                <input type="radio" name="recepients" value="allVoters" checked> Both
+                <input type="radio" name="recepients" value="customEmails" id="customEmailsRadioButton"> Custom
+            </div>
+
+            <textarea id="textAreaForCustomMails" name="textAreaForCustomMails" class="form-control hide" placeholder="Emails separated by commas" style="margin-top: 15px;"></textarea>
+            <br>
+            <input type="text" id="mailSubject" name="mailSubject" class="form-control" placeholder="Subject of the Mail" required value="{{ emailInviteCSV.subject }}">
+            <br>
+            <input class="form-control" type="hidden" id="mailBody" name="mailBody" rows="9" placeholder="Content of the E-mail..." required value="{{ emailInviteCSV.message|safe}}">
+            <trix-editor input="mailBody"></trix-editor>
+            <br>
+            <input type="submit" value="Send Email" class="btn btn-primary">
+        </form>
+    </div>
+</div>  
+<br><br><br>
+
+

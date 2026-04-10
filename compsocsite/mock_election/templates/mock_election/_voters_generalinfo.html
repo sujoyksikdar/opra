@@ -1,0 +1,194 @@
+ <h3 class="page-header">General info of {{ question.question_text }} </h3>
+
+              <h4>Visibility Info for Preferences:</h4>
+              {% if question.display_pref == 1 %}
+                    <p> Everyone can see all preferences</p>
+              {% elif question.display_pref == 2 %}
+                    <p> Everyone can only see own preference. </p>
+              {% elif question.display_pref == 3 %}
+                    <p> No submitted preferences will be shown. </p>
+              {% else %}
+                    <p> No visibility was selected.</p>
+              {% endif %}
+
+              <br>
+
+              <h4>Visibility Info for Users:</h4>
+              {% if question.display_user_info == 1 %}
+                    <p> Username of users will be shown</p>
+              {% elif question.display_user_info == 2 %}
+                    <p> Only numbers of users will be shown. </p>
+              {% elif question.display_user_info == 3 %}
+                    <p> No user information will be shown. </p>
+              {% else %}
+                    <p> No visibility was selected.</p>
+              {% endif %}
+
+<hr />
+              <h4>Users Preference info:<h4>
+            <!-- Everyone can see all preferences -->
+            {% if question.display_pref == 1 and question.display_user_info == 1 %}
+                <!-- <table class="table table-bordered">
+                    {% for user in users %}
+                        {% if user in question.question_voters.all %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </table> -->
+                {% if latest_responses|length > 0 %}
+                    {% for response, currentSelection in latest_responses %}
+                        <!-- display name -->
+                        {% if response.user %}
+                            {% if response.user.first_name == "" %}
+                                <b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br />
+                            {% else %}
+                                {{ response.user.first_name }} {{ response.user.last_name }} (<a href="mailto:{{ response.user.email }}">{{ response.user.email }}</a>)
+                                (last voted on {{ response.timestamp }}) <br />
+                            {% endif %}
+                        {% else %}
+                            <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
+                        {% endif %}
+                        
+                        {% include 'polls/_display_vote.html' %}
+                    {% endfor %} <!-- for response-->
+                    <br />
+                    <br />
+                    {% if previous_responses %}
+                        <button data-toggle="collapse" data-target="#history" class="btn btn-info" >Show/Hide More History</button>
+                        <div id="history" class="collapse">
+                            <div class="well">
+                            {% for response, currentSelection in previous_responses %}
+                                <div class="btn-group">
+                                    <!-- display name -->
+                                    {% if response.user %}
+                                        <b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br />
+                                    {% else %}
+                                        <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
+                                    {% endif %} 
+
+                                    {% include 'polls/_display_vote.html' %}
+                                </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %} <!--previous responses-->
+                {% else %} 
+                    <p>No one has voted on this poll yet.</p>
+                {% endif %} <!-- no response-->
+            {% endif %}
+            
+
+            <!-- Only username of users will be shown -->
+            {% if question.display_pref == 3  and question.display_user_info == 1 %}
+                <b> User Names: </b>
+                <ul class="list-group">
+                    {% for user in users %}
+                        {% if user in question.question_voters.all %}
+                        <li class="list-group-item">{{ user.username }}</li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+
+            <!-- Only numbers of users will be shown -->
+            {% if question.display_user_info == 2 %}
+                <!-- Only numbers of users will be shown. -->
+                <p>There are a total of {{question.question_voters.count}} unique users.</p>
+            {% endif %}
+
+            <!-- Everyone can only see own vote -->
+            {% if question.display_pref == 2 %}
+                <!-- You can only see your own vote.-->
+                <!-- <table class="table table-bordered">
+                    <tr>
+                        <td>{{ request.user.username }}</td>
+                        <td>{{ request.user.email }}</td>
+                    </tr>
+                </table> -->
+                    {% if latest_responses|length > 0 %}
+                        {% for response, currentSelection in latest_responses %}
+                            {% if response.user.username == request.user.username %}
+                                {% if response.user %}
+                                    {% if response.user.first_name == "" %}
+                                        <b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br />
+                                    {% else %}
+                                        {{ response.user.first_name }} {{ response.user.last_name }} (<a href="mailto:{{ response.user.email }}">{{ response.user.email }}</a>)
+                                        (last voted on {{ response.timestamp }}) <br />
+                                    {% endif %}
+                                {% else %}
+                                    <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
+                                {% endif %}
+                                
+                                {% include 'polls/_display_vote.html' %}
+                            {% endif %}
+                        {% endfor %} <!-- for response-->
+                    <br />
+                    <br />
+                    {% if previous_responses %}
+                        <button data-toggle="collapse" data-target="#history" class="btn btn-info" >Show/Hide More History</button>
+                        <div id="history" class="collapse">
+                            <div class="well">
+                            {% for response, currentSelection in previous_responses %}
+                                {% if response.user.username == request.user.username %}
+                                    <div class="btn-group">
+                                        <!-- display name -->
+                                        {% if response.user %}
+                                            <b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br />
+                                        {% else %}
+                                            <b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
+                                        {% endif %} 
+
+                                        {% include 'polls/_display_vote.html' %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %} <!--previous responses-->
+                {% else %} 
+                    <p>No one has voted on this poll yet.</p>
+                {% endif %} <!-- no response-->
+            {% endif %}
+            
+            <!-- All preferences will be shown, but usernames will be hidden -->
+            {% if question.display_pref == 1 and question.display_user_info == 2 or question.display_pref == 1 and question.display_user_info == 3 %}
+                {% if latest_responses|length > 0 %}
+                    {% for response, currentSelection in latest_responses %}
+                        {% if response.user %}
+                            <b>Hidden Username</b> (last voted on {{ response.timestamp }}) <br />
+                        {% else %}
+                            <b>Anonymous User</b> (last voted on {{ response.timestamp }}) <br />
+                        {% endif %}
+                        
+                        {% include 'polls/_display_vote.html' %}
+                    {% endfor %} <!-- for response-->
+                    <br />
+                    <br />
+                    {% if previous_responses %}
+                        <button data-toggle="collapse" data-target="#history" class="btn btn-info" >Show/Hide More History</button>
+                        <div id="history" class="collapse">
+                            <div class="well">
+                            {% for response, currentSelection in previous_responses %}
+                                <div class="btn-group">
+                                    <!-- display name -->
+                                    {% if response.user %}
+                                        <b>Hidden Username</b> (last voted on {{ response.timestamp }}) <br />
+                                    {% else %}
+                                        <b>Anonymous User</b> (last voted on {{ response.timestamp }}) <br />
+                                    {% endif %}
+
+                                    {% include 'polls/_display_vote.html' %}
+                                </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %} <!--previous responses-->
+                {% else %} 
+                    <p>No one has voted on this poll yet.</p>
+                {% endif %} <!-- no response-->
+                
+            {% endif %}     
