@@ -1,7 +1,8 @@
 import json
 
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views import generic
 
 from .models import AllocationQuestion
@@ -28,6 +29,14 @@ class AllocationRecordView(generic.DetailView):
                 interpreted_records.append(r.behavior_data)
         ctx['user_records'] = interpreted_records
         return ctx
+
+
+def writeAllocationUserAction(request, question_id):
+    """AJAX behavior tracking endpoint called by voting.js during voting.
+    Allocation saves behavior_data on vote submission, so this is a lightweight
+    no-op that prevents 404 errors from voting.js."""
+    get_object_or_404(AllocationQuestion, pk=question_id)
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def downloadAllocationLatestVotes(request, question_id):

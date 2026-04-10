@@ -1,17 +1,45 @@
-{% extends 'polls/detail.html' %}
-
+{% extends 'polls/base.html' %}
+{% load mathfilters %}
+{% load static%}
 {% block extra_head %}
-{{ block.super }}
+{% load allocation_extra %}
+<!-- Google Tag Manager -->
+<noscript>
+    <iframe src="//www.googletagmanager.com/ns.html?id=GTM-59SLDM" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+</noscript>
+<!-- End Google Tag Manager -->
+
+{% if request.flavour == "mobile" %}
+<script src='/static/js/mobile.js'></script>
+<script>var deviceFlavor = "mobile";</script>
+{% else %}
+<script src='/static/js/desktop.js'></script>
+<script>var deviceFlavor = "desktop";</script>
+{% endif %}
+{% if currentSelection %}
+<script>var firstTime = false;</script>
+{% else %}
+<script>var firstTime = true;</script>
+{% endif %}
+<script src='/static/js/voting.js'></script>
+<link rel="stylesheet" href="/static/css/jquery.rateyo.min.css">
+<script src="/static/js/jquery.rateyo.min.js"></script>
 <script>
-// Override all vote form action URLs to use the allocation vote endpoint.
-// The polls/voteOptions templates hardcode polls:vote; this corrects them at runtime.
+    function register(){
+        if($('#reg_email').val() == ''){ $('#error').html("Please enter an email."); $('#reg_email').focus(); }
+        else if($('#reg_password').val() == ''){ $('#error').html("Please enter a password."); $('#reg_password').focus(); }
+        else{ $('#user_form').submit(); }
+    }
+</script>
+
+<!-- Override all vote form action URLs to use the allocation vote endpoint.
+     The polls/voteOptions templates hardcode polls:vote; this corrects them at runtime. -->
+<script>
 $(document).ready(function() {
     var allocationVoteUrl = "{{ vote_url }}";
     if (allocationVoteUrl) {
         $('form').each(function() {
             var action = $(this).attr('action');
-            // Only override forms that look like vote submission forms
-            // (they contain /vote/ and the question id)
             if (action && action.indexOf('/vote/') !== -1) {
                 $(this).attr('action', allocationVoteUrl);
             }
@@ -19,4 +47,271 @@ $(document).ready(function() {
     }
 });
 </script>
+
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if error_message %}
+    <p>
+        <strong>{{ error_message }}</strong>
+    </p>
+    {% endif %}
+
+{% if question.status == 2 %}
+    {% if question.open == 0 and request.user.username == "" %}
+        <!-- Allocation is not open for anonymous voting and the current user isn't logged in -->
+        You do not seem to have acquired the right permissions. Try logging in.
+    {% elif question.open == 2 and request.user.username == "" %}
+
+        <div class="w3-panel w3-center" style="padding:170px 16px;">
+          <h1 class="w3-xlarge">
+              Please
+              <a data-toggle="modal" data-target="#loginmodal" class="w3-border w3-button rpi-red"><span class="fa fa-sign-in"></span> Login</a>
+              <br/>
+              <br/>
+
+          </h1>
+
+          <h2>Quick Registration:</h2>
+          {% if registered %}
+        Thank you for registering! Please check your email to activate your account.
+    {% else %}
+        <div id="error"></div>
+        <form id="user_form" method="post" action="{% url 'appauth:quickregister' question.id %}" enctype="multipart/form-data">
+
+            {% csrf_token %}
+
+            <fieldset class="form-group">
+                <label for="email">Email</label>
+                <input type="text" class="form-control" id="reg_email" name="email" placeholder="Enter Email" value="" size="50" autofocus />
+                <small class="text-muted">We will only use this to send notifications. We will never share your information with anyone else.</small>
+            </fieldset>
+
+            <fieldset class="form-group">
+                <label for="username">Password</label>
+                <input type="password" class="form-control" id="reg_password" name="password" placeholder="Password" value="" size="50" />
+            </fieldset>
+
+            <input type="button" value="Register" class="btn btn-primary" onclick="register()"/>
+        </form>
+    {% endif %}
+        </div>
+
+</div> <!-- end of class ="container"-->
+
+    {% elif question.open == 0 and request.user not in question.question_voters.all %}
+        <!-- Allocation is not open for anonymous voting and the current user isn't invited -->
+        Sorry, you do not seem to be invited to participate, and an invitation seems necessary. Please contact the administrator of this allocation.
+    {% else %}
+
+    <!-- Title panel -->
+    <div class="panel panel-default">
+        <!-- Panel header contains image and title -->
+        <div class="panel-heading">
+            <a class="panel-title" data-toggle="collapse" href="#collapse_des" style="font-size:110%;">
+            <div class="row">
+                <!-- Display image (from external url) -->
+                {% if question.imageURL != Null and question.imageURL != '' %}
+                <div class="col-md-2" {% if request.flavour == "mobile" %} style="width:20%;display:inline" {% endif %}>
+                    <a href="{{ question.imageURL }}"><img src="{{ question.imageURL }}" width="150" ></a>
+                </div>
+                <!-- Display image (uploaded to the server) -->
+                {% elif question.image %}
+                <div class="col-md-2" {% if request.flavour == "mobile" %} style="width:20%;display:inline" {% endif %}>
+                    <a href="/{{ question.image.url }}"><img src="/{{ question.image.url }}" width="150" ></a>
+                </div>
+                {% endif %}
+
+                <!-- Display title and creator in the header -->
+                <div class="col-md-10" {% if request.flavour == "mobile" %} style="width:100%;" {% endif %}>
+                    <h4 {% if request.flavour == "mobile" %} style="width:70%;display:inline;" {% endif %}><span class="caret" style="color:#377BB5;"></span>
+                    	{{ question.question_text }}
+                        {% if question|can_show_results %}
+                            <a href="{% url 'allocation:allocate_results' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" style="margin-right: 5px;">Allocation Results</a>
+                        {% endif %}
+                        </h4>
+
+                </div>
+            </div> </a>
+        </div>
+
+        <!-- Display the description in the panel body (initially hidden) -->
+        <div id="collapse_des" class="panel-collapse collapse">
+        	<div class ="panel-body">
+        		Created by {{ question.question_owner }}.
+        		<br>
+            Description: {% if question.question_desc %}
+            <span {% if request.flavour == "mobile" %} style="width:70%" {% endif %}> {{ question.question_desc }} </span>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div id="tabs" class="row">
+		{% if not question.ui_number == 1%}
+        <ul>
+            {% if question.twocol_enabled %}<li><a href="#twoColSection" onclick="changeMethod(1);">Two Columns</a></li> {% endif %}
+            {% if question.onecol_enabled %}<li><a href="#oneColSection" onclick="changeMethod(2);">One Column</a></li> {% endif %}
+            {% if question.slider_enabled %}<li><a href="#sliderSection" onclick="changeMethod(3);">Sliders</a></li> {% endif %}
+            {% if question.star_enabled %}<li><a href="#starsSection" onclick="changeMethod(4);">Stars</a></li> {% endif %}
+            {% if question.yesno_enabled %}<li><a href="#yesNoSection" onclick="changeMethod(5);">Yes/No</a></li> {% endif %}
+            {% if question.single_enabled %}<li><a href="#singleSection" onclick="changeMethod(6);">Single</a></li> {% endif %}
+            {% if question.budgetUI_enabled %}<li><a href="#budgetUI" onclick="changeMethod(7);">Budget UI</a></li> {% endif %}
+            {% if question.ListUI_enabled %}<li><a href="#listUISection" onclick="changeMethod(8);">List UI</a></li> {% endif %}
+            {% if question.infiniteBudgetUI_enabled %}<li><a href="#InfiniteBudgetUISection" onclick="changeMethod(9);">InfiniteBudget UI</a></li> {% endif %}
+        </ul>
+		{% endif %}
+            {% if question.twocol_enabled %}{% include "polls/voteOptions/twoCol.html" %}{% endif %}
+            {% if question.onecol_enabled %}{% include "polls/voteOptions/oneCol.html" %}{% endif %}
+            {% if question.slider_enabled %}{% include "polls/voteOptions/slider.html" %}{% endif %}
+            {% if question.star_enabled %}{% include "polls/voteOptions/stars.html" %}{% endif %}
+            {% with num=1 %}
+                {% if question.yesno_enabled %}
+                    {% include "polls/voteOptions/yesNo.html" %}
+                {% endif %}
+            {% endwith %}
+            {% with num=2 %}
+                {% if question.single_enabled %}
+                    {% include "polls/voteOptions/yesNo.html" %}
+                {% endif %}
+            {% endwith %}
+            {% if question.budgetUI_enabled %}{% include "polls/voteOptions/budgetUI.html" %}{% endif %}
+            {% if question.ListUI_enabled %}{% include "polls/voteOptions/listUI.html" %}{% endif %}
+            {% if question.infiniteBudgetUI_enabled %}{% include "polls/voteOptions/infiniteBudget.html" %}{% endif %}
+    </div>
+
+    {% endif %}
+    {% elif question.status == 1 %}
+    <p>
+        This allocation has not started yet.
+    </p>
+	{% elif question.status == 4 %}
+    <p>
+        This allocation is paused.
+    </p>
+    {% else %}
+    <p>
+        This allocation has ended.
+    </p>
+    {% endif %}
+</div>
+
+
+<script>
+    //display confirmation message for 2 seconds and then fade away slowly
+    $(function() {
+        $("#successMessage").delay(2000).fadeOut('slow');
+    });
+    //set the webpage for ajax to report user behavior
+    submissionURL="{% url 'allocation:record' question.id%}";
+    var previouslySubmitted = {{ submitted_ranking|default:"null" |safe }};
+
+    $(function(){
+        $(document).ready(function() {
+
+            // To remove the additional '/' at the starting of the image URL
+            var imagesWithClass = document.getElementsByClassName('item');
+            for (var i = 0; i < imagesWithClass.length; i++) {
+                var staticIndex = imagesWithClass[i].src.indexOf('static');
+                if(imagesWithClass[i].src[staticIndex-1] === '/' && imagesWithClass[i].src[staticIndex-2] === '/' ) {
+                    imagesWithClass[i].src = imagesWithClass[i].src.slice(0,[staticIndex-1])
+                    + imagesWithClass[i].src.slice([staticIndex])
+                }
+            }
+
+			$(".dropdown-toggle").dropdown();
+
+			$('[data-toggle="tooltip"]').tooltip();
+
+			$('[data-toggle="popover"]').popover({
+				title : '<span class="text-info"><strong>Hint</strong></span>',
+				html: 'true',
+			});
+            if(document.getElementById("yesNoSection") != null){ method = 5;}
+            if(document.getElementById("starsSection") != null){ method = 4; methodIndicator = "star";}
+            if(document.getElementById("sliderSection") != null){ method = 3; methodIndicator = "slider";}
+            if(document.getElementById("oneColSection") != null){ method = 2; methodIndicator = "one_column";}
+            if(document.getElementById("twoColSection") != null){ method = 1; methodIndicator = "two_column";}
+            if(document.getElementById("budgetUI") != null){ method = 7; methodIndicator = "budget_ui";}
+            if(document.getElementById("listUISection") != null){ method = 8; methodIndicator = "list_ui";}
+            if(document.getElementById("InfiniteBudgetUISection") != null) { method = 9; methodIndicator = "infinite_budget_ui" }
+            method = 1;
+
+            // for allocation UIs:
+            {% if question.twocol_enabled %} changeMethod(1);{% endif %}
+            {% if question.onecol_enabled %} changeMethod(2);{% endif %}
+            {% if question.budgetUI_enabled %} changeMethod(7);{% endif %}
+            {% if question.ListUI_enabled %} changeMethod(8);{% endif %}
+            {% if question.infiniteBudgetUI_enabled %} changeMethod(9);{% endif %}
+            method = 1;
+
+			{% if not question.ui_number == 1 %}
+				$( "#tabs" ).tabs();
+			{% endif %}
+
+			{% if request.flavour == "mobile" %}
+				flavor = "Mobile";
+				if(document.getElementById("twoColSection") != null && document.getElementById("oneColSection") != null){
+					$( "#tabs" ).tabs("option","active",1);
+					method = 2;
+                    methodIndicator = "one_column";
+				}
+			{% else %}
+				flavor = "PC";
+			{% endif %}
+			VoteUtil.checkStyle();
+			startTime = Date.now();
+
+            {% if question.onecol_enabled %}
+                order1 = JSON.stringify(dictCol(2));
+            {% elif question.twocol_enabled %}
+		    order1 = JSON.stringify(dictCol(1));
+            {% else %}
+            {% endif %}
+
+			{% if not question.allowties %}
+				allowTies = false;
+			{% endif %}
+
+            top_tier_layer = {{question.first_tier}};
+
+			if(!allowTies && top_tier_layer != 0)
+			{
+				$("#one-sortable").children().eq(top_tier_layer*3).after("<div class=\"top_tier\" style=\"height:4px;border:none;color:green;background-color:green;\"><hr></div>");
+			}
+		});
+});
+
+
+    // tooltip toggle (Popover function for hints)
+    $(document).on('click',"#toggle-button",function () {
+     toggle(document.querySelectorAll('.hint'));
+   });
+
+//Toggle: hide/show hints
+function toggle (elements, specifiedDisplay) {
+  var element, index;
+  elements = elements.length ? elements : [elements];
+  for (index = 0; index < elements.length; index++) {
+    element = elements[index];
+
+    if (isElementHidden(element)) {
+      element.style.visibility = '';
+
+      // If the element is still hidden after removing the inline display
+      if (isElementHidden(element)) {
+        element.style.visibility = specifiedDisplay || 'visible';
+      }
+    } else {
+      element.style.visibility = 'hidden';
+    }
+  }
+  function isElementHidden (element) {
+    return window.getComputedStyle(element, null).getPropertyValue('visibility') === 'hidden';
+  }
+}
+
+</script>
+
 {% endblock %}

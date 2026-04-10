@@ -76,6 +76,7 @@ urlpatterns = [
     # ── User Records ───────────────────────────────────────────────────────────
     re_path(r'^(?P<pk>[0-9]+)/recordView/$', record.AllocationRecordView.as_view(), name='recordView'),
     re_path(r'^(?P<question_id>[0-9]+)/downloadlatestvotes/$', record.downloadAllocationLatestVotes, name='downloadlatestvotes'),
+    re_path(r'^(?P<question_id>[0-9]+)/record/$', record.writeAllocationUserAction, name='record'),
 
     # ── Voting ─────────────────────────────────────────────────────────────────
     re_path(r'^(?P<pk>[0-9]+)/$', views.AllocationDetailView.as_view(), name='detail'),

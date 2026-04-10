@@ -1,4 +1,4 @@
-{% load poll_extra %}
+{% load allocation_extra %}
 <form class="form-group" method="post" action="{% url 'allocation:setPollingSettings' question.id %}" align="center">
     {% csrf_token %}
 
