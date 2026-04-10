@@ -32,21 +32,6 @@
     }
 </script>
 
-<!-- Override all vote form action URLs to use the allocation vote endpoint.
-     The polls/voteOptions templates hardcode polls:vote; this corrects them at runtime. -->
-<script>
-$(document).ready(function() {
-    var allocationVoteUrl = "{{ vote_url }}";
-    if (allocationVoteUrl) {
-        $('form').each(function() {
-            var action = $(this).attr('action');
-            if (action && action.indexOf('/vote/') !== -1) {
-                $(this).attr('action', allocationVoteUrl);
-            }
-        });
-    }
-});
-</script>
 
 {% endblock %}
 
@@ -162,23 +147,23 @@ $(document).ready(function() {
             {% if question.infiniteBudgetUI_enabled %}<li><a href="#InfiniteBudgetUISection" onclick="changeMethod(9);">InfiniteBudget UI</a></li> {% endif %}
         </ul>
 		{% endif %}
-            {% if question.twocol_enabled %}{% include "polls/voteOptions/twoCol.html" %}{% endif %}
-            {% if question.onecol_enabled %}{% include "polls/voteOptions/oneCol.html" %}{% endif %}
-            {% if question.slider_enabled %}{% include "polls/voteOptions/slider.html" %}{% endif %}
-            {% if question.star_enabled %}{% include "polls/voteOptions/stars.html" %}{% endif %}
+            {% if question.twocol_enabled %}{% include "allocation/voteOptions/twoCol.html" %}{% endif %}
+            {% if question.onecol_enabled %}{% include "allocation/voteOptions/oneCol.html" %}{% endif %}
+            {% if question.slider_enabled %}{% include "allocation/voteOptions/slider.html" %}{% endif %}
+            {% if question.star_enabled %}{% include "allocation/voteOptions/stars.html" %}{% endif %}
             {% with num=1 %}
                 {% if question.yesno_enabled %}
-                    {% include "polls/voteOptions/yesNo.html" %}
+                    {% include "allocation/voteOptions/yesNo.html" %}
                 {% endif %}
             {% endwith %}
             {% with num=2 %}
                 {% if question.single_enabled %}
-                    {% include "polls/voteOptions/yesNo.html" %}
+                    {% include "allocation/voteOptions/yesNo.html" %}
                 {% endif %}
             {% endwith %}
-            {% if question.budgetUI_enabled %}{% include "polls/voteOptions/budgetUI.html" %}{% endif %}
-            {% if question.ListUI_enabled %}{% include "polls/voteOptions/listUI.html" %}{% endif %}
-            {% if question.infiniteBudgetUI_enabled %}{% include "polls/voteOptions/infiniteBudget.html" %}{% endif %}
+            {% if question.budgetUI_enabled %}{% include "allocation/voteOptions/budgetUI.html" %}{% endif %}
+            {% if question.ListUI_enabled %}{% include "allocation/voteOptions/listUI.html" %}{% endif %}
+            {% if question.infiniteBudgetUI_enabled %}{% include "allocation/voteOptions/infiniteBudget.html" %}{% endif %}
     </div>
 
     {% endif %}
