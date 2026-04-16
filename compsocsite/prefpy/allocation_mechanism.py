@@ -300,3 +300,27 @@ class MechanismMaximumNashWelfareBinary(MechanismAllocation):
         # return the result
         status = True
         return AllocationResult(status=status, A=A, U=U, w=w)
+    
+
+class MechanismMarketEQ1PO(MechanismAllocation):
+    def allocate(self, valuations, **kwargs):
+        V_np = np.array(valuations, dtype=float)
+
+        # 1) restrict to columns with positive total value
+        Vval, valued = get_valued_instance(V_np)
+        
+        # 2) restrict via a maximum-cardinality matching (hall's instance)
+        Vhalls, matched = get_halls_instance(Vval)
+
+        # 3) solve the reduced problem using the globally imported market_eq_solve
+        status, X_halls, prices = market_eq_solve(Vhalls)
+
+        # 4) recover the full solution
+        X_hat = recover_from_halls(X_halls, Vval, matched)
+        A = recover_from_valued(X_hat, V_np, valued)
+
+        return AllocationResult(
+            status=status,
+            A=A,
+            prices=prices
+        )
