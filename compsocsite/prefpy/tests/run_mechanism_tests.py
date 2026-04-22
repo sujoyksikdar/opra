@@ -9,7 +9,8 @@ from .test_allocation_mechanisms import (
     TestMarketAllocation,
     TestLeximinAllocation,
     TestMarketEqAllocation,
-    TestMaximumNashWelfareBinary
+    TestMaximumNashWelfareBinary,
+    TestMarketEq1PoAllocation
 )
 import argparse
 
@@ -27,7 +28,8 @@ def run_tests_with_report(output_file=None):
         "Market": ["EF1", "PO"],
         "Leximin": ["PO", "EFX", "EQ1", "EQX", "DUPEQ1", "DUPEQX"],
         "Market Equilibrium": ["PO", "EQ1", "DUPEQ1"],
-        "Maximum Nash Welfare Binary": ["PO"]
+        "Maximum Nash Welfare Binary": ["PO"],
+        "Market EQ1 PO": ["EQ1","PO"]
     }
     
     # test class mapping
@@ -37,7 +39,8 @@ def run_tests_with_report(output_file=None):
         (TestMarketAllocation, "Market"),
         (TestLeximinAllocation, "Leximin"),
         (TestMarketEqAllocation, "Market Equilibrium"),
-        (TestMaximumNashWelfareBinary, "Maximum Nash Welfare Binary")
+        (TestMaximumNashWelfareBinary, "Maximum Nash Welfare Binary"),
+        (TestMarketEq1PoAllocation, "Market EQ1 PO")
     ]
     
     all_results = {}

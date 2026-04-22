@@ -1,12 +1,22 @@
 import numpy as np
 
-from compsocsite.prefpy.voting_mechanism import (
+
+
+"""
+changes made to run 
+
+removed intial compsocsite, and swapped from voting mech to allocation
+
+"""
+
+from prefpy.allocation_mechanism import ( 
     MechanismRoundRobinAllocation,
     MechanismMaximumNashWelfare,
     MechanismMarketAllocation,
     MechanismLeximinAllocation,
     MechanismMarketEqAllocation,
-    MechanismMaximumNashWelfareBinary
+    MechanismMaximumNashWelfareBinary,
+    MechanismMarketEQ1PO
 )
 
 from prefpy.allocation_properties import *
@@ -348,6 +358,61 @@ class TestMaximumNashWelfareBinary(TestMechanism):
         self.test_property('dupeq1')
         self.test_property('dupeqx')
 
+
+# ------------------------------------------------------------------------
+#  market eq1+po allocation tests
+# ------------------------------------------------------------------------
+
+class TestMarketEq1PoAllocation(TestMechanism):
+    """test custom market eq1+po allocation mechanism"""
+    
+    def setUp(self):
+        """initialize tests with instances and required properties"""
+        self.mechanism = MechanismMarketEQ1PO() 
+        
+        self.properties = ['po', 'eq1', 'valid'] 
+        
+        # Load Dirichlet instances instead of basic instances
+        try:
+            self.load_dirichlet_instances()
+        except FileNotFoundError:
+            # Fall back to basic instances if Dirichlet instances aren't available
+            print("Dirichlet instances not found, falling back to basic instances")
+            self.load_instances()
+        
+        self.generate_allocations()
+    
+    def test_property(self, property_name='po'):
+        """test if all allocations satisfy a specific property"""
+        # Note: Your test suite repeats this caching logic in every class. 
+        # This should ideally just live in TestMechanism, but we keep it here to match your pattern.
+        property_key = f"tested_{property_name}"
+        if hasattr(self, property_key):
+            return getattr(self, property_key)
+            
+        result = super().test_property(property_name)
+        setattr(self, property_key, result)
+        return result
+    
+    def test_market_eq1po_basic(self):
+        """basic test for your custom mechanism"""
+        for idx, (V, A) in enumerate(zip(self.instances, self.allocations)):
+            print(f"\n{'=' * 70}\ncustom eq1+po basic test ({idx+1})\n{'=' * 70}")
+            print(f"valuations:\n{V}")
+            print(f"allocation:\n{A}")
+    
+    def test_properties(self):
+        """test required and other properties for custom mechanism"""
+        # check  PO and EQ1
+        super().test_properties()
+        
+        # check other interesting properties to see what else it accidentally satisfies
+        self.test_property('ef1')
+        self.test_property('efx')
+        self.test_property('eq')
+        self.test_property('eqx')
+        self.test_property('dupeq1')
+        self.test_property('dupeqx')
 
 # direct execution
 if __name__ == '__main__':
