@@ -96,9 +96,16 @@ def register(request):
                 f"This code expires in 10 minutes.\n\n"
                 "— OPRA"
             )
-            mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+            email_sent = True
+            try:
+                mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+            except Exception:
+                email_sent = False
 
-            messages.info(request, "We emailed you a 6-digit code to verify your account.")
+            if email_sent:
+                messages.info(request, "We emailed you a 6-digit code to verify your account.")
+            else:
+                messages.warning(request, "Could not send verification email. Please use 'Resend code' on the next page.")
             return HttpResponseRedirect(f"/auth/verify-otp/?uid={user.id}")  
         else:
             return render(request, 'register.html', {'user_form': user_form})
@@ -166,7 +173,10 @@ def resend_otp(request):
         f"This code expires in 10 minutes.\n\n"
         "— OPRA"
     )
-    mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+    try:
+        mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+    except Exception:
+        pass
 
     return HttpResponseRedirect(f"/auth/verify-otp/?uid={user.id}")
 
