@@ -169,14 +169,8 @@ def stopPoll(request, question_id):
 def setInitialSettings(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
-    # map the 1-based dropdown index (1..6) to the actual bits (1,2,4,8,16,32)
-    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64}
-
     # 1) read the single dropdown selection ("pollpreferences")
-    #    for question_type==1 => regular poll; for question_type==2 => allocation method
-    #    store the actual bit in question.poll_algorithm
-    selected_idx = int(request.POST.get("pollpreferences", "1"))
-    question.poll_algorithm = BIT_MAP.get(selected_idx, 1)  # default to bit=1 if out-of-range
+    question.poll_algorithm = int(request.POST.get("pollpreferences", "1"))
 
     # 2) optional fields: display_pref, display_user_info, creator_pref
     if "viewpreferences" in request.POST:
@@ -217,8 +211,8 @@ def setInitialSettings(request, question_id):
 
     # 5) if question_type == 1 (regular poll), set vote_rule
     if question.question_type == 1:
-        # question.poll_algorithm is already a bit
-        locked_bit = question.poll_algorithm
+        # question.poll_algorithm is a 1-based index for regular polls
+        locked_bit = 1 << (question.poll_algorithm - 1)
         vr_sum = locked_bit
         for rule_str in request.POST.getlist("vr"):
             rule_val = int(rule_str)
@@ -254,6 +248,10 @@ def setInitialSettings(request, question_id):
         alg_sum = 0
         for alg_str in posted_algs:
             alg_sum += int(alg_str)
+        
+        locked_bit = question.poll_algorithm
+        if (alg_sum & locked_bit) == 0:
+            alg_sum |= locked_bit
         question.alloc_algorithms = alg_sum
 
     if "results_visible_after" in request.POST:
@@ -281,21 +279,15 @@ def setPollingSettings(request, question_id):
     """
     question = get_object_or_404(Question, pk=question_id)
 
-    # Map the 1-based dropdown index to the actual bit:
-    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64}
-
     # 1) read the single dropdown selection ("pollpreferences")
-    #    for question_type==1, that's the poll algorithm (1-based).
-    #    for question_type==2, that's the allocation method (also 1-based).
+    #    for question_type==1, that's the poll algorithm (1-based index).
+    #    for question_type==2, that's the allocation method (bitmask).
     if 'pollpreferences' in request.POST:
-        selected_idx = int(request.POST['pollpreferences'])
-        # store the actual bit in question.poll_algorithm
-        question.poll_algorithm = BIT_MAP.get(selected_idx, 1)  # default to 1 if out-of-range
+        question.poll_algorithm = int(request.POST['pollpreferences'])
 
     # 2) if question_type == 1 (regular poll), handle the visible algorithms bitmask (vote_rule)
     if question.question_type == 1:
-        # the chosen poll_algorithm is already a bit (like 4 for "Market(EF1)")
-        locked_bit = question.poll_algorithm
+        locked_bit = 1 << (question.poll_algorithm - 1)
         posted_vr = request.POST.getlist('vr')  # e.g. ["1","4","8"]
         vr_sum = locked_bit
         for rule_str in posted_vr:
@@ -316,6 +308,10 @@ def setPollingSettings(request, question_id):
         for alg_str in posted_alloc_algs:
             alg_val = int(alg_str)
             alloc_algs_sum += alg_val
+            
+        locked_bit = question.poll_algorithm
+        if (alloc_algs_sum & locked_bit) == 0:
+            alloc_algs_sum |= locked_bit
         question.alloc_algorithms = alloc_algs_sum
 
         # 3b) read the posted "alloc_res_tables" checkboxes
@@ -375,6 +371,8 @@ def show_polling_settings(request, question_id):
     ctx = {
         'question': question
     }
+    
+    ctx['twos'] = [2 ** i for i in range(max(len(getListPollAlgorithms()), len(getAllocMethods())))]
 
     # if question is a regular poll (type=1), we pass poll_algorithms + question.vote_rule
     if question.question_type == 1:
