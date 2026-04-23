@@ -44,17 +44,6 @@ def block_code_users(redirect_url="/polls/regular_polls/code"):
     return decorator
 
 
-def colorLuminance(hexVal, lum):
-    #convert to decimal and change luminosity
-    rgb = "#"
-    for i in range(0, 3):
-        c = int(hexVal[i * 2 : i * 2 + 2], 16)
-        c = round(min(max(0, c + (c * float(lum))), 255))
-        c = hex(int(c))
-        rgb += ("00" + str(c))[len(str(c)):]
-    return rgb
-
-
 def sendMessage(request):
     if request.method == 'POST':
         message = request.POST["message"]
@@ -164,13 +153,3 @@ def recommend_ranking(k):
         return sorted_k
     except:
         return None
-
-
-from .allocation import *
-from .home import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_management import *
-from .poll_results import *
-from .voters import *
-from .voting import *

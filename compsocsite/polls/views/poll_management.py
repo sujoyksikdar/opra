@@ -16,7 +16,8 @@ from prefpy.mechanism import *
 
 from ..email import EmailThread, setupEmail
 from ..models import *
-from .allocation import getFinalAllocation
+from ..utils import (getAllocMethods, getFinalAllocation,
+                     getListPollAlgorithms, getPollWinner)
 
 # logger for cache
 logger = logging.getLogger(__name__)
@@ -169,7 +170,7 @@ def setInitialSettings(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
     # map the 1-based dropdown index (1..6) to the actual bits (1,2,4,8,16,32)
-    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
+    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64}
 
     # 1) read the single dropdown selection ("pollpreferences")
     #    for question_type==1 => regular poll; for question_type==2 => allocation method
@@ -281,7 +282,7 @@ def setPollingSettings(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
     # Map the 1-based dropdown index to the actual bit:
-    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
+    BIT_MAP = {1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64}
 
     # 1) read the single dropdown selection ("pollpreferences")
     #    for question_type==1, that's the poll algorithm (1-based).
@@ -496,13 +497,3 @@ def approve_request(request, request_id):
     request.session['setting'] = 9
 
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-
-from .allocation import *
-from .home import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_results import *
-from .utils import *
-from .voters import *
-from .voting import *

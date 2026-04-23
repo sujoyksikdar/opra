@@ -1,27 +1,24 @@
-from appauth.models import *
-from groups.models import *
-
-from ..models import *
-
-from.allocation import getPrefOrder
-
 import json
 import logging
 from functools import wraps
 
+from appauth.models import *
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from groups.models import *
 from multipolls.models import *
 from prefpy.egmm_mixpl import *
 from prefpy.gmm_mixpl import *
 from prefpy.mechanism import *
 
+from ..models import *
+from ..utils import buildResponseDict, getPrefOrder, interpretResponseDict
+
 # logger for cache
 logger = logging.getLogger(__name__)
-from io import TextIOWrapper
 
 active_polls = []
 
@@ -257,13 +254,3 @@ def get_voters(request):
         data = 'fail'
     mimetype = 'application/json'
     return HttpResponse(data, mimetype)
-
-
-from .allocation import *
-from .home import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_management import *
-from .poll_results import *
-from .utils import *
-from .voters import *

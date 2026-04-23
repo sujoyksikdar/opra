@@ -25,6 +25,8 @@ from prefpy.mechanism import *
 
 from ..email import setupEmail
 from ..models import *
+from ..utils import (buildResponseDict, colorLuminance, getPrefOrder,
+                     interpretResponseDict)
 
 # logger for cache
 logger = logging.getLogger(__name__)
@@ -872,6 +874,7 @@ class AllocateResultsView(views.generic.DetailView):
             (8,  "MarketEq (EQ1)",    MechanismMarketEqAllocation),
             (16, "Leximin",           MechanismLeximinAllocation),
             (32, "MNW Binary",        MechanismMaximumNashWelfareBinary),
+            (64, "Market EQ1 PO",     MechanismMarketEQ1PO),
         ]
 
         # build a list of allowed (bit, label) from the bitmask
@@ -1323,7 +1326,8 @@ def getAllocMethods():
         "Market",
         "MarketEq",
         "Leximin",
-        "MNW Binary"
+        "MNW Binary",
+        "Market EQ1 PO",
     ]
 
 
@@ -1861,86 +1865,3 @@ def setAllocationOrder(request, question_id):
         item_num += 1
 
     return HttpResponseRedirect(reverse('polls:viewAllocationOrder', args=(question.id,)))
-
-
-def getInitialAllocationOrder(question, latest_responses):
-    if len(latest_responses) == 0:
-        return
-
-    # assign the default allocation order from earliest to latest
-    counter = len(question.item_set.all())
-    for user_response in list(reversed(latest_responses)):
-        # no more items left to allocate
-        if counter == 0:
-            return
-
-        counter -= 1
-        # create the object
-        voter, created = AllocationVoter.objects.get_or_create(question=user_response.question,
-                                                               user=user_response.user)
-        # save the most recent response
-        voter.response = user_response
-        voter.save()
-    return
-
-
-def getCurrentAllocationOrder(question, latest_responses):
-    # get the allocation order from the first multipoll
-    allocation_order = []
-    if question.m_poll == True:
-        multipoll = question.multipoll_set.all()[0]
-        firstSubpoll = multipoll.questions.all()[0]
-        allocation_order = firstSubpoll.allocationvoter_set.all()
-
-        # fix the allocation order from the first subpoll
-        if len(allocation_order) == 0:
-            # get allocation order
-            getInitialAllocationOrder(question, latest_responses)
-        else:
-            # copy a new allocation order based off of the first subpoll
-            for alloc_item in allocation_order:
-                voter, created = AllocationVoter.objects.get_or_create(question=question,
-                                                                       user=alloc_item.user)
-                voter.response = question.response_set.reverse().filter(user=alloc_item.user)[0]
-                voter.save()
-        allocation_order = question.allocationvoter_set.all()
-    else:
-        # get the allocation order
-        allocation_order = question.allocationvoter_set.all()
-
-        # calculate initial order if there is none or if new voters are added during the poll
-        if len(allocation_order) == 0 or len(allocation_order) != len(latest_responses):
-            getInitialAllocationOrder(question, latest_responses)
-            allocation_order = question.allocationvoter_set.all()
-
-    return allocation_order
-
-
-def getResponseOrder(allocation_order):
-    response_set = []
-    for order_item in allocation_order:
-        question = order_item.question
-        user = order_item.user
-
-        # skip if no vote
-        if question.response_set.reverse().filter(user=user, active=1).count() == 0:
-            continue
-
-        # save response
-        response = question.response_set.reverse().filter(user=user, active=1)[0]
-        order_item.response = response
-        order_item.save()
-
-        # add to the list
-        response_set.append(response)
-    return response_set
-
-
-from .allocation import *
-from .home import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_management import *
-from .utils import *
-from .voters import *
-from .voting import *

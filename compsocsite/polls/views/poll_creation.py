@@ -21,6 +21,7 @@ from prefpy.mechanism import *
 
 from ..email import setupEmail
 from ..models import *
+from ..utils import getAllocMethods, getListPollAlgorithms, getViewPreferences
 
 # logger for cache
 logger = logging.getLogger(__name__)
@@ -612,13 +613,3 @@ def delete_items(request, question_id):
     request.session['setting'] = 0
 
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-
-from .allocation import *
-from .home import *
-from .poll_list import *
-from .poll_management import *
-from .poll_results import *
-from .utils import *
-from .voters import *
-from .voting import *

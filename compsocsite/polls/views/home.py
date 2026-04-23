@@ -15,6 +15,9 @@ from prefpy.gmm_mixpl import *
 from prefpy.mechanism import *
 
 from ..models import *
+from ..utils import (getAllocMethods, getCurrentSelection,
+                     getListPollAlgorithms, getUnrankedCandidates,
+                     getViewPreferences, isPrefReset)
 
 # logger for cache
 logger = logging.getLogger(__name__)
@@ -414,12 +417,3 @@ class CourseMatchDemoView(views.generic.DetailView):
         Excludes any questions that aren't published yet.
         """
         return Question.objects.filter(pub_date__lte=timezone.now())
-
-from .allocation import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_management import *
-from .poll_results import *
-from .utils import *
-from .voters import *
-from .voting import *

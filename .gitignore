@@ -13,3 +13,4 @@ compsocsite/static
 compsocsite/media
 compsocsite/compsocsite/coursematch/
 venv/
+staticfiles/

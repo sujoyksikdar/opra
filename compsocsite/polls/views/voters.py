@@ -9,6 +9,7 @@ from appauth.models import *
 from django import views
 from django.contrib import messages
 from django.core import mail
+from django.db import IntegrityError
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -245,7 +246,7 @@ def send_email_invites(request: HttpRequest, question_id: int):
     emailSettings(request, question_id)
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-
+SPECIALS = "!@#$%^&*()_+[]{}|;:,.<>?"   
 def _generate_strong_code(length=10):
     upper = secrets.choice(string.ascii_uppercase)
     lower = secrets.choice(string.ascii_lowercase)
@@ -395,13 +396,3 @@ def self_sign_up(request, question_id):
         new_request.save()
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
     return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-
-from .allocation import *
-from .home import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_management import *
-from .poll_results import *
-from .utils import *
-from .voting import *

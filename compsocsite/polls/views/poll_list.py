@@ -177,13 +177,3 @@ class RGENView(views.generic.ListView):
     def get_context_data(self, **kwargs):
         ctx = super(RGENView, self).get_context_data(**kwargs)
         return ctx
-
-
-from .allocation import *
-from .home import *
-from .poll_creation import *
-from .poll_management import *
-from .poll_results import *
-from .utils import *
-from .voters import *
-from .voting import *

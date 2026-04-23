@@ -17,7 +17,7 @@ from prefpy.gmm_mixpl import *
 from prefpy.mechanism import *
 
 from ..models import *
-from .voting import buildResponseDict, interpretResponseDict
+from ..utils import getCurrentSelection, getUnrankedCandidates, isPrefReset
 
 # logger for cache
 logger = logging.getLogger(__name__)
@@ -262,82 +262,3 @@ class CourseMatchView(views.generic.DetailView):
         Excludes any questions that aren't published yet.
         """
         return Question.objects.filter(pub_date__lte=timezone.now())
-
-
-def assignAllocation(question, allocationResults):
-    for username, item in allocationResults.items():
-        currentUser = User.objects.filter(username=username).first()
-        allocatedItem = question.item_set.get(item_text=item)
-        mostRecentResponse = question.response_set.reverse().filter(user=currentUser, active=1)[0]
-        mostRecentResponse.allocation = allocatedItem
-        mostRecentResponse.save()
-    return
-
-
-def getFinalAllocation(question):
-    # the latest and previous responses are from latest to earliest
-    response_set = question.response_set.filter(active=1).order_by('-timestamp')
-    (latest_responses, previous_responses) = categorizeResponses(response_set)
-
-    # no responses, so stop here
-    if len(latest_responses) == 0:
-        return
-
-    allocation_order = getCurrentAllocationOrder(question, latest_responses)
-    response_set = getResponseOrder(allocation_order) # get list of responses in specified order
-
-    # make items and responses views.generic
-    item_set = latest_responses[0].question.item_set.all()
-    itemList = []
-    for item in item_set:
-        itemList.append(item.item_text)
-    responseList = []
-    for response in response_set:
-        tempDict = {}
-        dictionary = {}
-        if response.dictionary_set.all().count() > 0:
-            dictionary = Dictionary.objects.get(response=response)
-        else:
-            dictionary = buildResponseDict(response, response.question,
-                                            getPrefOrder(response.resp_str,
-                                            response.question))
-        dictionary = interpretResponseDict(dictionary)
-        for item, rank in dictionary.items():
-            tempDict[item.item_text] = rank
-        responseList.append((response.user.username, tempDict))
-
-    allocationResults = allocation(question.poll_algorithm, itemList, responseList)
-    assignAllocation(question, allocationResults)
-
-
-def getPrefOrder(orderStr, question):
-    # empty string
-    if orderStr == "" or orderStr is None:
-        return None
-    if ";;|;;" in orderStr:
-        current_array = orderStr.split(";;|;;")
-        final_order = []
-        length = 0
-        for item in current_array:
-            if item != "":
-                curr = item.split(";;")
-                final_order.append(curr)
-                length += len(curr)
-    else:
-        final_order = json.loads(orderStr)
-    
-    # the user hasn't ranked all the preferences yet
-    #if length != len(question.item_set.all()):
-    #   return None
-
-    return final_order
-
-
-from .home import *
-from .poll_creation import *
-from .poll_list import *
-from .poll_management import *
-from .poll_results import *
-from .utils import *
-from .voters import *
-from .voting import *
