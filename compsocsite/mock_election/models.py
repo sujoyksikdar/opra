@@ -9,6 +9,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class MockElectionClasses(models.Model):
+    title = models.CharField(max_length=100, default="")
+    startDate = models.DateField('start date')
+    weekly = models.IntegerField(default=0)
+    teacher = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    attendance = models.IntegerField(default=-1)
+    teachingAssistants = models.ManyToManyField(User, related_name='mock_election_tas')
+    students = models.ManyToManyField(User, related_name='mock_election_students')
+
+
 class MockElectionQuestion(models.Model):
     question_text = models.CharField(max_length=200)
     question_desc = models.TextField(null=True, blank=True)
@@ -17,6 +27,7 @@ class MockElectionQuestion(models.Model):
     pub_date = models.DateTimeField('date published')
     follow_up = models.OneToOneField('MockElectionQuestion', on_delete=models.CASCADE, null=True, blank=True)
     question_owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    related_class = models.ForeignKey(MockElectionClasses, null=True, on_delete=models.CASCADE)
     question_voters = models.ManyToManyField(User, related_name='mock_election_participated')
     recentCSVText = models.TextField(null=True, blank=True, default=None)
     status = models.IntegerField(default=1)

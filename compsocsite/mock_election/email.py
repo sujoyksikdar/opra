@@ -167,7 +167,7 @@ def voteEmail(request, key, resp_id):
         # make MockElectionResponse object to store data
         response = MockElectionResponse(question=question, user=eResp.user, timestamp=timezone.now())
         response.save()
-        d = response.dictionary_set.create(name = eResp.user.username + " Preferences")
+        d = response.mockelectiondictionary_set.create(name = eResp.user.username + " Preferences")
 
         # find ranking student gave for each item under the question
         item_num = 1

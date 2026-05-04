@@ -361,7 +361,9 @@
     <div class="col-md-12">
         <h1>{{ question.question_text }}</h1>
 
-        {% if question.status != 1%}
+        {% if no_results %}
+        <div class="alert alert-info">Results have not been calculated yet. Please vote and try again.</div>
+        {% elif question.status != 1%}
         <div class="panel panel-default">
             <!-- Default panel contents -->
             <div class="panel-heading">
@@ -426,12 +428,12 @@
                 <div class="col-md-10"  data-toggle="collapse" href="#collapse_pw">
                 <h4 class="panel-title ">
                     <a >
-                       Previous Winners {% if question.voteresult_set.all.count == 0%}(Empty){% endif %} <span class="caret" style="color:#377BB5;"></span>
+                       Previous Winners {% if question.mockelectionvoteresult_set.all.count == 0%}(Empty){% endif %} <span class="caret" style="color:#377BB5;"></span>
                     </a>
                 </h4>
                 </div>
                 <div class="col-md-2">
-                <a href="{% url 'mock_election:calculateprev' question.id %}"><button type="button" class="btn btn-primary" >{% if question.voteresult_set.all.count == 0%}C{% else %}Rec{% endif %}alculate Previous Winners</button></a>
+                <a href="{% url 'mock_election:calculateprev' question.id %}"><button type="button" class="btn btn-primary" >{% if question.mockelectionvoteresult_set.all.count == 0%}C{% else %}Rec{% endif %}alculate Previous Winners</button></a>
                 </div>
                 </div>
             </div>

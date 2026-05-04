@@ -234,7 +234,7 @@ def downloadAllRecord(request, user_id):
     records = []
     response['Content-Disposition'] = 'attachment; filename="all_record.csv"'
     writer = csv.writer(response)
-    for question in user.question_set.order_by('id'):
+    for question in user.mockelectionquestion_set.order_by('id'):
         for record in question.mockelectionuservoterecord_set.all():
             writer.writerow(interpretRecord1(record))
         writer.writerow([])
@@ -247,7 +247,7 @@ def downloadAllRecord1(request, user_id):
     response['Content-Disposition'] = 'attachment; filename="record.csv"'
     writer = csv.writer(response)
     writer.writerow(["Username","MockElectionQuestion id","Timestamp","Initial order"])
-    for question in user.question_set.order_by('id'):
+    for question in user.mockelectionquestion_set.order_by('id'):
         for record in question.mockelectionuservoterecord_set.all():
             (title_arr,record_arr) = interpretRecordForDownload(record)
             writer.writerow(title_arr)
@@ -279,10 +279,11 @@ def downloadLatestVotes(request, question_id):
 class RecordView(generic.DetailView):
     model = MockElectionQuestion
     template_name = 'mock_election/record.html'
+    context_object_name = 'question'
     
     def get_context_data(self, **kwargs):
         ctx = super(RecordView, self).get_context_data(**kwargs)
-        records = self.object.response_set.all()
+        records = self.object.mockelectionresponse_set.all()
         interpreted_records = []
         for r in records:
             try:
@@ -373,7 +374,7 @@ def downloadallocations(request):
         dic["time_creation"] = str(poll.pub_date)
         dic["UI"] = getUIs(poll)
         dic["description"] = poll.question_desc
-        dic["alternatives"] = list(poll.item_set.all().values_list("item_text",flat=True))
+        dic["alternatives"] = list(poll.mockelectionitem_set.all().values_list("item_text",flat=True))
         result.append(dic)
     return JsonResponse(result, safe=False)
     
@@ -388,7 +389,7 @@ def downloadPolls(request):
         dic["time_creation"] = str(poll.pub_date)
         dic["UI"] = getUIs(poll)
         dic["description"] = poll.question_desc
-        dic["alternatives"] = list(poll.item_set.all().values_list("item_text",flat=True))
+        dic["alternatives"] = list(poll.mockelectionitem_set.all().values_list("item_text",flat=True))
         result.append(dic)
     return JsonResponse(result, safe=False)
     
@@ -428,7 +429,7 @@ def downloadSpecificRecords(request):
     result = []
     polls = getMturkPollID()
     for poll in polls:
-        all_responses += list(get_object_or_404(MockElectionQuestion,pk=poll).response_set.filter(active=1,timestamp__gt=datetime.datetime(2018,5,17,23,30)))
+        all_responses += list(get_object_or_404(MockElectionQuestion,pk=poll).mockelectionresponse_set.filter(active=1,timestamp__gt=datetime.datetime(2018,5,17,23,30)))
     for resp in all_responses:
         dic = {}
         try:

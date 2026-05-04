@@ -967,10 +967,10 @@ def getPollWinner(question):
         
         print(f"  - [getPollWinner] Winners: {winnerStr}")
 
-        if hasattr(question, 'finalresult'):
+        if hasattr(question, 'mockelectionfinalresult'):
             try:
                 print("  - [getPollWinner] Deleting existing finalresult...")
-                question.finalresult.delete()
+                question.mockelectionfinalresult.delete()
             except Exception as e:
                 print(f"  - [getPollWinner] Note: Error deleting finalresult (might not exist): {e}")
 
@@ -1329,7 +1329,7 @@ class PollInfoView(views.generic.DetailView):
             progressPercentage = len(latest_responses) / self.object.question_voters.all().count()
             progressPercentage = progressPercentage * 100
             ctx['progressPercentage'] = progressPercentage
-        ctx['request_list'] = self.object.signuprequest_set.filter(status=1)
+        ctx['request_list'] = self.object.mockelectionsignuprequest_set.filter(status=1)
 
         # alloc_res_tables contains display options for results of an allocation
         selected_alloc_res_tables_sum = curr_question.alloc_res_tables
@@ -1385,7 +1385,11 @@ class VoteResultsView(views.generic.DetailView):
             print("  - [Recompute Trigger] new_vote flag is True. Calling getPollWinner...")
             getPollWinner(self.object)
             
-        final_result = self.object.finalresult
+        try:
+            final_result = self.object.mockelectionfinalresult
+        except Exception:
+            ctx['no_results'] = True
+            return ctx
         print(f"  - final_result timestamp: {final_result.timestamp if final_result else 'None'}")
 
         if self.object.mixtures_pl1 == "":
@@ -1457,7 +1461,7 @@ class VoteResultsView(views.generic.DetailView):
         ctx['mixtures_pl3'] = mixtures_pl3
         
         # Get previous winners for the history table
-        previous_results = self.object.voteresult_set.all()
+        previous_results = self.object.mockelectionvoteresult_set.all()
         print(f"  - previous_results count: {len(previous_results)}")
         ctx['previous_winners'] = []
         for pw in previous_results:
@@ -1649,7 +1653,7 @@ def categorizeResponses(all_responses):
 # return Dict<int, MockElectionItem> cand_map
 def getCandidateMap(response):
     d = {}
-    if response.dictionary_set.all().count() > 0:
+    if response.mockelectiondictionary_set.all().count() > 0:
         d = MockElectionDictionary.objects.get(response=response)
     else:
         d = buildResponseDict(response, response.question,
@@ -1677,7 +1681,7 @@ def getCandidateMapFromList(candlist):
 def getPreferenceGraph(response, cand_map):
     pref_graph = {}
     dictionary = {}
-    if response.dictionary_set.all().count() > 0:
+    if response.mockelectiondictionary_set.all().count() > 0:
         dictionary = MockElectionDictionary.objects.get(response=response)
     else:
         dictionary = buildResponseDict(response, response.question,
@@ -1834,9 +1838,9 @@ def getVoteResults(latest_responses, cand_map):
 
 def calculatePreviousResults(request, question_id):
     question = get_object_or_404(MockElectionQuestion, pk=question_id)
-    question.voteresult_set.clear()
+    question.mockelectionvoteresult_set.clear()
     cand_map = getCandidateMapFromList(list(question.mockelectionitem_set.all()))
-    previous_winners = question.oldwinner_set.all()
+    previous_winners = question.mockelectionoldwinner_set.all()
     for pw in previous_winners:
 
         result = MockElectionVoteResult(question=question, timestamp=pw.response.timestamp,
@@ -3287,7 +3291,7 @@ def self_sign_up(request, question_id):
 
 def check_duplicate_sign_up(user, question):
     current_list = list(question.mockelectionitem_set.all())
-    request_list = list(question.signuprequest_set.filter(status=1))
+    request_list = list(question.mockelectionsignuprequest_set.filter(status=1))
     for i in current_list:
         if str(user.id) == i.self_sign_up_user_id:
             return True

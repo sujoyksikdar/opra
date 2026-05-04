@@ -113,7 +113,7 @@
                         {% if currentSelection %}
 
                             {% for selection in currentSelection %}
-                                {% for item in question.item_set.all %}
+                                {% for item in question.mockelectionitem_set.all %}
 
                                     {% if selection.0 == item %}
                                         <ul class="choice1 empty" id="{{ selection.1|mul:2 }}"></ul>
