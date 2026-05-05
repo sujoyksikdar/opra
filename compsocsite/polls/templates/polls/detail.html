@@ -227,23 +227,30 @@
 				title : '<span class="text-info"><strong>Hint</strong></span>',
 				html: 'true',
 			});
+            // Set `method` to match the tab that jQuery UI activates by
+            // default (the first rendered tab in the markup below). The
+            // checks are ordered low-priority -> high-priority because
+            // the last successful assignment wins.
+            if(document.getElementById("InfiniteBudgetUISection") != null) { method = 9; methodIndicator = "infinite_budget_ui" }
+            if(document.getElementById("listUISection") != null){ method = 8; methodIndicator = "list_ui";}
+            if(document.getElementById("budgetUI") != null){ method = 7; methodIndicator = "budget_ui";}
             if(document.getElementById("yesNoSection") != null){ method = 5;}
             if(document.getElementById("starsSection") != null){ method = 4; methodIndicator = "star";}
             if(document.getElementById("sliderSection") != null){ method = 3; methodIndicator = "slider";}
             if(document.getElementById("oneColSection") != null){ method = 2; methodIndicator = "one_column";}
             if(document.getElementById("twoColSection") != null){ method = 1; methodIndicator = "two_column";}
-            if(document.getElementById("budgetUI") != null){ method = 7; methodIndicator = "budget_ui";}
-            if(document.getElementById("listUISection") != null){ method = 8; methodIndicator = "list_ui";}
-            if(document.getElementById("InfiniteBudgetUISection") != null) { method = 9; methodIndicator = "infinite_budget_ui" }
-            method = 1;
 
-            // for allocation UIs:
+            // Initialize each enabled UI's cached order. changeMethod(N)
+            // reassigns `method` as a side effect, so save and restore
+            // the detected default; tab onclick handlers update it as
+            // the user navigates between UIs.
+            var activeMethod = method;
             {% if question.twocol_enabled %} changeMethod(1);{% endif %}
-            {% if question.onecol_enabled %} changeMethod(2);{% endif %}            
+            {% if question.onecol_enabled %} changeMethod(2);{% endif %}
             {% if question.budgetUI_enabled %} changeMethod(7);{% endif %}
             {% if question.ListUI_enabled %} changeMethod(8);{% endif %}
             {% if question.infiniteBudgetUI_enabled %} changeMethod(9);{% endif %}
-            method = 1;
+            method = activeMethod;
 
             //alert(method);
 
