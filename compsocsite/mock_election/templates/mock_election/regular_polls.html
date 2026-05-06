@@ -1,355 +1,427 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
 {% load mock_election_extra %}
+{% load static %}
 
+{% block title %}Mock Election – OPRA{% endblock %}
+
+{% block extra_head %}
+<style>
+  ul.ui-autocomplete { z-index: 1100; }
+</style>
+{% endblock %}
 
 {% block content %}
 
-<!-- polls created by you is included in index2 -->
-<!-- move this section to external js -->
-<style>
-    ul.ui-autocomplete {
-        z-index: 1100;
-    }
-</style>
+<!-- ── Page header ──────────────────────────────────────────────────────────── -->
+<div class="opra-topbar">
+  <div>
+    <h1>Mock Election</h1>
+    <p>Create and manage mock election instances</p>
+  </div>
+  <div class="opra-topbar-actions">
+    <a href="{% url 'mock_election:AddStep1' %}" class="opra-btn opra-btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Create New
+    </a>
+  </div>
+</div>
+
+<!-- ── Stat cards ───────────────────────────────────────────────────────────── -->
+<div class="opra-stats">
+
+  <div class="opra-card opra-stat-card">
+    <div class="opra-stat-icon" style="background: #e8f4f0;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 11 12 14 22 4"></polyline>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+    </div>
+    <div>
+      <div class="opra-stat-value">{{ polls_created|length }}</div>
+      <div class="opra-stat-label">Total Created</div>
+    </div>
+  </div>
+
+  <div class="opra-card opra-stat-card">
+    <div class="opra-stat-icon" style="background: #ecfdf5;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-active)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+    </div>
+    <div>
+      <div class="opra-stat-value">{{ active_count|default:0 }}</div>
+      <div class="opra-stat-label">Active</div>
+    </div>
+  </div>
+
+  <div class="opra-card opra-stat-card">
+    <div class="opra-stat-icon" style="background: #f3f4f6;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-draft)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+    </div>
+    <div>
+      <div class="opra-stat-value">{{ draft_count|default:0 }}</div>
+      <div class="opra-stat-label">Draft</div>
+    </div>
+  </div>
+
+  <div class="opra-card opra-stat-card">
+    <div class="opra-stat-icon" style="background: #fef2f2;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-ended)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      </svg>
+    </div>
+    <div>
+      <div class="opra-stat-value">{{ ended_count|default:0 }}</div>
+      <div class="opra-stat-label">Ended</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Toolbar: tabs + search ───────────────────────────────────────────────── -->
+<div class="opra-toolbar">
+
+  <!-- Tabs -->
+  <div class="opra-tab-group">
+    <button class="opra-tab active" id="tab-created" onclick="switchTab('created')">
+      Created by you ({{ polls_created|length }})
+    </button>
+    <button class="opra-tab" id="tab-participated" onclick="switchTab('participated')">
+      Participated in ({{ polls_participated|length }})
+    </button>
+  </div>
+
+  <!-- Search -->
+  <div class="opra-search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input type="text" id="poll-filter-input" placeholder="Search polls…" oninput="filterCards()">
+  </div>
+
+  <!-- Status filter pills -->
+  <div class="opra-filter-pills" id="status-pills">
+    <button class="opra-pill active" onclick="setFilter('all', this)">All</button>
+    <button class="opra-pill" onclick="setFilter('active', this)">Active</button>
+    <button class="opra-pill" onclick="setFilter('draft', this)">Draft</button>
+    <button class="opra-pill" onclick="setFilter('ended', this)">Ended</button>
+    <button class="opra-pill" onclick="setFilter('paused', this)">Paused</button>
+  </div>
+
+</div>
+
+<!-- ── Poll grid – Created ───────────────────────────────────────────────────── -->
+<div class="opra-poll-grid" id="grid-created">
+
+  {% for question in polls_created %}
+  <div class="opra-card opra-poll-card poll-card-item"
+       data-title="{{ question.question_text|lower }}"
+       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
+
+    <!-- Header: voter count + status badge -->
+    <div class="opra-poll-card-header">
+      <div>
+        <div class="opra-poll-meta">
+          {% if question.question_type == 2 %}
+          <span class="opra-type-badge opra-type-alloc">Allocation</span>
+          {% else %}
+          <span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text-muted);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            {{ question.mockelectionresponse_set.all.count }} voter{{ question.mockelectionresponse_set.all.count|pluralize }}
+          </span>
+          {% endif %}
+        </div>
+        <a href="{% url 'mock_election:pollinfo' question.id %}" class="opra-poll-title" style="display:block; color: var(--text);">
+          {{ question.question_text }}
+        </a>
+        <div class="opra-poll-desc">
+          {% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}
+        </div>
+      </div>
+
+      <!-- Status badge -->
+      {% if question.status == 1 %}
+        <span class="opra-badge opra-badge-draft">Draft</span>
+      {% elif question.status == 2 %}
+        <span class="opra-badge opra-badge-active">Active</span>
+      {% elif question.status == 3 %}
+        <span class="opra-badge opra-badge-ended">Ended</span>
+      {% elif question.status == 4 %}
+        <span class="opra-badge opra-badge-paused">Paused</span>
+      {% endif %}
+    </div>
+
+    <!-- Footer: action buttons -->
+    <div class="opra-poll-footer">
+      <div></div>
+      <div class="opra-poll-actions">
+
+        <!-- Settings always available for creator -->
+        <a href="{% url 'mock_election:pollinfo' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">Settings</a>
+
+        {% if question.status == 1 %}
+          <!-- Draft: start button -->
+          <button class="opra-btn opra-btn-primary opra-btn-sm"
+                  data-toggle="modal" data-target="#confirm-start{{ question.id }}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Start
+          </button>
+
+        {% elif question.status == 2 %}
+          <!-- Active: vote + stop/pause -->
+          {% if request.user in question.question_voters.all %}
+          <a href="{% url 'mock_election:detail' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Vote</a>
+          {% endif %}
+          {% if question.question_type == 1 and question.mockelectionresponse_set.all.count > 0 and question|can_show_results %}
+          <a href="{% url 'mock_election:voteresults' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">Results</a>
+          {% endif %}
+          <a href="{% url 'mock_election:pause' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+            Pause
+          </a>
+          <button class="opra-btn opra-btn-danger opra-btn-sm"
+                  data-toggle="modal" data-target="#confirm-stop{{ question.id }}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            </svg>
+            Stop
+          </button>
+
+        {% elif question.status == 3 %}
+          <!-- Ended -->
+          {% if question.question_type == 1 %}
+          <a href="{% url 'mock_election:voteresults' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">
+            View Results
+          </a>
+          {% endif %}
+
+        {% elif question.status == 4 %}
+          <!-- Paused: resume -->
+          <a href="{% url 'mock_election:resume' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Resume
+          </a>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Start modal -->
+  {% if question.status == 1 %}
+  <div class="modal fade" id="confirm-start{{ question.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">Confirm Start Poll</div>
+        <div class="modal-body">
+          Are you sure you want to start <strong>{{ question.question_text }}</strong>?
+          Once started, you cannot modify the settings or remove users.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
+          <a href="{% url 'mock_election:start' question.id %}" class="opra-btn opra-btn-primary">Yes, Start</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Stop modal -->
+  {% if question.status == 2 %}
+  <div class="modal fade" id="confirm-stop{{ question.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">Confirm Stop Poll</div>
+        <div class="modal-body">
+          Are you sure you want to stop <strong>{{ question.question_text }}</strong>?
+          Once stopped, no more preferences can be changed.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
+          <a href="{% url 'mock_election:stop' question.id %}" class="opra-btn opra-btn-danger">Yes, Stop</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% empty %}
+  <div class="opra-empty" id="empty-created">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 11 12 14 22 4"></polyline>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+    </svg>
+    <p>No polls created yet</p>
+  </div>
+  {% endfor %}
+
+  <!-- Create new card -->
+  <a href="{% url 'mock_election:AddStep1' %}" class="opra-card opra-create-card" id="create-card">
+    <div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Create new poll</span>
+    </div>
+  </a>
+
+  <!-- No results state (shown by JS filter) -->
+  <div class="opra-empty" id="no-results-msg" style="display:none;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <p>No polls found</p>
+  </div>
+
+</div><!-- #grid-created -->
+
+<!-- ── Poll grid – Participated ──────────────────────────────────────────────── -->
+<div class="opra-poll-grid" id="grid-participated" style="display:none;">
+
+  {% for question in polls_participated %}
+  <div class="opra-card opra-poll-card poll-card-item-p"
+       data-title="{{ question.question_text|lower }}"
+       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
+
+    <div class="opra-poll-card-header">
+      <div>
+        <div class="opra-poll-meta">
+          {% if question.question_type == 2 %}
+          <span class="opra-type-badge opra-type-alloc">Allocation</span>
+          {% else %}
+          <span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text-muted);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            {{ question.mockelectionresponse_set.all.count }} voter{{ question.mockelectionresponse_set.all.count|pluralize }}
+          </span>
+          {% endif %}
+        </div>
+        <a href="{% url 'mock_election:pollinfo' question.id %}" class="opra-poll-title" style="display:block; color: var(--text);">
+          {{ question.question_text }}
+        </a>
+        <div class="opra-poll-desc">
+          {% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}
+        </div>
+      </div>
+
+      {% if question.status == 1 %}
+        <span class="opra-badge opra-badge-draft">Draft</span>
+      {% elif question.status == 2 %}
+        <span class="opra-badge opra-badge-active">Active</span>
+      {% elif question.status == 3 %}
+        <span class="opra-badge opra-badge-ended">Ended</span>
+      {% elif question.status == 4 %}
+        <span class="opra-badge opra-badge-paused">Paused</span>
+      {% endif %}
+    </div>
+
+    <div class="opra-poll-footer">
+      <div></div>
+      <div class="opra-poll-actions">
+        {% if question.status == 2 %}
+          <a href="{% url 'mock_election:detail' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Vote</a>
+        {% endif %}
+        {% if question.question_type == 1 and question.status != 1 and question.mockelectionresponse_set.all.count > 0 and question|can_show_results %}
+          <a href="{% url 'mock_election:voteresults' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">Results</a>
+        {% endif %}
+        {% if question.status == 1 %}
+          <span style="font-size:12px; color: var(--text-muted);">Not started yet</span>
+        {% elif question.status == 3 %}
+          <span style="font-size:12px; color: var(--text-muted);">Ended</span>
+        {% elif question.status == 4 %}
+          <span style="font-size:12px; color: var(--text-muted);">Paused</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="opra-empty">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+    </svg>
+    <p>You haven't participated in any polls yet</p>
+  </div>
+  {% endfor %}
+
+  <div class="opra-empty" id="no-results-msg-p" style="display:none;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <p>No polls found</p>
+  </div>
+
+</div><!-- #grid-participated -->
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    function add_buttons(item){
-        $('#hidden-table').css('display', 'block');
-        $('#search-results').html("");
-        var va_mid = "<td style=\"vertical-align:middle\">";
-        var title = "<td><a href=\"/mock_election/" + item.id + "/pollinfo/\" data-toggle=\"tooltip\" data-placement=\"right\" title=\"Description: " + item.desc + "\">" + item.value + "</a></td>" + va_mid;
-        if(item.status == 2 && item.voter){
-            title +="<a href=\"/mock_election/" + item.id + "/\" class =\"btn btn-dark\" role=\"button\">Vote</a>";
-        }
-        if(item.curr_win){
-            title += "<a href=\"/mock_election/" + item.id + "/vote/results/\" class =\"btn btn-dark\" role=\"button\" target=\"_blank\" >Current Winners</a>";
-        }
-        title += "</td>";
-        if(item.status == 1 && item.created){
-            title += va_mid + "<div class=\"start-icon\"><i class=\"fa fa-play\" aria-hidden=\"true\" data-toggle=\"modal\" data-target=\"#confirm-start" + item.id + "\"></i></div></td>"
-            title +="<div class=\"modal fade\" id=\"confirm-start" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\">"
-            title += "<div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Start Poll " + item.value + "</div>"
-            title += "<div class=\"modal-body\">Are you sure you want to start poll " + item.value + "? Once a poll is started, you cannot modify the settings or remove users.</div>"
-            title += "<div class=\"modal-footer\"><a href=\"/mock_election/" + item.id + "/start/\"><button type=\"button\" class=\"btn-large btn-success btn-ok\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
-        }else if(item.status == 2 && item.created){
-            title += "<td style=\"vertical-align:middle\"><div class=\"stop-icon pull-right\"><i class=\"fa fa-stop\" aria-hidden=\"true\" data-toggle=\"modal\" data-target=\"#confirm-stop" + item.id + "\"></i></div><div class=\"pause-icon pull-right\" style=\"position:relative; right:10%;\"><a href=\"/mock_election/" + item.id + "/pause/\"><i class=\"fa fa-pause\" aria-hidden=\"true\"></i></a></div></td>"
-            title += "<div class=\"modal fade\" id=\"confirm-stop" + item.id + "\" tabindex=\"-1\" role=\"dialog\" aria-labelledby=\"myModalLabel\" aria-hidden=\"true\"><div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-header\">Confirm Stop Poll</div><div class=\"modal-body\">Are you sure you want to stop this poll? Once a poll is stopped, no more preferences can be changed.</div>";
-            title += "<div class=\"modal-footer\"><a href=\"/mock_election/" + item.id + "/stop/\"><button type=\"button\" class=\"btn-large  btn-ok btn-danger\" style=\"font-size:100%;\">Yes</button></a><button type=\"button\" class=\"btn-large btn-default\" data-dismiss=\"modal\">Cancel</button></div></div></div></div>";
-        }else if(item.status == 3 && item.created){
-            title += "<td>";
-            if(item.type == 1){
-                title += "<a style=\"float:right;margin:10px\" href=\"/mock_election/" + item.id + "/vote/results/\" class=\"overflow\">" + item.winner + " wins</a>"
-            }else if(item.type == 2){
-                //cannot search for allocations yet
-            }
-            title += "</td>";
-        }
-        $('#search-results').html(title);
-    }
+  var currentTab    = 'created';
+  var currentFilter = 'all';
 
-    function add_option(item){
-        $('#folder-add').html($('#folder-add').html() + "<div class=\"checkbox\"><label><input type=\"checkbox\" name=\"polls\" value=\"" + item.id + "\" checked>" + item.value + "</label></div>");
-    }
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('grid-created').style.display      = (tab === 'created')      ? 'grid' : 'none';
+    document.getElementById('grid-participated').style.display = (tab === 'participated') ? 'grid' : 'none';
+    document.getElementById('tab-created').classList.toggle('active',      tab === 'created');
+    document.getElementById('tab-participated').classList.toggle('active', tab === 'participated');
+    // hide create-card in participated tab
+    var cc = document.getElementById('create-card');
+    if (cc) cc.style.display = (tab === 'created') ? 'flex' : 'none';
+    filterCards();
+  }
 
-    $(function() {
-        $("#poll-search").autocomplete({
-            source: "/mock_election/api/get_polls/",
-            minLength: 2,
-            select: function( event, ui ) {
-                add_buttons(ui.item);
-            }
-        });
-
-        $("#folder-search").autocomplete({
-            source: "/mock_election/api/get_polls/",
-            minLength: 2,
-            select: function( event, ui ) {
-                add_option(ui.item);
-            }
-        });
+  function setFilter(status, btn) {
+    currentFilter = status;
+    document.querySelectorAll('#status-pills .opra-pill').forEach(function(p) {
+      p.classList.remove('active');
     });
+    btn.classList.add('active');
+    filterCards();
+  }
+
+  function filterCards() {
+    var query   = document.getElementById('poll-filter-input').value.toLowerCase();
+    var sel     = currentTab === 'created' ? '.poll-card-item' : '.poll-card-item-p';
+    var noResId = currentTab === 'created' ? 'no-results-msg' : 'no-results-msg-p';
+    var cards   = document.querySelectorAll(sel);
+    var visible = 0;
+
+    cards.forEach(function(card) {
+      var titleMatch  = card.dataset.title.includes(query);
+      var statusMatch = (currentFilter === 'all') || (card.dataset.status === currentFilter);
+      var show = titleMatch && statusMatch;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById(noResId).style.display = (visible === 0 && cards.length > 0) ? 'block' : 'none';
+  }
 </script>
-<!-- for search bar -->
-<div class="container" >
-    <div class="panel panel-default">
-        <div class="panel-body">
-            <label for="poll-search">Search: </label>
-            <input type="text" class="form-control" id="poll-search">
-            <div id="hidden-table" style="display:none;">
-                <table style="width:100%" class="table" name="created">
-                    <thead>
-                        <tr>
-                            <th colspan=2>Search results</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr id="search-results">
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- for folders -->
-<!-- <div class="container">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <a href="#" data-toggle="modal" data-target="#add_folder">
-            <span class="glyphicon glyphicon-plus"></span>Add folder</a>
-        </div>
-        <div class="panel-body">
-            {% for folder in folders %}
-            <a href="/mock_election/regular_polls/{{folder.id}}/folder">
-                <div class="" style="border:solid 1px black;border-radius:1px;margin:1px;width:24%;display:inline-block;text-align:center">{{ folder.title }}</div>
-            </a>
-            {% endfor %}
-        </div>
-        <div class="modal fade" id="add_folder" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        Create new folder
-                    </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <form action="add_folder/" method="post">
-                                    {% csrf_token %}
-                                    <label for="title">Folder Title:</label>
-                                    <input name="title" type="text" class="form-control" id="title" value="">
-
-                                    <div id="folder-add">
-                                    </div>
-                                    <label for="poll-search">Search: </label>
-                                    <input type="text" class="form-control" id="folder-search">
-
-                                    <button type="submit" class="btn-large btn-success btn-ok" onclick="add_folder()">Add</button>
-                                    <button role="button" type="button" class="btn-large btn-default" data-dismiss="modal">Cancel</button>
-                                </form>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div> -->
-
-<!-- <p>Active Polls:</p>
-{% for question in active_polls %}
-    <h3>{{ question.question_text }}</h3>
-    <h5 href="{% url 'mock_election:detail' question.id %}" id="QRLink">http://127.0.0.1:8000{% url 'mock_election:detail' question.id %}</h5>
-{% endfor %} -->
-
-<div class="container" >
-    <div name="created" class="panel panel-default">
-        <div class="panel-body">
-            <table style = "width:100%;" class="table" name="created">
-                <thead>
-                    <tr>
-                        <th colspan=2>
-                            <div> 
-                                Create a new Poll/Allocation instance:
-                            </div>
-                        </th>
-                    </tr>
-                </thead>
-                <tr>
-                    <td>
-                        <a href="{% url 'mock_election:AddStep1' %}" style='font-size:100%;' class="btn btn-yellow">
-                            <span class="glyphicon glyphicon-plus"></span>&nbsp;&nbsp;Create New
-                        </a>
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- for created by you section -->
-<div class="container" >
-    <div name="created" class="panel panel-default">
-        <div class="panel-body">
-        <table style = "width:100%;" class="table" name="created">
-            <thead>
-                <tr>
-                    <th colspan=2>
-		                  Regular polls created by you ({{ polls_created|length }})
-                    </th>
-                    <th>
-                        <!-- <a href="{% url 'mock_election:AddStep1' %}" style='font-size:60%; float:right;' class="btn btn-yellow">
-                            <span class="glyphicon glyphicon-plus"></span>
-                        </a> -->
-                        <!--
-                        {% if request.user.username == "opraexp" %}
-                        <a href="{% url 'mock_election:experimentcreate' %}" style='font-size:60%; float:right;' class="btn btn-yellow">
-                            Add Exp
-                        </a>
-                        
-                        {% endif %}
-						!-->
-                    </th>
-                </tr>
-            </thead>
-
-            {% for question in polls_created %}
-                <tr>
-                    <td>
-                        <a href="{% url 'mock_election:pollinfo' question.id %}" data-toggle="tooltip" data-placement="right" title="Description: {%if question.question_desc %} {{question.question_desc}} {%else%} None. {%endif%}">{{ question.question_text }}</a>
-                    </td>
-                    <td style="vertical-align:middle">
-                        {% if question.status == 2 %}
-							{% if request.user in question.question_voters.all %}
-								<a href="{% url 'mock_election:detail' question.id %}" class ="btn btn-dark" role="button" >Vote</a>
-							{% endif %}
-                            
-                        {% endif %}
-						{% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.mockelectionresponse_set.all.count > 0 and question|can_show_results%}
-                            <a href="{% url 'mock_election:voteresults' question.id %}" class ="btn btn-dark" role="button" target="_blank" >Current Winners</a>
-                        {% endif %}
-                    </td>
-                    {% if question.status == 1 %}
-                        <td style="vertical-align:middle">
-                            <div class="start-icon">
-                            <i class="fa fa-play" aria-hidden="true" data-toggle="modal" data-target="#confirm-start{{ question.id }}"></i>
-                            </div>
-                        </td>
-
-                        <div class="modal fade" id="confirm-start{{ question.id }}" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        Confirm Start Poll {{ question.question_text }}
-                                    </div>
-                                    <div class="modal-body">
-                                        Are you sure you want to start poll {{ question.question_text }}? Once a poll is started, you cannot modify the settings or remove users.
-                                    </div>
-                                    <div class="modal-footer">
-                                        <a href="{% url 'mock_election:start' question.id %}">
-                                            <button type="button" class="btn-large btn-success btn-ok">Yes</button>
-                                        </a>
-                                        <button type="button" class="btn-large btn-default" data-dismiss="modal">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% elif question.status == 2 %}
-						<td style="vertical-align:middle">
-							<div class="stop-icon pull-right">
-                            <i class="fa fa-stop" aria-hidden="true" data-toggle="modal" data-target="#confirm-stop{{ question.id }}"></i>
-                            </div>
-                            <div class="pause-icon pull-right" style="position:relative; right:10%;">
-                            <a href="{% url 'mock_election:pause' question.id %}"><i class="fa fa-pause" aria-hidden="true"></i></a>
-                            </div>
-                            
-                        </td>
-
-                        <div class="modal fade" id="confirm-stop{{ question.id }}" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        Confirm Stop Poll
-                                    </div>
-                                    <div class="modal-body">
-                                        Are you sure you want to stop this poll? Once a poll is stopped, no more preferences can be changed.
-                                    </div>
-                                    <div class="modal-footer">
-                                        <a href="{% url 'mock_election:stop' question.id %}">
-                                            <button type="button" class="btn-large  btn-ok btn-danger" style="font-size:100%;">Yes</button>
-                                        </a>
-                                        <button type="button" class="btn-large btn-default" data-dismiss="modal">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% elif question.status == 3 %}
-                        <td>
-                            {% if question.question_type == 1 %}
-                                <a style="float:right;margin:10px" href="{% url 'mock_election:voteresults' question.id %}" class="overflow">
-                                    {{question.winner}} wins
-                                </a>
-                            {% elif question.question_type == 2 %}
-                                Allocation Complete: <br />
-
-                                {% for order_item in question.allocationvoter_set.all %}
-                                    {% if order_item.response.allocation %}
-                                        {{ order_item.user.username }}: {{ order_item.response.allocation.item_text }}
-                                        <br />
-                                    {% endif %}
-                                {% endfor %}
-
-                                <a href="{% url 'allocation:allocate_results' question.id %}" >
-                                    <span class = "glyphicon glyphicon-info-sign" href="{% url 'allocation:allocate_results' question.id %}"></span>
-                                </a>
-                            {% endif %}
-                        </td>
-					{% else %}
-					<td style="vertical-align:middle">
-                        <div class="start-icon">
-                            <a href="{% url 'mock_election:resume' question.id %}"><i class="fa fa-play" aria-hidden="true"></i></a>
-                        </div>
-                    </td>
-                    {% endif %}
-                </tr>
-            {% endfor %}
-        </table>
-        </div>
-    </div><!-- end for created by you section-->
-
-    <div name="participated" class="panel panel-default">
-        <div class="panel-body">
-        <table class="table" >
-            <thead>
-                <tr>
-                    <th>
-                        Participated in	({{ polls_participated|length }})
-                    </th>
-                    <th></th>
-                    <th></th>
-                </tr>
-            </thead>
-
-            {% for question in polls_participated %}
-            <tr>
-                <td>
-                    <a href="{% url 'mock_election:pollinfo' question.id %}" data-toggle="tooltip" data-placement="right" title="Description: {%if question.question_desc %} {{question.question_desc}} {%else%} None. {%endif%}">
-                    {{ question.question_text }}
-                    </a>
-                </td>
-                <td>
-                    {% if question.status == 2 %}
-                        <a href="{% url 'mock_election:detail' question.id %}" class ="btn btn-dark" role="button">Vote</a>
-                    {% endif %}
-					{% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.mockelectionresponse_set.all.count > 0 and question|can_show_results%}
-                            <a href="{% url 'mock_election:voteresults' question.id %}" class ="btn btn-dark" role="button" target="_blank" >Current Winners</a>
-                    {% endif %}
-                </td>
-                {% if question.status == 1 %}
-                    <td>Poll not started</td>
-                {% elif question.status == 2 %}
-                    <td>In session</td>
-                {% elif question.status == 3 %}
-                    <td>
-                        {% if question.question_type == 1 %}
-                            <a style="float:right;margin:10px" href="{% url 'mock_election:voteresults' question.id %}" >
-                            {{question.winner}} wins
-                        </a>
-                        {% elif question.question_type == 2 %}
-                            Allocation Complete: <br />
-                            {% for order_item in question.allocationvoter_set.all %}
-                                {% if order_item.response.allocation %}
-                                    {{ order_item.user.username }}: {{ order_item.response.allocation.item_text }}
-                                    <br />
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
-                    </td>
-                {% endif %}
-                </tr>
-            {% endfor %}
-        </table>
-        </div><!-- end for participated in section-->
-    </div>
-</div>
 {% endblock %}

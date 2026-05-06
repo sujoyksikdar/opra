@@ -1,526 +1,578 @@
-{% extends 'polls/base.html' %}
-{% block extra_head %}
+{% extends 'mock_election/base_new.html' %}
+{% load mock_election_extra %}
+{% load static %}
 {% load qr_code %}
 
+{% block title %}{{ question.question_text }} – OPRA{% endblock %}
+
+{% block extra_head %}
 <script src='/static/js/qrcodejs/qrcode.js'></script>
-
 <style>
-/*
- * Global add-ons
- */
-.sub-header {
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
+  /* ── _add_choice.html scoped restyling (same as add_step2) ── */
+  #choicesetting { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0; }
+  #choicesetting > li:first-child,
+  #choicesetting > li:nth-child(2) { background:none; border:none; padding:0 0 12px 0; }
+  #choicesetting .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:12px; font-weight:600; border-radius:8px; border:1px solid var(--red); background:transparent; color:var(--red); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; margin-right:6px; }
+  #choicesetting .btn-danger:hover { background:var(--red); color:#fff; }
+  #choicesetting .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:12px; font-weight:600; border-radius:8px; border:none; background:var(--green); color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.15s; }
+  #choicesetting .btn-primary:hover { background:var(--green-mid); }
+  #choicesetting form#choiceform > li.list-group-item { border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:10px 14px; margin-bottom:8px; box-shadow:var(--shadow); list-style:none; }
+  #choicesetting form#choiceform > li .row { display:flex; align-items:center; gap:10px; cursor:pointer; }
+  .item-checkbox { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; cursor:pointer; }
+  #choicesetting .input-sm.form-control[name^="item"] { border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); background:var(--bg); outline:none; width:100%; transition:border-color 0.15s; }
+  #choicesetting .input-sm.form-control[name^="item"]:focus { border-color:var(--green); background:var(--surface); }
+  #choicesetting .btn-default { padding:5px 10px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text-sub); cursor:pointer; font-size:12px; transition:all 0.15s; }
+  #choicesetting .btn-default:hover { border-color:var(--green); color:var(--green); }
+  .caret { color:var(--text-muted) !important; }
+  .accordian-body textarea.form-control { border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); background:var(--bg); outline:none; width:100%; resize:vertical; }
+  .accordian-body textarea.form-control:focus { border-color:var(--green); }
+  #choicesetting > li:last-child { border:2px dashed var(--border); border-radius:10px; background:transparent; padding:10px 14px; list-style:none; transition:border-color 0.2s; }
+  #choicesetting > li:last-child:hover { border-color:var(--green); }
+  #choicesetting > li:last-child input[type="text"] { border:none; border-radius:8px; padding:7px 10px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); background:transparent; outline:none; width:100%; }
+  #choicesetting > li:last-child input[type="text"]::placeholder { color:var(--text-muted); }
 
-/*
- * Sidebar
- */
+  /* ── Pollinfo layout ─────────────────────────────── */
+  .pi-shell {
+    display: flex;
+    gap: 16px;
+    padding: 16px 32px 40px;
+    height: calc(100vh - 80px);
+    overflow: hidden;
+  }
 
-/* Hide for mobile, show later */
-.sidebar {
-  margin-top:53px;
-}
-@media (min-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 51px;
-    bottom: 0;
-    left: 0;
-    z-index: 1000;
+  /* Left tab nav */
+  .pi-tabs {
+    width: 200px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pi-tab-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-sub);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    text-align: left;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .pi-tab-link:hover {
+    background: var(--border);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .pi-tab-link.active {
+    background: var(--green-light);
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .pi-tab-link.danger {
+    color: var(--red);
+  }
+
+  .pi-tab-link.danger.active {
+    background: var(--red-light);
+    color: var(--red);
+  }
+
+  /* Right content card */
+  .pi-content {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .pi-pane {
+    display: none;
+  }
+
+  .pi-pane.active {
     display: block;
-    padding: 20px;
-    overflow-x: hidden;
-    overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
-    background-color: #f5f5f5;
-    border-right: 1px solid #eee;
   }
-}
 
-/* Sidebar navigation */
-.nav-sidebar {
-  margin-right: -21px; /* 20px padding + 1px border */
-  margin-bottom: 20px;
-  margin-left: -20px;
-  
-}
-.nav-sidebar > li > a {
-  padding-right: 20px;
-  padding-left: 20px;
-}
-.nav-sidebar > .active > a,
-.nav-sidebar > .active > a:hover,
-.nav-sidebar > .active > a:focus {
-  color: #fff;
-  background-color: #428bca;
-}
-
-
-/*
- * Main content
- */
-
-.main {
-  padding: 20px;
-}
-@media (min-width: 768px) {
-  .main {
-    padding-right: 40px;
-    padding-left: 40px;
+  /* Form helpers */
+  .pi-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    margin-bottom: 6px;
   }
-}
-.main .page-header {
-  margin-top: 0;
-}
 
+  .pi-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
 
-/*
- * Placeholder dashboard ideas
- */
+  .pi-input:focus { border-color: var(--green); }
 
-.placeholders {
-  margin-bottom: 30px;
-  text-align: center;
-}
-.placeholders h4 {
-  margin-bottom: 0;
-}
-.placeholder {
-  margin-bottom: 20px;
-}
-.placeholder img {
-  display: inline-block;
-  border-radius: 50%;
-}
-    
-  #feedback { font-size: 1.4em; }
-  #selectable .ui-selecting { background: #FECA40; }
-  #selectable .ui-selected { background: #F39814; color: white; }
-  #selectable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
-  #selectable li { margin: 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }
+  /* Checkbox chip labels (General Info — Allowed Interfaces) */
+  .pi-ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .pi-ui-chip input[type="checkbox"] { accent-color: var(--green); }
+  .pi-ui-chip:has(input:checked) {
+    border-color: var(--green);
+    background: var(--green-light);
+  }
 
-  </style>
-  <script>
-  $(function() {
-      $( "#selectable" ).selectable();
-  });
-  </script>
-<script>
-    $(function() {
-        $(".auto_submit").change(function() {
-            $("#choiceform").submit();
-        });
-    });
-    $('#choiceform').submit(function(event){
-        event.preventDefault();
-        var url = $(location).attr('href');
-        $.ajax({
-            type:'post',
-            url:url,
-            data: $('#choiceform').serialize(),
-            success: function(event){
-                $('ul').load();
-            }
-        });
-    });
-</script>
+  /* Trix editor styling */
+  trix-editor {
+    min-height: 120px;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+  }
+  trix-toolbar .trix-button-group--file-tools { display: none; }
 
-
-
+  /* jQuery autocomplete dropdown styling */
+  .ui-autocomplete {
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+    background: var(--surface) !important;
+    padding: 4px 0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    z-index: 9999 !important;
+  }
+  .ui-autocomplete .ui-menu-item-wrapper {
+    padding: 8px 14px !important;
+    color: var(--text) !important;
+    border-radius: 0 !important;
+  }
+  .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+    background: var(--green-light) !important;
+    color: var(--green) !important;
+    border: none !important;
+    font-weight: 600 !important;
+  }
+</style>
 {% endblock %}
-{% load static%}
+
 {% block content %}
 
-
-
-<div class="col-xs-3 col-md-2 sidebar">
-    <ul class="nav nav-sidebar">
-        {% if question.question_owner == request.user %}
-            <li {% if request.session.setting == 8 %} class="active" {% endif %}><a data-toggle="tab" href="#title">General Info</a></li>
-            <li {% if request.session.setting == 0 %} class="active" {% endif %}><a data-toggle="tab" href="#choices" >Alternatives</a></li>
-            <li {% if request.session.setting == 2 %} class="active" {% endif %}><a data-toggle="tab" href="#algorithm">Algorithms</a></li>
-            <li {% if request.session.setting == 10 %} class="active" {% endif %}><a data-toggle="tab" href="#visibility">Visibility</a></li>
-            <li {% if request.session.setting == 6 %} class="active" {% endif %}><a data-toggle="tab" href="#historyinfo">Preference Management</a></li>
-			<li {% if request.session.setting == 7 %} class="active" {% endif %}><a data-toggle="tab" href="#recycle">Deleted Preference Management</a></li>
-            <!-- <li {% if request.session.setting == 9 %} class="active" {% endif %}><a data-toggle="tab" href="#approverequest">Self Sign Up</a></li> -->
-           
-            {% if question.m_poll == False %}
-                <li {% if request.session.setting == 1 %} class="active" {% endif %}><a data-toggle="tab" href="#voters">User Management</a></li>
-                <li {% if request.session.setting == 5 %} class="active" {% endif %}><a data-toggle="tab" href="#emailsetting">Email</a></li>
-                <li {% if request.session.setting == 4 %} class="active" {% endif %}><a data-toggle="tab" href="#qr">Access Management</a></li>
-				<li><a data-toggle="tab" href="#duplicate">Duplicate Instance</a></li>
-                <li><a data-toggle="tab" href="#delete" style="color: #a94442;">Delete Instance</a></li>
-                <li><a href="{% url 'mock_election:recordView' question.id %}">User Records</a></li>
-            {% endif %}
-            
-        {% else %}  
-            <li class="active"><a data-toggle="tab" href="#general">General Info</a></li>
-            <li><a data-toggle="tab" href="#historyinfo">History</a></li>
-            <li><a data-toggle="tab" href="#quit">Quit</a></li>
-        {% endif %}
-        
-    </ul>  
-</div>
-<!-- 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
-
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2">
-<p>
-{% if messages %}
-<ul class="messages">
-    {% for message in messages %}
-    <div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>
-        {{ message }} 
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
+<!-- ── Page header ─────────────────────────────────────────────────────── -->
+<div class="opra-topbar">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <a href="{% url 'mock_election:regular_polls' %}" class="opra-btn opra-btn-ghost opra-btn-sm">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      Back
+    </a>
+    <div>
+      <h1>{{ question.question_text }}</h1>
+      <p>Manage poll configuration, voters, and results</p>
     </div>
-    {% endfor %}
-</ul>
-{% endif %}
-</p>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px;">
+    {% if question.status == 1 %}
+      <span class="opra-badge opra-badge-draft">Draft</span>
+      <a href="{% url 'mock_election:start' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Start Poll
+      </a>
+    {% elif question.status == 2 %}
+      <span class="opra-badge opra-badge-active">Active</span>
+      <a href="{% url 'mock_election:stop' question.id %}" class="opra-btn opra-btn-danger opra-btn-sm">Stop Poll</a>
+    {% elif question.status == 3 %}
+      <span class="opra-badge opra-badge-ended">Ended</span>
+    {% elif question.status == 4 %}
+      <span class="opra-badge opra-badge-paused">Paused</span>
+      <a href="{% url 'mock_election:resume' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Resume</a>
+    {% endif %}
+  </div>
 </div>
 
-<div class="tab-content">
-{% if question.question_owner == request.user %}
-    <div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 0 %}active{% endif %}" id="choices">
-        <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-        
-        {% include 'mock_election/_add_choice.html' %}
+<!-- ── Two-column layout ─────────────────────────────────────────────────── -->
+<div class="pi-shell">
+
+  <!-- Left: tab navigation -->
+  <nav class="pi-tabs">
+
+    {% if question.question_owner == request.user %}
+      <a class="pi-tab-link " href="#" data-pi="title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        General Info
+      </a>
+      <a class="pi-tab-link " href="#" data-pi="choices">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        Alternatives
+      </a>
+      <a class="pi-tab-link " href="#" data-pi="algorithm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        Algorithms
+      </a>
+      {% if question.m_poll == False %}
+      <a class="pi-tab-link " href="#" data-pi="voters">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        User Management
+      </a>
+      <a class="pi-tab-link " href="#" data-pi="visibility">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        Access &amp; QR
+      </a>
+      <a class="pi-tab-link " href="#" data-pi="emailsetting">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        Email
+      </a>
+      <a class="pi-tab-link " href="#" data-pi="historyinfo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.5"></path></svg>
+        Preferences
+      </a>
+      <a class="pi-tab-link" href="{% url 'mock_election:recordView' question.id %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        User Records
+      </a>
+      <div style="margin: 6px 0; border-top: 1px solid var(--border);"></div>
+      <a class="pi-tab-link danger" href="#" data-pi="danger">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+        Danger Zone
+      </a>
+      {% endif %}
+
+    {% else %}
+      <!-- Voter view -->
+      <a class="pi-tab-link active" href="#" data-pi="general">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        General Info
+      </a>
+      <a class="pi-tab-link" href="#" data-pi="historyinfo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.5"></path></svg>
+        History
+      </a>
+      <a class="pi-tab-link danger" href="#" data-pi="quit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        Quit Poll
+      </a>
+    {% endif %}
+
+  </nav>
+
+  <!-- Right: content area -->
+  <div class="pi-content">
+
+    {% if question.question_owner == request.user %}
+
+    <!-- General Info -->
+    <div class="pi-pane opra-card " id="pi-title" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">General Info</h3>
+
+      <!-- Voting stats -->
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;">
+        <div style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:var(--green);">{{ voted_count }}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Voted</div>
+        </div>
+        <div style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:var(--text);">{{ question.question_voters.count }}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Total Invited</div>
+        </div>
+        <div style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:var(--status-paused);">{{ pending_count }}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Pending</div>
+        </div>
+      </div>
+
+      <!-- Poll details form -->
+      <div style="padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:16px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:10px;">Poll Details</div>
+        {% include 'mock_election/_change_title_and_desc.html' %}
+      </div>
+
+      {% if request.user == question.question_owner and question.status != 1 %}
+      <div style="margin-top:12px;">
+        <a href="{% url 'mock_election:recalcResult' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">Recalculate Result</a>
+      </div>
+      {% endif %}
     </div>
-    
-    <!-- only for the regular vote-->
+
+    <!-- Alternatives -->
+    <div class="pi-pane opra-card " id="pi-choices" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Alternatives</h3>
+      {% include 'mock_election/_add_choice.html' %}
+    </div>
+
+    <!-- Algorithms -->
+    <div class="pi-pane opra-card " id="pi-algorithm" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Algorithms</h3>
+      {% include 'mock_election/_set_polling_settings.html' %}
+    </div>
+
     {% if question.m_poll == False %}
-    <div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 1 %}active{% endif %}" id="voters">
-        <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
+    <!-- User Management -->
+    <div class="pi-pane opra-card " id="pi-voters" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">User Management</h3>
 
-        {% include 'mock_election/_invite_voters_new_ui.html' %}
+      <!-- Voting progress bar -->
+      {% if question.question_voters.count > 0 %}
+      <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:18px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:12px; font-weight:600; color:var(--text);">Voting Progress</span>
+          <span style="font-size:12px; color:var(--text-muted);">{{ voted_count }} / {{ question.question_voters.count }} voted</span>
+        </div>
+        <div style="height:6px; background:var(--border); border-radius:3px; overflow:hidden;">
+          <div style="height:100%; width:{{ progressPercentage|floatformat:0 }}%; background:var(--green); border-radius:3px; transition:width 0.3s;"></div>
+        </div>
+        <div style="display:flex; gap:16px; margin-top:8px;">
+          <span style="font-size:11px; color:var(--status-active);">{{ voted_count }} voted</span>
+          <span style="font-size:11px; color:var(--text-muted);">{{ unRegisteredUsers|length }} unregistered</span>
+        </div>
+      </div>
+      {% endif %}
+
+      {% include 'mock_election/_invite_voters_new_ui.html' %}
+    </div>
+
+    <!-- Access & QR -->
+    <div class="pi-pane opra-card" id="pi-visibility" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Access &amp; QR</h3>
+
+      <!-- QR code -->
+      <div style="background:var(--bg); border-radius:10px; padding:16px; border:1px solid var(--border); margin-bottom:20px;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:10px;">QR Code &amp; Link</div>
+        <div style="display:flex; gap:16px; align-items:flex-start;">
+          <div>
+            {% url 'mock_election:detail' question.id as detail_url %}
+            {% qr_from_text request.scheme|add:"://"|add:request.get_host|add:detail_url size="s" image_format="png" error_correction="L" %}
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Voting link</div>
+            <div id="QRLink" style="padding:8px 11px; background:var(--surface); border:1px solid var(--border); border-radius:7px; font-size:12px; color:var(--text-sub); font-family:monospace; word-break:break-all;">
+              {{ request.scheme }}://{{ request.get_host }}{{ detail_url }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visibility -->
+      {% include 'mock_election/_visibility.html' %}
+      {% include 'mock_election/_approve_request.html' %}
+    </div>
+
+    <!-- Email -->
+    <div class="pi-pane opra-card " id="pi-emailsetting" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Email Settings</h3>
+
+      <form action="{% url 'mock_election:emailSettings' question.id %}" method="post" style="margin-bottom:24px;">
+        {% csrf_token %}
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+          <!-- Start email toggle -->
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text);">Send email when poll starts</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when the poll goes live</div>
+            </div>
+            <input type="checkbox" name="emailStart" value="email" {% if question.emailStart %}checked{% endif %} onchange="this.form.submit()" style="width:18px; height:18px; accent-color:var(--green);">
+          </div>
+          <!-- Stop email toggle -->
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text);">Send email when poll stops</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when results are available</div>
+            </div>
+            <input type="checkbox" name="emailStop" value="email" {% if question.emailStop %}checked{% endif %} onchange="this.form.submit()" style="width:18px; height:18px; accent-color:var(--green);">
+          </div>
+        </div>
+
+        <!-- Editable email bodies -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div>
+            <label class="pi-label" for="startSubject">Start Email Subject</label>
+            <input type="text" class="pi-input" id="startSubject" name="startSubject" value="{{ emailStart.subject }}" maxlength="100" style="margin-bottom:8px;">
+            <label class="pi-label" for="startMessage">Start Email Body</label>
+            <textarea class="pi-input" id="startMessage" name="startMessage" rows="5">{{ emailStart.message }}</textarea>
+          </div>
+          <div>
+            <label class="pi-label" for="stopSubject">Stop Email Subject</label>
+            <input type="text" class="pi-input" id="stopSubject" name="stopSubject" value="{{ emailStop.subject }}" maxlength="100" style="margin-bottom:8px;">
+            <label class="pi-label" for="stopMessage">Stop Email Body</label>
+            <textarea class="pi-input" id="stopMessage" name="stopMessage" rows="5">{{ emailStop.message }}</textarea>
+          </div>
+        </div>
+        <button type="submit" class="opra-btn opra-btn-primary">Save Email Settings</button>
+      </form>
+
+      <!-- Send now -->
+      <div style="border-top:1px solid var(--border); padding-top:20px;">
+        <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:12px;">Send Email Now</div>
+        <form action="{% url 'mock_election:emailNow' question.id %}" method="post">
+          {% csrf_token %}
+          <label class="pi-label" for="subject">Subject</label>
+          <input type="text" class="pi-input" id="subject" name="subject" maxlength="100" style="margin-bottom:10px;">
+          <label class="pi-label" for="message">Message</label>
+          <textarea class="pi-input" id="message" name="message" rows="5" style="margin-bottom:10px;"></textarea>
+          <button type="submit" class="opra-btn opra-btn-outline">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            Send Now
+          </button>
+        </form>
+      </div>
     </div>
     {% endif %}
 
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 2 %}active{% endif %}" id="algorithm">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-    
-    {% include 'mock_election/_set_polling_settings.html' %}
-</div>
-
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 10 %}active{% endif %}" id="visibility">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-    
-    {% include 'mock_election/_visibility.html' %}
-</div>
-            
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 8 %}active{% endif %}" id="title">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-    
-    {% include 'mock_election/_change_title_and_desc.html' %}
-	{% if request.user == question.question_owner and question.status != 1 %}
-				<a  class="pull-right" href="{% url 'mock_election:recalcResult' question.id %}" style="position:relative; bottom:4px;right:5%;"><button type="button" class="btn btn-primary" >Recalculate Result</button></a>
-		{% endif %}
-</div>
-    
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 4 %}active{% endif %}" id="qr">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-
-    <div class="panel panel-default">
-        <div class="panel-heading">QR code:</div>
-        <div class="panel-body">
-            <div id="qrcode" style="margin-top:15px;">
-                {% url 'mock_election:detail' question.id as detail_url %}
-                {% qr_from_text request.scheme|add:"://"|add:request.get_host|add:detail_url size="s" image_format="png" error_correction="L" %}
-            </div>
-            <a href="#" id="showQRLink">Show Link</a>
-            <a href="#" id="hideQRLink">Hide Link</a>
-            <br />
-            <h3 href="{% url 'mock_election:detail' question.id %}" id="QRLink">{{ request.scheme }}://{{ request.get_host }}{% url 'mock_election:detail' question.id %}</h3>
-            <br />
-            <form class="form-group" method="post" action="{% url 'mock_election:changeType' question.id %}">
-                {% csrf_token %}
-
-                <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-default {% if question.open == 1 %}active{% endif %}">
-                    <input type="radio" name="openpoll" value="anon" {% if question.open == 1 %}checked{% endif %}>Anonymous</option>
-                    </label>
-                    <label class="btn btn-default {% if question.open == 0 %}active{% endif %}">
-                    <input type="radio" name="openpoll" value="invite" {% if question.open == 0 %}checked{% endif %}>Invited</option>
-                    </label>
-                    <label class="btn btn-default {% if question.open == 2 %}active{% endif %}">
-                    <input type="radio" name="openpoll" value="uninvite" {% if question.open == 2 %}checked{% endif %}>Users-Only</option>
-                    </label>
-                </div>
-
-                <input type="submit" value="Finish" class="btn btn-primary">
-            </form>
-        </div>
+    <!-- Preferences (history) -->
+    <div class="pi-pane opra-card " id="pi-historyinfo" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Preferences</h3>
+      {% include 'mock_election/_view_history.html' %}
     </div>
 
-    <br><br>
-    {% include 'mock_election/_approve_request.html' %}
-</div>
+    <!-- Danger Zone -->
+    <div class="pi-pane opra-card" id="pi-danger" style="padding:24px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--red);">Danger Zone</h3>
+      <div style="background:var(--red-light); border:1px solid rgba(191,7,17,0.16); border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:10px;">
 
-
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 5 %}active{% endif %}" id="emailsetting">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-
-    <div class="col-md-10">
-        <div class="panel panel-default">
-    
-            <div class="panel-heading">Email Settings:</div>
-            <div class="panel-body">
-                <form action="{% url 'mock_election:emailSettings' question.id %}" method="post">
-                    {% csrf_token %}
-                    <!-- <div class="row">
-                        <div class="col-md-6" id="invite">
-                            <a href="#" id="inviteButtonShow">Show Invite Message</a>
-                            <a href="#" id="inviteButtonHide">Hide Invite Message</a>
-                            <br />
-                            <div id="editInvite" style="display:none;">
-                                <label for="inviteSubject">Subject:</label> <br />
-                                <input type="text" class="form-control" id="inviteSubject" name="inviteSubject" value="{{emailInvite.subject}}" maxlength="100" size="100" />
-                                <label for="inviteMessage">Email body:</label> <br />
-                                <textarea type="text" class="form-control" id="inviteMessage" name="inviteMessage" value="" maxlength="500">{{emailInvite.message}}</textarea> <br />
-                            </div>
-                            <label for="emailInvite">Send email when inviting users</label>
-                            <input type="checkbox" name="emailInvite" id="emailInvite" value="email" {% if question.emailInvite == True %} checked {% endif %} onchange="this.form.submit()">
-                        </div>
-                        <div class="col-md-6">
-                            <a href="#" id="deleteButtonShow">Show Delete Message</a>
-                            <a href="#" id="deleteButtonHide">Hide Delete Message</a>
-                            <br />
-                            <div id="editDelete" style="display:none;">
-                                <label for="deleteSubject">Subject:</label> <br />
-                                <input type="text" class="form-control" id="deleteSubject" name="deleteSubject" value="{{emailDelete.subject}}" maxlength="100" size="100" />
-                                <label for="deleteMessage">Email body:</label> <br />
-                                <textarea type="text" class="form-control" id="deleteMessage" name="deleteMessage" value="" maxlength="500">{{emailDelete.message}}</textarea> <br />
-                            </div>
-                            <label for="emailDelete">Send email when deleting users</label>
-                            <input type="checkbox" name="emailDelete" id="emailDelete" value="email" {% if question.emailDelete %} checked {% endif %} onchange="this.form.submit()">
-                        </div>
-                    </div> -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label for="emailStart">Send email when the poll starts</label>
-                            <input type="checkbox" name="emailStart" id="emailStart" value="email" {% if question.emailStart %} checked {% endif %} onchange="this.form.submit()">
-                            <br>
-                            <a href="#" id="startButtonShow">Show Start Message</a>
-                            <a href="#" id="startButtonHide">Hide Start Message</a>
-                            <br />
-                            <div id="editStart" style="display:none;">
-                                <label for="startSubject">Subject:</label> <br />
-                                <input type="text" class="form-control" id="startSubject" name="startSubject" value="{{emailStart.subject}}" maxlength="100" size="100" />
-                                <label for="startMessage">Email body:</label> <br />
-                                <textarea type="text" class="form-control" id="startMessage" name="startMessage" value="" maxlength="500" rows="9">{{emailStart.message}}</textarea> <br />
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="emailStop">Send email when the poll stops</label>
-                            <input type="checkbox" name="emailStop" id="emailStop" value="email" {% if question.emailStop %} checked {% endif %} onchange="this.form.submit()">
-                            <br>
-                            <a href="#" id="stopButtonShow">Show Stop Message</a>
-                            <a href="#" id="stopButtonHide">Hide Stop Message</a>
-                            <br />
-                            <div id="editStop" style="display:none;">
-                                <label for="stopSubject">Subject:</label> <br />
-                                <input type="text" class="form-control" id="stopSubject" name="stopSubject" value="{{emailStop.subject}}" maxlength="100" size="100" />
-                                <label for="stopMessage">Email body:</label> <br />
-                                <textarea type="text" class="form-control" id="stopMessage" name="stopMessage" value="" maxlength="500" rows="9">{{emailStop.message}}</textarea> <br />
-                            </div>
-                        </div>
-                    </div>
-                    <br>
-                    <input type="submit" value="Save Settings" class="btn btn-success">
-                </form>
-
-            </div>
+        <!-- Duplicate row -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(191,7,17,0.10);">
+          <div>
+            <div style="font-size:13px; font-weight:600; color:var(--text);">Duplicate Instance</div>
+            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">Create a copy inheriting all settings and alternatives</div>
+          </div>
+          <a href="{% url 'mock_election:duppoll' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Duplicate
+          </a>
         </div>
-        
-        <div class="panel panel-default">
-    
-            <div class="panel-heading">Send Email Now:</div>
-            <div class="panel-body">
-                <form action="{%url 'mock_election:emailNow' question.id%}" method="post">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label for="subject">Subject:</label> <br />
-                            <input type="text" class="form-control" id="subject" name="subject" value="" maxlength="100" size="100" />
-                            <label for="message">Email body:</label> <br />
-                            <textarea type="text" class="form-control" id="message" name="message" value="" maxlength="500" rows="9"></textarea> <br />
-                        </div>
-                    </div>
-                    <input type="submit" value="Send Now" class="btn btn-success">
-                </form>
-            </div>
+
+        <!-- Delete row -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(191,7,17,0.10);">
+          <div>
+            <div style="font-size:13px; font-weight:600; color:var(--text);">Delete Instance</div>
+            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">Permanently remove all votes, settings, and data. Cannot be undone.</div>
+          </div>
+          <button class="opra-btn opra-btn-danger opra-btn-sm" data-toggle="modal" data-target="#confirm-delete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+            Delete
+          </button>
         </div>
-            
-        <!-- <form action="{%url 'polls:emailOptions' question.id%}" method="post">
-            {% csrf_token %}
-            <input type="submit" value="Send Options" class="btn btn-success">
-        </form> -->
+
+      </div>
     </div>
-</div>
 
-
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane" id="delete">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-
-<div class="panel panel-danger">
-    <div class="panel-heading">Danger Zone</div>
-    <div class="panel-body" align="center">
-        <p>
-            Make sure you are very certain before you make a decision. Once a poll is deleted, it cannot be recovered.<br /><br/>
-            <span class="btn btn-danger" data-toggle="modal" data-target="#confirm-delete"><span class="glyphicon glyphicon-trash"></span> Delete this Instance</span>
-        </p>
-
-        <div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        Confirm Delete Poll
-                    </div>
-                    <div class="modal-body">
-                        Are you absolutely sure you want to delete this poll? All voting information, settings, etc. will be erased permanently. 
-                    </div>
-                    <div class="modal-footer">
-                        <a class="btn btn-danger btn-ok" href="{% url 'mock_election:delpoll' question.id %}">Yes</a>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    {% else %}
+    <!-- Voter: General Info -->
+    <div class="pi-pane opra-card active" id="pi-general" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">General Info</h3>
+      {% include 'mock_election/_voters_generalinfo.html' %}
     </div>
-</div>
-</div>
 
-
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane" id="duplicate">
-    <h3 class="page-header">Info and settings of {{ question.question_text }} </h3>
-    <div class="panel panel-default">
-        <div class="panel-heading"><h4>Duplicate Instance<h4></div>
-        <div class="panel-body" align="center">
-            A new instance will be created and inherits the properties of this instance by clicking the below button.<br /><br/>
-            <a class="btn btn-ok" href="{% url 'mock_election:duppoll' question.id %}" style="background-color: #428bca; color: white;">Duplicate Instance</a>
-        </div>
+    <!-- Voter: History -->
+    <div class="pi-pane opra-card" id="pi-historyinfo" style="padding:24px;">
+      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">History</h3>
+      {% include 'mock_election/_view_history.html' %}
     </div>
-</div>
 
-
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 7 %}active{% endif %}" id="recycle">
-	{% include 'mock_election/_view_deleted_votes.html' %}
-</div>
-
-<!-- <div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 9 %}active{% endif %}" id="approverequest">
-    {% include 'mock_election/_approve_request.html' %}
-</div> -->
-    
-{% else %}
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane" id="quit">
-    <h3 class="page-header">Quit {{ question.question_text }} </h3>
-    <div class="panel panel-danger">
-    <div class="panel-heading">Danger Zone</div>
-    <div class="panel-body" align="center">
-        <p>
-            Make sure you are very certain before you make a decision. Once you quit the poll, it cannot be recovered.<br /><br/>
-            <span class="btn btn-danger" data-toggle="modal" data-target="#confirm-quit"><span class="glyphicon glyphicon-trash"></span> Quit this poll</span>
-        </p>
-
-        <div class="modal fade" id="confirm-quit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        Confirm Quit Poll
-                    </div>
-                    <div class="modal-body">
-                        Are you absolutely sure you want to quit this poll? All voting information, settings, etc. will be erased permanently. 
-                    </div>
-                    <div class="modal-footer">
-                        <a class="btn btn-danger btn-ok" href="{% url 'mock_election:quitpoll' question.id %}">Yes</a>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Voter: Quit -->
+    <div class="pi-pane opra-card" id="pi-quit" style="padding:24px; border-color: var(--red) !important;">
+      <h3 style="margin:0 0 10px; font-size:15px; font-weight:700; color:var(--red);">Quit Poll</h3>
+      <p style="font-size:13px; color:var(--text-sub); margin:0 0 18px;">Once you quit, all your vote data will be removed permanently.</p>
+      <button class="opra-btn opra-btn-danger" data-toggle="modal" data-target="#confirm-quit">Quit This Poll</button>
     </div>
-</div>
-</div>
-    
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane active" id="general">
-    {% include 'mock_election/_voters_generalinfo.html' %}
+
+    <div class="modal fade" id="confirm-quit" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">Confirm Quit Poll</div>
+        <div class="modal-body">Are you absolutely sure you want to quit this poll? All your voting data will be erased permanently.</div>
+        <div class="modal-footer">
+          <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
+          <a href="{% url 'mock_election:quitpoll' question.id %}" class="opra-btn opra-btn-danger">Yes, Quit</a>
+        </div>
+      </div></div>
+    </div>
+    {% endif %}
+
+  </div><!-- .pi-content -->
+</div><!-- .pi-shell -->
+
+<!-- Delete modal -->
+<div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header">Confirm Delete Poll</div>
+    <div class="modal-body">Are you absolutely sure you want to delete <strong>{{ question.question_text }}</strong>? All voting data, settings, and history will be permanently erased.</div>
+    <div class="modal-footer">
+      <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
+      <a href="{% url 'mock_election:delpoll' question.id %}" class="opra-btn opra-btn-danger">Yes, Delete</a>
+    </div>
+  </div></div>
 </div>
 
-{% endif %}  
-                                    
-<div class="col-xs-9 col-xs-offset-3 col-md-10 col-md-offset-2 main tab-pane {% if request.session.setting == 6 %}active{% endif %}" id="historyinfo">
-    {% include 'mock_election/_view_history.html' %}
-</div>
+{% endblock %}
 
-
-
+{% block extra_js %}
 <script>
-    $("#editInvite").hide();
-    $( "#inviteButtonHide" ).hide();
-    $( "#inviteButtonShow" ).click(function(){
-        $("#editInvite").show();
-        $( "#inviteButtonShow" ).hide();
-        $( "#inviteButtonHide" ).show();
+  // Map Django session setting values to tab IDs
+  var SETTING_TAB_MAP = {
+    '0':  'choices',
+    '1':  'voters',
+    '2':  'algorithm',
+    '4':  'visibility',
+    '5':  'emailsetting',
+    '6':  'historyinfo',
+    '7':  'danger',
+    '8':  'title',
+    '10': 'visibility',
+  };
+
+  function activateTab(tabId) {
+    document.querySelectorAll('.pi-tab-link').forEach(function(l) { l.classList.remove('active'); });
+    document.querySelectorAll('.pi-pane').forEach(function(p) { p.classList.remove('active'); });
+
+    var pane = document.getElementById('pi-' + tabId);
+    if (pane) pane.classList.add('active');
+
+    var link = document.querySelector('.pi-tab-link[data-pi="' + tabId + '"]');
+    if (link) link.classList.add('active');
+  }
+
+  // Activate correct tab on page load based on session setting
+  var setting = '{{ request.session.setting }}';
+  var initialTab = SETTING_TAB_MAP[setting] || 'title';
+  activateTab(initialTab);
+
+  // Click handler
+  document.querySelectorAll('.pi-tab-link[data-pi]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      activateTab(this.dataset.pi);
     });
-    $( "#inviteButtonHide" ).click(function(){
-        $("#editInvite").hide();
-        $( "#inviteButtonShow" ).show();
-        $( "#inviteButtonHide" ).hide();
-    });
-    $("#editDelete").hide();
-    $( "#deleteButtonHide" ).hide();
-    $( "#deleteButtonShow" ).click(function(){
-        $("#editDelete").show();
-        $( "#deleteButtonShow" ).hide();
-        $( "#deleteButtonHide" ).show();
-    });
-    $( "#deleteButtonHide" ).click(function(){
-        $("#editDelete").hide();
-        $( "#deleteButtonShow" ).show();
-        $( "#deleteButtonHide" ).hide();
-    });
-    $("#editStart").hide();
-    $( "#startButtonHide" ).hide();
-    $( "#startButtonShow" ).click(function(){
-        $("#editStart").show();
-        $( "#startButtonShow" ).hide();
-        $( "#startButtonHide" ).show();
-    });
-    $( "#startButtonHide" ).click(function(){
-        $("#editStart").hide();
-        $( "#startButtonShow" ).show();
-        $( "#startButtonHide" ).hide();
-    });
-    $("#editStop").hide();
-    $( "#stopButtonHide" ).hide();
-    $( "#stopButtonShow" ).click(function(){
-        $("#editStop").show();
-        $( "#stopButtonShow" ).hide();
-        $( "#stopButtonHide" ).show();
-    });
-    $( "#stopButtonHide" ).click(function(){
-        $("#editStop").hide();
-        $( "#stopButtonShow" ).show();
-        $( "#stopButtonHide" ).hide();
-    });
-    $("#QRLink").hide();
-    $("#hideQRLink").hide();
-    $("#showQRLink").click(function(){
-        $("#QRLink").show();
-        $("#showQRLink").hide();
-        $("#hideQRLink").show();
-    });
-    $("#hideQRLink").click(function(){
-        $("#QRLink").hide();
-        $("#showQRLink").show();
-        $("#hideQRLink").hide();
-    });
+  });
 </script>
-
-
-  
 {% endblock %}

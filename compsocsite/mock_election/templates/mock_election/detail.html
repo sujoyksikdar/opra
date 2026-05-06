@@ -1,14 +1,11 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
 {% load mathfilters %}
-{% load static%}
-{% block extra_head %}
+{% load static %}
 {% load mock_election_extra %}
-<!-- Google Tag Manager -->
-<noscript>
-    <iframe src="//www.googletagmanager.com/ns.html?id=GTM-59SLDM" height="0" width="0" style="display:none;visibility:hidden"></iframe>
-</noscript>
-<!-- End Google Tag Manager -->
 
+{% block title %}{{ question.question_text }} – OPRA{% endblock %}
+
+{% block extra_head %}
 {% if request.flavour == "mobile" %}
 <script src='/static/js/mobile.js'></script>
 <script>var deviceFlavor = "mobile";</script>
@@ -24,298 +21,429 @@
 <script src='/static/js/voting.js'></script>
 <link rel="stylesheet" href="/static/css/jquery.rateyo.min.css">
 <script src="/static/js/jquery.rateyo.min.js"></script>
+
+<style>
+  /* ── Voting page shell ──────────────────────────────────────────────────── */
+  .vote-shell {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 28px 48px;
+  }
+
+  /* ── Poll header card ───────────────────────────────────────────────────── */
+  .vote-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .vote-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .vote-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 4px;
+    line-height: 1.3;
+  }
+  .vote-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .vote-desc {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-sub);
+    line-height: 1.6;
+    display: none;
+  }
+  .vote-desc.open { display: block; }
+  .vote-desc-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    color: var(--green);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .vote-desc-toggle:hover { text-decoration: underline; }
+
+  /* ── Interface tab switcher ─────────────────────────────────────────────── */
+  .vote-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .vote-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .vote-tab:hover { border-color: var(--green); color: var(--green); }
+  .vote-tab.active {
+    border-color: var(--green);
+    background: var(--green-light);
+    color: var(--green);
+  }
+
+  /* ── Voting content card ────────────────────────────────────────────────── */
+  .vote-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+
+  /* ── Status / empty states ──────────────────────────────────────────────── */
+  .vote-state {
+    text-align: center;
+    padding: 60px 24px;
+  }
+  .vote-state svg { margin-bottom: 16px; color: var(--text-muted); }
+  .vote-state h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+  .vote-state p { font-size: 14px; color: var(--text-muted); margin: 0; }
+
+  /* ── Login / register prompt ────────────────────────────────────────────── */
+  .vote-auth-card {
+    max-width: 440px;
+    margin: 40px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px 28px 24px;
+    text-align: center;
+  }
+  .vote-auth-card h2 { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
+  .vote-auth-card p { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; }
+  .vote-auth-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+  .vote-auth-card .pi-label { text-align: left; }
+  .vote-auth-card .pi-input { margin-bottom: 10px; }
+  #error { font-size: 12px; color: var(--red); min-height: 16px; margin-bottom: 6px; }
+</style>
+
 <script>
-    function register(){
-        if($('#reg_email').val() == ''){ $('#error').html("Please enter an email."); $('#reg_email').focus(); }
-        //else if($('#reg_username').val() == ''){ $('#error').html("Please enter a username."); $('#reg_username').focus(); }
-        //else if($('#reg_username').val().indexOf('@') > -1){ $('#error').html("Username should not include @ character."); $('#reg_username').focus(); }
-        else if($('#reg_password').val() == ''){ $('#error').html("Please enter a password."); $('#reg_password').focus(); }
-        else{ $('#user_form').submit(); }
-    }
+  function register() {
+    if ($('#reg_email').val() == '') { $('#error').html("Please enter an email."); $('#reg_email').focus(); }
+    else if ($('#reg_password').val() == '') { $('#error').html("Please enter a password."); $('#reg_password').focus(); }
+    else { $('#user_form').submit(); }
+  }
+  function toggleDesc() {
+    var d = document.getElementById('vote-desc');
+    var btn = document.getElementById('desc-toggle');
+    d.classList.toggle('open');
+    btn.innerHTML = d.classList.contains('open')
+      ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg> Hide description'
+      : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> Show description';
+  }
 </script>
-
-
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    {% if error_message %}
-    <p>
-        <strong>{{ error_message }}</strong>
-    </p>
-    {% endif %}
+<div class="vote-shell">
 
-{% if question.status == 2 %}
+  {% if error_message %}
+  <div style="background:var(--red-light); border:1px solid var(--red); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:13px; color:var(--red);">
+    {{ error_message }}
+  </div>
+  {% endif %}
+
+  {% if question.status == 2 %}
+
     {% if question.open == 0 and request.user.username == "" %}
-        <!-- Poll is not open for anonymous voting and the current user isn't logged in -->
-        You do not seem to have acquired the right permissions. Try logging in.
+    <!-- Not invited and not logged in -->
+    <div class="vote-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      <h2>Access Required</h2>
+      <p>You don't have permission to vote in this poll. Try logging in.</p>
+      <a href="{% url 'appauth:login' %}" class="opra-btn opra-btn-primary" style="margin-top:16px; display:inline-flex;">Log In</a>
+    </div>
+
     {% elif question.open == 2 and request.user.username == "" %}
-        <!-- Poll is not open for anonymous voting and the current user isn't logged in -->
+    <!-- Login required -->
+    <div class="vote-auth-card">
+      <div style="width:48px; height:48px; border-radius:12px; background:var(--green-light); display:flex; align-items:center; justify-content:center; margin:0 auto 14px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+      </div>
+      <h2>Sign in to vote</h2>
+      <p>{{ question.question_text }} requires an account to participate.</p>
+      <a href="{% url 'appauth:login' %}" class="opra-btn opra-btn-primary" style="width:100%; justify-content:center;">Log In</a>
 
-        <div class="w3-panel w3-center" style="padding:170px 16px;">
-          <h1 class="w3-xlarge">
-              Please
-              <a data-toggle="modal" data-target="#loginmodal" class="w3-border w3-button rpi-red"><span class="fa fa-sign-in"></span> Login</a>
-              <br/>
-              <br/>
-   
-          </h1>
+      <hr class="vote-auth-divider">
+      <h2 style="font-size:15px;">Quick Registration</h2>
 
-          <h2>Quick Registration:</h2>
-          {% if registered %}
-        Thank you for registering! Please check your email to activate your account.
-    {% else %}
-        <div id="error"></div>
-        <form id="user_form" method="post" action="{% url 'appauth:quickregister' question.id %}" enctype="multipart/form-data">
+      {% if registered %}
+      <p style="color:var(--status-active);">Thank you! Check your email to activate your account.</p>
+      {% else %}
+      <div id="error"></div>
+      <form id="user_form" method="post" action="{% url 'appauth:quickregister' question.id %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label class="pi-label" for="reg_email">Email</label>
+        <input type="text" class="pi-input" id="reg_email" name="email" placeholder="Enter email" autofocus />
+        <label class="pi-label" for="reg_password">Password</label>
+        <input type="password" class="pi-input" id="reg_password" name="password" placeholder="Password" />
+        <button type="button" class="opra-btn opra-btn-ghost" style="width:100%; justify-content:center; margin-top:4px;" onclick="register()">Create Account</button>
+      </form>
+      {% endif %}
+    </div>
 
-            {% csrf_token %}
-
-            <fieldset class="form-group">
-                <label for="email">Email</label>
-                <input type="text" class="form-control" id="reg_email" name="email" placeholder="Enter Email" value="" size="50" autofocus />
-                <small class="text-muted">We will only use this to send notifications. We will never share your information with anyone else.</small>
-            </fieldset>
-            
-            <!-- <fieldset class="form-group">
-                <label for="username">Username</label>
-                <input type="text" class="form-control" id="reg_username" name="username" placeholder="Enter Username" value="" size="50" />  
-	    </fieldset> -->
-            
-            <fieldset class="form-group">
-                <label for="username">Password</label> 
-                <input type="password" class="form-control" id="reg_password" name="password" placeholder="Password" value="" size="50" />
-            </fieldset>
-
-            <input type="button" value="Register" class="btn btn-primary" onclick="register()"/>
-        </form>
-    {% endif %}
-        </div>
-
-</div> <!-- end of class ="container"-->
-	
     {% elif question.open == 0 and request.user not in question.question_voters.all %}
-        <!-- Poll is not open for anonymous voting and the current user isn't invited -->
-        Sorry, you do not seem to be invited to participate, and an invitation seems necessary. Please contact the administrator of this poll or assignment instance.
-    {% else %}
-
-    <!-- Title panel -->
-    <div class="panel panel-default">
-        <!-- Panel header contains image and title -->
-        <div class="panel-heading">
-            <a class="panel-title" data-toggle="collapse" href="#collapse_des" style="font-size:110%;">
-            <div class="row">
-                <!-- Display poll image (from external url) -->
-                {% if question.imageURL != Null and question.imageURL != '' %}
-                <div class="col-md-2" {% if request.flavour == "mobile" %} style="width:20%;display:inline" {% endif %}>
-                    <a href="{{ question.imageURL }}"><img src="{{ question.imageURL }}" width="150" ></a>
-                </div>
-                <!-- Display poll image (uploaded to the server) -->
-                {% elif question.image %}
-                <div class="col-md-2" {% if request.flavour == "mobile" %} style="width:20%;display:inline" {% endif %}>
-                    <a href="/{{ question.image.url }}"><img src="/{{ question.image.url }}" width="150" ></a>
-                </div>
-                {% endif %}
-
-                <!-- Display title and creator in the header -->
-                <div class="col-md-10" {% if request.flavour == "mobile" %} style="width:100%;" {% endif %}>
-                    <h4 {% if request.flavour == "mobile" %} style="width:70%;display:inline;" {% endif %}><span class="caret" style="color:#377BB5;"></span> 
-                    	{{ question.question_text }} 
-                            <!-- if currentSelection and question.question_type == 1 -->
-                            {% if question.question_type == 1 and question|can_show_results%}
-                                <a href="{% url 'mock_election:voteresults' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" >Poll Winners</a>
-                            {% endif %}
-                        
-                        {% if question.question_type == 2 and question|can_show_results%}
-                            <a href="{% url 'allocation:allocate_results' question.id %}" class ="btn btn-dark pull-right" role="button" target="_blank" style="margin-right: 5px;">Allocation Results</a>
-                        {% endif %}
-                        
-                        </h4>
-					
-                </div>
-            </div> </a>
-        </div>
-
-        <!-- Display the description in the panel body (initially hidden) -->
-        <div id="collapse_des" class="panel-collapse collapse">
-        	<div class ="panel-body">
-        		Created by {{ question.question_owner }}.
-        		<br>
-            Description: {% if question.question_desc %}
-            <span {% if request.flavour == "mobile" %} style="width:70%" {% endif %}> {{ question.question_desc }} </span>
-            {% endif %}
-            </div>
-        </div>
+    <!-- Not invited -->
+    <div class="vote-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <h2>Not Invited</h2>
+      <p>You don't appear to be invited to this poll. Please contact the administrator.</p>
     </div>
-	
-    <div id="tabs" class="row">
-		{% if not question.ui_number == 1%}
-        <ul>
-            {% if question.twocol_enabled %}<li><a href="#twoColSection" onclick="changeMethod(1);">Two Columns</a></li> {% endif %}
-            {% if question.onecol_enabled %}<li><a href="#oneColSection" onclick="changeMethod(2);">One Column</a></li> {% endif %}
-            {% if question.slider_enabled %}<li><a href="#sliderSection" onclick="changeMethod(3);">Sliders</a></li> {% endif %}
-            {% if question.star_enabled %}<li><a href="#starsSection" onclick="changeMethod(4);">Stars</a></li> {% endif %}
-            {% if question.yesno_enabled %}<li><a href="#yesNoSection" onclick="changeMethod(5);">Yes/No</a></li> {% endif %}
-            {% if question.single_enabled %}<li><a href="#singleSection" onclick="changeMethod(6);">Single</a></li> {% endif %}
-            {% if question.budgetUI_enabled %}<li><a href="#budgetUI" onclick="changeMethod(7);">Budget UI</a></li> {% endif %}
-            {% if question.ListUI_enabled %}<li><a href="#listUISection" onclick="changeMethod(8);">List UI</a></li> {% endif %}
-            {% if question.infiniteBudgetUI_enabled %}<li><a href="#InfiniteBudgetUISection" onclick="changeMethod(9);">InfiniteBudget UI</a></li> {% endif %}
-        </ul>
-		{% endif %}
-            {% if question.twocol_enabled %}{% include "mock_election/voteOptions/twoCol.html" %}{% endif %}
-            {% if question.onecol_enabled %}{% include "mock_election/voteOptions/oneCol.html" %}{% endif %}
-            {% if question.slider_enabled %}{% include "mock_election/voteOptions/slider.html" %}{% endif %}
-            {% if question.star_enabled %}{% include "mock_election/voteOptions/stars.html" %}{% endif %}
-            {% with num=1 %}
-                {% if question.yesno_enabled %}
-                    {% include "mock_election/voteOptions/yesNo.html" %}
-                {% endif %}
-            {% endwith %}
-            {% with num=2 %}
-                {% if question.single_enabled %}
-                    {% include "mock_election/voteOptions/yesNo.html" %}
-                {% endif %}
-            {% endwith %}
-            {% if question.budgetUI_enabled %}{% include "mock_election/voteOptions/budgetUI.html" %}{% endif %}
-            {% if question.ListUI_enabled %}{% include "mock_election/voteOptions/listUI.html" %}{% endif %}
-            {% if question.infiniteBudgetUI_enabled %}{% include "mock_election/voteOptions/infiniteBudget.html" %}{% endif %}
+
+    {% else %}
+    <!-- ── Main voting UI ──────────────────────────────────────────────────── -->
+
+    <!-- Poll header -->
+    <div class="vote-header">
+      <div class="vote-header-top">
+        <div style="flex:1; min-width:0;">
+          <!-- Poll image -->
+          {% if question.imageURL and question.imageURL != '' %}
+          <img src="{{ question.imageURL }}" style="height:48px; border-radius:8px; margin-bottom:10px; display:block;">
+          {% elif question.image %}
+          <img src="/{{ question.image.url }}" style="height:48px; border-radius:8px; margin-bottom:10px; display:block;">
+          {% endif %}
+          <h1 class="vote-title">{{ question.question_text }}</h1>
+          <div class="vote-meta">Created by {{ question.question_owner }}</div>
+          {% if question.question_desc %}
+          <button class="vote-desc-toggle" id="desc-toggle" onclick="toggleDesc()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            Show description
+          </button>
+          <div class="vote-desc" id="vote-desc">{{ question.question_desc }}</div>
+          {% endif %}
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; flex-shrink:0;">
+          {% if question.question_type == 1 and question|can_show_results %}
+          <a href="{% url 'mock_election:voteresults' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm" target="_blank">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            Poll Winners
+          </a>
+          {% endif %}
+          {% if question.question_type == 2 and question|can_show_results %}
+          <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm" target="_blank">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            Allocation Results
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Interface tab switcher (only if more than one enabled) -->
+    {% if not question.ui_number == 1 %}
+    <div class="vote-tabs" id="vote-tab-nav">
+      {% if question.twocol_enabled %}<button class="vote-tab" onclick="switchVoteTab('twoColSection', 1, this)">Two Columns</button>{% endif %}
+      {% if question.onecol_enabled %}<button class="vote-tab" onclick="switchVoteTab('oneColSection', 2, this)">One Column</button>{% endif %}
+      {% if question.slider_enabled %}<button class="vote-tab" onclick="switchVoteTab('sliderSection', 3, this)">Sliders</button>{% endif %}
+      {% if question.star_enabled %}<button class="vote-tab" onclick="switchVoteTab('starsSection', 4, this)">Stars</button>{% endif %}
+      {% if question.yesno_enabled %}<button class="vote-tab" onclick="switchVoteTab('yesNoSection', 5, this)">Yes/No</button>{% endif %}
+      {% if question.single_enabled %}<button class="vote-tab" onclick="switchVoteTab('singleSection', 6, this)">Single</button>{% endif %}
+      {% if question.budgetUI_enabled %}<button class="vote-tab" onclick="switchVoteTab('budgetUI', 7, this)">Budget UI</button>{% endif %}
+      {% if question.ListUI_enabled %}<button class="vote-tab" onclick="switchVoteTab('listUISection', 8, this)">List UI</button>{% endif %}
+      {% if question.infiniteBudgetUI_enabled %}<button class="vote-tab" onclick="switchVoteTab('InfiniteBudgetUISection', 9, this)">Infinite Budget</button>{% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Voting content -->
+    <div class="vote-content" id="tabs">
+      {% if question.twocol_enabled %}{% include "mock_election/voteOptions/twoCol.html" %}{% endif %}
+      {% if question.onecol_enabled %}{% include "mock_election/voteOptions/oneCol.html" %}{% endif %}
+      {% if question.slider_enabled %}{% include "mock_election/voteOptions/slider.html" %}{% endif %}
+      {% if question.star_enabled %}{% include "mock_election/voteOptions/stars.html" %}{% endif %}
+      {% with num=1 %}
+        {% if question.yesno_enabled %}{% include "mock_election/voteOptions/yesNo.html" %}{% endif %}
+      {% endwith %}
+      {% with num=2 %}
+        {% if question.single_enabled %}{% include "mock_election/voteOptions/yesNo.html" %}{% endif %}
+      {% endwith %}
+      {% if question.budgetUI_enabled %}{% include "mock_election/voteOptions/budgetUI.html" %}{% endif %}
+      {% if question.ListUI_enabled %}{% include "mock_election/voteOptions/listUI.html" %}{% endif %}
+      {% if question.infiniteBudgetUI_enabled %}{% include "mock_election/voteOptions/infiniteBudget.html" %}{% endif %}
     </div>
 
     {% endif %}
-    {% elif question.status == 1 %}
-    <p>
-        This poll has not started yet.
-    </p>
-	{% elif question.status == 4 %}
-    <p>
-        This poll is paused.
-    </p>
-    {% else %}
-    <p>
-        This poll has ended.
-    </p>
-    {% endif %}
+
+  {% elif question.status == 1 %}
+  <div class="vote-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <h2>Not Started Yet</h2>
+    <p>This poll hasn't opened yet. Check back later.</p>
+  </div>
+
+  {% elif question.status == 4 %}
+  <div class="vote-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+    <h2>Poll Paused</h2>
+    <p>Voting is temporarily paused. Check back soon.</p>
+  </div>
+
+  {% else %}
+  <div class="vote-state">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    <h2>Poll Ended</h2>
+    <p>This poll has closed and is no longer accepting responses.</p>
+  </div>
+  {% endif %}
+
 </div>
 
-
 <script>
-    //display confirmation message for 2 seconds and then fade away slowly
-    $(function() {
-        $("#successMessage").delay(2000).fadeOut('slow');
+  // Tab switcher — replaces jQuery UI tabs
+  function switchVoteTab(sectionId, methodNum, btn) {
+    // hide all sections
+    ['twoColSection','oneColSection','sliderSection','starsSection','yesNoSection',
+     'singleSection','budgetUI','listUISection','InfiniteBudgetUISection'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = 'none';
     });
-    //set the webpage for ajax to report user behavior
-    submissionURL="{% url 'mock_election:record' question.id%}";
-    var previouslySubmitted = {{ submitted_ranking|default:"null" |safe }};
-	
-    $(function(){
-        $(document).ready(function() {
-            
-            // To remove the additional '/' at the starting of the image URL
-            var imagesWithClass = document.getElementsByClassName('item');
-            for (var i = 0; i < imagesWithClass.length; i++) {
-                var staticIndex = imagesWithClass[i].src.indexOf('static');
-                if(imagesWithClass[i].src[staticIndex-1] === '/' && imagesWithClass[i].src[staticIndex-2] === '/' ) {
-                    imagesWithClass[i].src = imagesWithClass[i].src.slice(0,[staticIndex-1]) 
-                    + imagesWithClass[i].src.slice([staticIndex])
-                }
-            }
+    // show selected
+    var target = document.getElementById(sectionId);
+    if (target) target.style.display = '';
+    // update active tab
+    document.querySelectorAll('.vote-tab').forEach(function(t) { t.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    // call original changeMethod
+    changeMethod(methodNum);
+  }
 
-			$(".dropdown-toggle").dropdown();
+  $(function () {
+    $("#successMessage").delay(2000).fadeOut('slow');
+  });
 
-			$('[data-toggle="tooltip"]').tooltip();
+  submissionURL = "{% url 'mock_election:record' question.id %}";
+  var previouslySubmitted = {{ submitted_ranking|default:"null"|safe }};
 
-			$('[data-toggle="popover"]').popover({
-				title : '<span class="text-info"><strong>Hint</strong></span>',
-				html: 'true',
-			});
-            if(document.getElementById("yesNoSection") != null){ method = 5;}
-            if(document.getElementById("starsSection") != null){ method = 4; methodIndicator = "star";}
-            if(document.getElementById("sliderSection") != null){ method = 3; methodIndicator = "slider";}
-            if(document.getElementById("oneColSection") != null){ method = 2; methodIndicator = "one_column";}
-            if(document.getElementById("twoColSection") != null){ method = 1; methodIndicator = "two_column";}
-            if(document.getElementById("budgetUI") != null){ method = 7; methodIndicator = "budget_ui";}
-            if(document.getElementById("listUISection") != null){ method = 8; methodIndicator = "list_ui";}
-            if(document.getElementById("InfiniteBudgetUISection") != null) { method = 9; methodIndicator = "infinite_budget_ui" }
-            method = 1;
-
-            // for allocation UIs:
-            {% if question.twocol_enabled %} changeMethod(1);{% endif %}
-            {% if question.onecol_enabled %} changeMethod(2);{% endif %}            
-            {% if question.budgetUI_enabled %} changeMethod(7);{% endif %}
-            {% if question.ListUI_enabled %} changeMethod(8);{% endif %}
-            {% if question.infiniteBudgetUI_enabled %} changeMethod(9);{% endif %}
-            method = 1;
-
-            //alert(method);
-
-			{% if not question.ui_number == 1 %}
-				$( "#tabs" ).tabs();
-			{% endif %}
-
-			{% if request.flavour == "mobile" %}
-				flavor = "Mobile";
-				if(document.getElementById("twoColSection") != null && document.getElementById("oneColSection") != null){
-					$( "#tabs" ).tabs("option","active",1);
-					method = 2;
-                    methodIndicator = "one_column";
-				}
-			{% else %}
-				flavor = "PC";
-			{% endif %}
-			VoteUtil.checkStyle();
-			startTime = Date.now();
-
-            {% if question.onecol_enabled %}
-                order1 = JSON.stringify(dictCol(2));
-            {% elif question.twocol_enabled %}
-			    order1 = JSON.stringify(dictCol(1));
-            {% else %}
-            {% endif %}
-			
-			{% if not question.allowties %}
-				allowTies = false;
-			{% endif %}
-
-            top_tier_layer = {{question.first_tier}};
-			
-			if(!allowTies && top_tier_layer != 0)
-			{
-				$("#one-sortable").children().eq(top_tier_layer*3).after("<div class=\"top_tier\" style=\"height:4px;border:none;color:green;background-color:green;\"><hr></div>");
-			}
-		});
-});
-
-
-
-
-
-    // tooltip toggle (Popover function for hints)
-    $(document).on('click',"#toggle-button",function () {
-     toggle(document.querySelectorAll('.hint'));
-   });
-
-//Toggle: hide/show hints
-function toggle (elements, specifiedDisplay) {
-  var element, index;
-  elements = elements.length ? elements : [elements];
-  for (index = 0; index < elements.length; index++) {
-    element = elements[index];
-
-    if (isElementHidden(element)) {
-      element.style.visibility = '';
-
-      // If the element is still hidden after removing the inline display
-      if (isElementHidden(element)) {
-        element.style.visibility = specifiedDisplay || 'visible';
+  $(function () {
+    $(document).ready(function () {
+      // fix double-slash in image src
+      var imagesWithClass = document.getElementsByClassName('item');
+      for (var i = 0; i < imagesWithClass.length; i++) {
+        var staticIndex = imagesWithClass[i].src.indexOf('static');
+        if (imagesWithClass[i].src[staticIndex - 1] === '/' && imagesWithClass[i].src[staticIndex - 2] === '/') {
+          imagesWithClass[i].src = imagesWithClass[i].src.slice(0, [staticIndex - 1]) + imagesWithClass[i].src.slice([staticIndex]);
+        }
       }
-    } else {
-      element.style.visibility = 'hidden';
+
+      $(".dropdown-toggle").dropdown();
+      $('[data-toggle="tooltip"]').tooltip();
+      $('[data-toggle="popover"]').popover({
+        title: '<span class="text-info"><strong>Hint</strong></span>',
+        html: 'true',
+      });
+
+      // determine initial method
+      if (document.getElementById("yesNoSection") != null) { method = 5; }
+      if (document.getElementById("starsSection") != null) { method = 4; methodIndicator = "star"; }
+      if (document.getElementById("sliderSection") != null) { method = 3; methodIndicator = "slider"; }
+      if (document.getElementById("oneColSection") != null) { method = 2; methodIndicator = "one_column"; }
+      if (document.getElementById("twoColSection") != null) { method = 1; methodIndicator = "two_column"; }
+      if (document.getElementById("budgetUI") != null) { method = 7; methodIndicator = "budget_ui"; }
+      if (document.getElementById("listUISection") != null) { method = 8; methodIndicator = "list_ui"; }
+      if (document.getElementById("InfiniteBudgetUISection") != null) { method = 9; methodIndicator = "infinite_budget_ui"; }
+      method = 1;
+
+      {% if question.twocol_enabled %} changeMethod(1); {% endif %}
+      {% if question.onecol_enabled %} changeMethod(2); {% endif %}
+      {% if question.budgetUI_enabled %} changeMethod(7); {% endif %}
+      {% if question.ListUI_enabled %} changeMethod(8); {% endif %}
+      {% if question.infiniteBudgetUI_enabled %} changeMethod(9); {% endif %}
+      method = 1;
+
+      {% if request.flavour == "mobile" %}
+      flavor = "Mobile";
+      if (document.getElementById("twoColSection") != null && document.getElementById("oneColSection") != null) {
+        // switch to one column on mobile
+        switchVoteTab('oneColSection', 2, document.querySelectorAll('.vote-tab')[1]);
+        method = 2;
+        methodIndicator = "one_column";
+      }
+      {% else %}
+      flavor = "PC";
+      {% endif %}
+
+      // activate first tab button
+      var firstTab = document.querySelector('.vote-tab');
+      if (firstTab) firstTab.classList.add('active');
+
+      // hide non-active sections when tabs are present
+      {% if not question.ui_number == 1 %}
+      var sections = ['twoColSection','oneColSection','sliderSection','starsSection','yesNoSection',
+                      'singleSection','budgetUI','listUISection','InfiniteBudgetUISection'];
+      var first = true;
+      sections.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { if (!first) el.style.display = 'none'; first = false; }
+      });
+      {% endif %}
+
+      VoteUtil.checkStyle();
+      startTime = Date.now();
+
+      {% if question.onecol_enabled %}
+      order1 = JSON.stringify(dictCol(2));
+      {% elif question.twocol_enabled %}
+      order1 = JSON.stringify(dictCol(1));
+      {% endif %}
+
+      {% if not question.allowties %}
+      allowTies = false;
+      {% endif %}
+
+      top_tier_layer = {{ question.first_tier }};
+      if (!allowTies && top_tier_layer != 0) {
+        $("#one-sortable").children().eq(top_tier_layer * 3).after(
+          "<div class=\"top_tier\" style=\"height:4px;border:none;color:green;background-color:green;\"><hr></div>"
+        );
+      }
+    });
+  });
+
+  $(document).on('click', "#toggle-button", function () {
+    toggle(document.querySelectorAll('.hint'));
+  });
+  function toggle(elements, specifiedDisplay) {
+    var element, index;
+    elements = elements.length ? elements : [elements];
+    for (index = 0; index < elements.length; index++) {
+      element = elements[index];
+      if (window.getComputedStyle(element, null).getPropertyValue('visibility') === 'hidden') {
+        element.style.visibility = specifiedDisplay || 'visible';
+      } else {
+        element.style.visibility = 'hidden';
+      }
     }
   }
-  function isElementHidden (element) {
-    return window.getComputedStyle(element, null).getPropertyValue('visibility') === 'hidden';
-  }
-}
-
 </script>
-
 {% endblock %}

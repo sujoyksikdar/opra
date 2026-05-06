@@ -118,6 +118,12 @@ class RegularPollsView(views.generic.ListView):
             elif poll in ctx['polls_participated']:
                 ctx['polls_participated'].remove(poll)
 
+        # stat counts for the new UI
+        created = ctx['polls_created']
+        ctx['active_count'] = sum(1 for q in created if q.status == 2)
+        ctx['draft_count']  = sum(1 for q in created if q.status == 1)
+        ctx['ended_count']  = sum(1 for q in created if q.status == 3)
+
         self.request.session['questionType'] = 1
         return ctx
 
@@ -1295,6 +1301,7 @@ class PollInfoView(views.generic.DetailView):
         for i in range(0, len(ctx['poll_algorithms'])):
             twos.append(2 ** i)
         ctx['twos'] = twos
+        ctx['poll_algorithms_with_bits'] = list(zip(ctx['poll_algorithms'], twos))
         ctx['bools'] = self.object.vote_rule
 
         # display this user's history
@@ -1325,10 +1332,12 @@ class PollInfoView(views.generic.DetailView):
             ctx['latest_deleted_resps'] = addPreferenceValueToResp(ctx['latest_deleted_resps'])
             ctx['previous_deleted_resps'] = addPreferenceValueToResp(ctx['previous_deleted_resps'])
 
-        if self.object.question_voters.all().count() > 0:
-            progressPercentage = len(latest_responses) / self.object.question_voters.all().count()
-            progressPercentage = progressPercentage * 100
-            ctx['progressPercentage'] = progressPercentage
+        total_voters = self.object.question_voters.all().count()
+        voted_count = len(latest_responses)
+        if total_voters > 0:
+            ctx['progressPercentage'] = (voted_count / total_voters) * 100
+        ctx['voted_count'] = voted_count
+        ctx['pending_count'] = max(total_voters - voted_count, 0)
         ctx['request_list'] = self.object.mockelectionsignuprequest_set.filter(status=1)
 
         # alloc_res_tables contains display options for results of an allocation
@@ -1509,7 +1518,7 @@ def getListAlgorithmLinks():
             "https://en.wikipedia.org/wiki/Borda_count", "", "",
             "https://en.wikipedia.org/wiki/Bucklin_voting",
             "https://en.wikipedia.org/wiki/Copeland%27s_method",
-            "https://en.wikipedia.org/wiki/Minimax_Condorcet",
+            "https://en.wikipedia.org/wiki/Minimax_Condorcet", "",
             "https://en.wikipedia.org/wiki/Single_transferable_vote",
             "https://en.wikipedia.org/wiki/Nanson%27s_method#Baldwin_method",
             "https://en.wikipedia.org/wiki/Coombs%27_method","","","","",""]

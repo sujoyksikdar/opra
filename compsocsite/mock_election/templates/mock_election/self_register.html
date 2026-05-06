@@ -1,41 +1,43 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
 {% load mathfilters %}
-{% load static%}
-{% block extra_head %}
+{% load static %}
 
-{% endblock %}
+{% block title %}Self Registration – Mock Election – OPRA{% endblock %}
 
 {% block content %}
-<br/>
-{% if request.user.username == "" %}
-	<div class="w3-panel w3-center" style="padding:170px 16px;">
-		  <h1 class="w3-xlarge">
-		      Please
-		      <a data-toggle="modal" data-target="#loginmodal" class="w3-border w3-button rpi-red"><span class="fa fa-sign-in"></span> Login</a>
-		      <br/>
-		      <br/>
+<div style="padding: 40px 32px; max-width: 560px;">
 
-		  </h1>
+  {% if request.user.username == "" %}
+  <div class="opra-card" style="padding: 48px 32px; text-align: center;">
+    <p style="font-size: 15px; color: var(--text-muted); margin: 0 0 20px;">You need to be logged in to register.</p>
+    <a href="{% url 'appauth:login' %}?next={{ request.path }}" class="opra-btn opra-btn-primary">Login</a>
+  </div>
 
-	</div>
-{% else %}
+  {% else %}
 
-<h3>Self Registration for {{question.question_text}}</h3>
+  <div class="opra-card" style="padding: 28px 32px;">
+    <h2 style="font-size: 17px; font-weight: 600; margin: 0 0 20px; color: var(--text);">
+      Self Registration for <span style="color: var(--green);">{{ question.question_text }}</span>
+    </h2>
 
-{% if submitted %}
+    {% if submitted %}
+    <div style="background: #f0faf4; border: 1.5px solid var(--green); border-radius: 8px; padding: 16px 20px; font-size: 14px; color: var(--text);">
+      You have already registered. Please wait for approval.
+    </div>
 
-<p>You have already registered. Please wait for approval.</p>
+    {% else %}
+    <form action="{% url 'mock_election:selfsignup' question.id %}" method="post">
+      {% csrf_token %}
+      <label class="pi-label">Your name / item</label>
+      <input type="text" class="pi-input" name="item_name" style="width: 100%;" placeholder="Enter your name or item" required>
+      <div style="margin-top: 20px;">
+        <button type="submit" class="opra-btn opra-btn-primary">Submit for Approval</button>
+      </div>
+    </form>
+    {% endif %}
 
-{% else %}
-	
-<form action="{% url 'mock_election:selfsignup' question.id %}" method="post">
-	{% csrf_token %}
-	<input type="text" class="form-control" name="item_name" size="50" value=""/>
-	<br/>
-	<button type="submit" class="btn btn-primary">Submit for Approval</button>
-</form>
+  </div>
+  {% endif %}
 
-{% endif %}
-
-{% endif %}
+</div>
 {% endblock %}
