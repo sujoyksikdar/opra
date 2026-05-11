@@ -425,7 +425,7 @@ class PollInfoView(views.generic.DetailView):
         ctx['poll_algorithms'] = getListPollAlgorithms()
         ctx['alloc_methods'] = getAllocMethods()
         twos = []
-        for i in range(0, len(ctx['poll_algorithms'])):
+        for i in range(0, max(len(ctx['poll_algorithms']), len(ctx['alloc_methods']))):
             twos.append(2 ** i)
         ctx['twos'] = twos
         ctx['bools'] = self.object.vote_rule

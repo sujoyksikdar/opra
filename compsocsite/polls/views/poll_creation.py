@@ -160,6 +160,7 @@ class AddStep4View(views.generic.DetailView):
         ctx['poll_algorithms'] = getListPollAlgorithms()
         ctx['alloc_methods'] = getAllocMethods()
         ctx['view_preferences'] = getViewPreferences()
+        ctx['twos'] = [2 ** i for i in range(max(len(ctx['poll_algorithms']), len(ctx['alloc_methods'])))]
         return ctx
     def get_queryset(self):
         """
