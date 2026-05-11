@@ -14,7 +14,7 @@
 
 {% if question.status == 1 or question.status == 2 %}
 <div class="row">
-	<form action="{% url 'polls:setAllocationOrder' question.id %}" method="post">
+	<form action="{% url 'allocation:setAllocationOrder' question.id %}" method="post">
 		{% csrf_token %}
 
 		{% if request.flavour == "mobile" %}
@@ -36,7 +36,7 @@
 							Submit
 						</button>	
 					{% else %}
-							<a href="{% url 'polls:viewAllocationOrder' question.id %}?order=null" class="btn btn-danger reset-button">Clear</a>
+							<a href="{% url 'allocation:viewAllocationOrder' question.id %}?order=null" class="btn btn-danger reset-button">Clear</a>
 							<button id="submitbutton" type="submit" onclick="VoteUtil.submitPref();" class="btn btn-success submit-button">
 				                Submit
 							</button>
@@ -61,8 +61,8 @@
 				</div>
 
 				{% if request.flavour == "mobile" %}
-					<button onclick="javascript:window.location.href='{% url 'polls:viewAllocationOrder' question.id %}?order=null'; return false;" class="reset-button-mobile">
-				        <a href="{% url 'polls:viewAllocationOrder' question.id %}?order=null" class="glyphicon glyphicon-trash redcolor" style="color:white;">Clear</a>
+					<button onclick="javascript:window.location.href='{% url 'allocation:viewAllocationOrder' question.id %}?order=null'; return false;" class="reset-button-mobile">
+				        <a href="{% url 'allocation:viewAllocationOrder' question.id %}?order=null" class="glyphicon glyphicon-trash redcolor" style="color:white;">Clear</a>
 				    </button>
 				{% endif %}
 			</div>

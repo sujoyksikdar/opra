@@ -1,0 +1,199 @@
+<script>
+    function switchAddTab(tabId) {
+        document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('show'));
+        document.getElementById(tabId).classList.add('show');
+    }
+    function switchViewTab(tabId) {
+        document.querySelectorAll('.tab-section-view').forEach(sec => sec.classList.remove('show'));
+        document.getElementById(tabId).classList.add('show');
+    }
+
+    function validateCSV(){
+        const csvTextAreaEle = document.getElementById('csvTextArea');
+        csvText = csvTextAreaEle.value;
+        emailAddresses = csvText.split(',')
+        for(var i=0; i<emailAddresses.length; i+=1){
+            if(emailAddresses[i].trim() === '') continue;
+            let csvError = document.getElementById("csv_error");
+            csvError.innerHTML = "";
+        }
+        return true;
+    }
+
+    $(window).load(function(){
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const multiSelect = document.getElementById('currentVoters');
+        selectAllCheckbox?.addEventListener('change', () => {
+            const options = multiSelect.options;
+            for (let i = 0; i < options.length; i++) {
+                options[i].selected = selectAllCheckbox.checked;
+            }
+        });
+    });
+</script>
+<style>
+.height-100{ height: 100px; }
+.hide{ display: none; }
+.show{ display: block; }
+.tab-btn { margin-right: 10px; }
+.tab-section, .tab-section-view{ display: none; }
+.tab-section.show, .tab-section-view.show{ display: block; }
+</style>
+
+<div class="panel panel-default">
+    <div class="panel-heading"><h4>Add Users:<h4></div>
+    <div class="panel-body">
+        <div class="row">
+
+            <div style="margin-bottom: 15px;">
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addRegistered')">Add Registered Users</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaGroups')">Add via Groups</button>
+                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaCSV')">Add via CSV</button>
+            </div>
+
+            <!-- Add Registered -->
+            <div id="addRegistered" class="tab-section show col-md-6">
+                <form id="addUsersForm" action="{% url 'allocation:addvoter' question.id %}" method="post">
+                    <label style="width: 100%;">Add users registered with OPRA: </label>
+                    {% csrf_token %}
+                    <select name="voters" class="form-control multiple-select" style="width: 100%;" multiple>
+                        {% for user in users %}
+                            <option value="{{ user.username }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <br>
+                    <input type="submit" value="Add Users" class="btn btn-success" style="margin-top: 15px;">
+                </form>
+            </div>
+
+            <!-- Add via Groups -->
+            <div id="addViaGroups" class="tab-section col-md-6">
+                <form action="{% url 'allocation:addvoter' question.id %}" method="post">
+                    <label style="width: 100%;">Add{% if question.status == 1 %}/Remove{% endif %} groups of users registered with OPRA: </label>
+                    {% csrf_token %}
+                    <select name="groups" class="form-control multiple-select" style="width: 100%;" multiple>
+                        {% for group in groups %}
+                            {% if group.owner == request.user %}
+                                <option value="{{ group.name }}">{{ group.name }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <br>
+                    <input type="submit" class="btn btn-success" value="Add" style="margin-top: 15px;" />
+                </form>
+            </div>
+
+            <!-- Add via CSV -->
+            <div id="addViaCSV" class="tab-section col-md-6">
+                <form id="csvTextAreaForm" action="{% url 'allocation:savelatestcsv' question.id %}" method="post" onsubmit="return validateCSV()">
+                    {% csrf_token %}
+                    <label>Enter CSV Username List:</label>
+                    <textarea class="form-control" id="csvTextArea" name="votersCSVText" rows="5" style="height: 221px;">{{ recentCSVText }}</textarea>
+                    <br>
+                    <div id="csv_error" style="color: #ff4d4d;"></div>
+                    <div class="alert alert-info">
+                        <p><strong>Note:</strong>
+                            Input usernames as CSV as shown in below example. Need not worry about white spaces!<br>
+                            Example: user1,user2,user3<br>
+                        </p>
+                    </div>
+                    <input type="submit" value="Submit CSV" class="btn btn-primary" style="margin-top: 10px;">
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- View Users -->
+<div class="panel panel-default">
+    <div class="panel-heading"><h4>View Users</h4></div>
+    <div class="panel-body">
+        <div style="margin-bottom: 15px;">
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewAllUsers')">View All</button>
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewRegistered')">Registered</button>
+            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewUnregistered')">Unregistered</button>
+        </div>
+
+        <!-- All Added Users -->
+        <div id="viewAllUsers" class="tab-section-view show">
+            <form action="{% url 'allocation:delvoter' question.id %}" method="post">
+                {% csrf_token %}
+                <label>Users added to the instance:</label>
+                <div style="margin-bottom:15px; max-width:400px;">
+                    <input type="text" id="userSearchInput" class="form-control" placeholder="Search users...">
+                </div>
+                <input type="checkbox" id="selectAllUsers" style="margin-right:5px;">
+                <label for="selectAllUsers">Select All</label>
+                <div id="userListBox" style="max-height:220px; overflow-y:auto; border:1px solid #ddd; border-radius:4px; padding:8px; background:#fff;">
+                {% for user in question.question_voters.all %}
+                <div class="user-item" style="padding:4px 0;">
+                    <input type="checkbox" name="voters" value="{{ user.username }}" class="userCheckbox" style="margin-right:6px;">
+                    <span>{{ user.username }}</span>
+                </div>
+                {% empty %}
+                    <!-- If no registered, skip silently -->
+                {% endfor %}
+                {% for email in unRegisteredUsers %}
+                    {% if email %}
+                    <div class="user-item" style="padding:4px 0;">
+                        <input type="checkbox" name="voters" value="{{ email }}" class="userCheckbox" style="margin-right:6px;">
+                        <span>{{ email }}</span> <small style="color:#999;">(unregistered)</small>
+                    </div>
+                    {% endif %}
+                {% empty %}
+                {% endfor %}
+
+                    {% if question.question_voters.count == 0 and unRegisteredUsers|length == 0 %}
+                        <em>No users added yet.</em>
+                    {% endif %}
+                </div>
+
+                <div style="margin-top:15px;">
+                    <button type="submit" class="btn btn-danger">Delete Selected Users</button>
+                </div>
+            </form>
+
+            <script>
+                document.getElementById('userSearchInput').addEventListener('keyup', function() {
+                const filter = this.value.toLowerCase().trim();
+                const users = document.querySelectorAll('#userListBox .user-item');
+                users.forEach(div => {
+                    const text = div.innerText.toLowerCase();
+                    div.style.display = text.includes(filter) ? '' : 'none';
+                });
+                });
+
+                const selectAll = document.getElementById('selectAllUsers');
+                selectAll?.addEventListener('change', function() {
+                const allBoxes = document.querySelectorAll('.userCheckbox');
+                allBoxes.forEach(cb => cb.checked = selectAll.checked);
+                });
+            </script>
+
+            <hr>
+        </div>
+
+        <!-- Registered Users -->
+        <div id="viewRegistered" class="tab-section-view">
+            <label>Users registered with OPRA:</label>
+            <select id="registeredVoters" name="registeredVoters" class="form-control" multiple>
+                {% for username in registeredUsers %}
+                    <option value="{{ username }}">{{ username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Unregistered Users -->
+        <div id="viewUnregistered" class="tab-section-view">
+            <label>Users not registered with OPRA:</label>
+            <select id="unregisteredVoters" name="unregisteredVoters" class="form-control" multiple>
+                {% for username in unRegisteredUsers %}
+                    <option value="{{ username }}">{{ username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+    </div>
+</div>
+<br><br><br>

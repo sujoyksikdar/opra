@@ -228,14 +228,13 @@
         <div class="panel-heading">QR code:</div>
         <div class="panel-body">
             <div id="qrcode" style="margin-top:15px;">
-                {% with question.id|stringformat:"i" as question_id %}
-                        {% qr_from_text "http://127.0.0.1:8000/polls"|add:question_id size="s" image_format="png" error_correction="L" %}
-                {% endwith %}
+                {% url 'polls:detail' question.id as detail_url %}
+                {% qr_from_text request.scheme|add:"://"|add:request.get_host|add:detail_url size="s" image_format="png" error_correction="L" %}
             </div>
             <a href="#" id="showQRLink">Show Link</a>
             <a href="#" id="hideQRLink">Hide Link</a>
             <br />
-            <h3 href="{% url 'polls:detail' question.id %}" id="QRLink">http://127.0.0.1:8000{% url 'polls:detail' question.id %}</h3>
+            <h3 href="{% url 'polls:detail' question.id %}" id="QRLink">{{ request.scheme }}://{{ request.get_host }}{% url 'polls:detail' question.id %}</h3>
             <br />
             <form class="form-group" method="post" action="{% url 'polls:changeType' question.id %}">
                 {% csrf_token %}

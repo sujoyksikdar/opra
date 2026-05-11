@@ -32,6 +32,7 @@ class UserProfile(models.Model):
     exp_data = models.TextField(default="{}")
     salt = models.CharField(max_length=1000, blank=True, null=True)
     is_code_user = models.BooleanField(default=False)
+    code_source = models.CharField(max_length=20, default='polls')  # 'polls' or 'allocation'
     # Override the __unicode__() method to return out something meaningful!
     def __unicode__(self):
         return self.user.username

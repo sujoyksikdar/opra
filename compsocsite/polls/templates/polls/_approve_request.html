@@ -16,7 +16,7 @@
 
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
-        <p>Self Sign Up Link: <a href="https://opra.cs.rpi.edu/polls/{{question.id}}/selfregister/">https://opra.cs.rpi.edu/polls/{{question.id}}/selfregister/</a></p>
+        <p>Self Sign Up Link: <a href="{{ request.scheme }}://{{ request.get_host }}{% url 'polls:selfregister' question.id %}">{{ request.scheme }}://{{ request.get_host }}{% url 'polls:selfregister' question.id %}</a></p>
         <br/>
         {% if question.allow_self_sign_up == 1 %}
         <h3>List of Self Sign Up Requests for {{question.question_text}}</h3>

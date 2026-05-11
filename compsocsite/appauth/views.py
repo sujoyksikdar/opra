@@ -96,9 +96,16 @@ def register(request):
                 f"This code expires in 10 minutes.\n\n"
                 "— OPRA"
             )
-            mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+            email_sent = True
+            try:
+                mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+            except Exception:
+                email_sent = False
 
-            messages.info(request, "We emailed you a 6-digit code to verify your account.")
+            if email_sent:
+                messages.info(request, "We emailed you a 6-digit code to verify your account.")
+            else:
+                messages.warning(request, "Could not send verification email. Please use 'Resend code' on the next page.")
             return HttpResponseRedirect(f"/auth/verify-otp/?uid={user.id}")  
         else:
             return render(request, 'register.html', {'user_form': user_form})
@@ -166,7 +173,10 @@ def resend_otp(request):
         f"This code expires in 10 minutes.\n\n"
         "— OPRA"
     )
-    mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+    try:
+        mail.send_mail(subject, msg, "opra@cs.binghamton.edu", [user.email])
+    except Exception:
+        pass
 
     return HttpResponseRedirect(f"/auth/verify-otp/?uid={user.id}")
 
@@ -457,31 +467,59 @@ def socialSignup(request):
     return render(request,'register.html', {})
 def login_with_code(request):
     if request.method == "POST":
+        from allocation.models import AllocationLoginCode
         code = (request.POST.get("code") or "").strip()
 
+        # Check allocation codes first, then polls codes
+        alloc_code = None
+        poll_code = None
         try:
-            login_code = LoginCode.objects.select_related('user', 'question').get(code=code)
-        except LoginCode.DoesNotExist:
-            return render(request, "login_with_code.html", {"error": "Invalid code"})
+            alloc_code = AllocationLoginCode.objects.select_related('user', 'question').get(code=code)
+        except AllocationLoginCode.DoesNotExist:
+            try:
+                poll_code = LoginCode.objects.select_related('user', 'question').get(code=code)
+            except LoginCode.DoesNotExist:
+                return render(request, "login_with_code.html", {"error": "Invalid code"})
 
-        if not login_code.user:
-            uname = f"code_{login_code.question_id}_{secrets.token_hex(4)}"
-            u = User(username=uname, email="")
-            u.set_unusable_password()
-            u.is_active = True
-            u.save()
-            if not hasattr(u, 'userprofile'):
-                UserProfile.objects.create(
-                    user=u, displayPref=1, time_creation=timezone.now(), salt="",is_code_user=True
-                )
-            login_code.user = u
-            login_code.save(update_fields=['user'])
-            login_code.question.question_voters.add(u)
-
-        login(request, login_code.user, backend="appauth.custom_backends.CustomUserModelBackend")
-
-        request.session["is_code_user"] = True
-        request.session["code_question_id"] = login_code.question_id
-        return HttpResponseRedirect("/polls/regular_polls/code")
+        if alloc_code is not None:
+            login_code = alloc_code
+            if not login_code.user:
+                uname = f"acode_{login_code.question_id}_{secrets.token_hex(4)}"
+                u = User(username=uname, email="")
+                u.set_unusable_password()
+                u.is_active = True
+                u.save()
+                if not hasattr(u, 'userprofile'):
+                    UserProfile.objects.create(
+                        user=u, displayPref=1, time_creation=timezone.now(), salt="",
+                        is_code_user=True, code_source='allocation'
+                    )
+                login_code.user = u
+                login_code.save(update_fields=['user'])
+                login_code.question.question_voters.add(u)
+            login(request, login_code.user, backend="appauth.custom_backends.CustomUserModelBackend")
+            request.session["is_code_user"] = True
+            request.session["code_question_id"] = login_code.question_id
+            return HttpResponseRedirect("/allocations/allocation_tab/code")
+        else:
+            login_code = poll_code
+            if not login_code.user:
+                uname = f"code_{login_code.question_id}_{secrets.token_hex(4)}"
+                u = User(username=uname, email="")
+                u.set_unusable_password()
+                u.is_active = True
+                u.save()
+                if not hasattr(u, 'userprofile'):
+                    UserProfile.objects.create(
+                        user=u, displayPref=1, time_creation=timezone.now(), salt="",
+                        is_code_user=True, code_source='polls'
+                    )
+                login_code.user = u
+                login_code.save(update_fields=['user'])
+                login_code.question.question_voters.add(u)
+            login(request, login_code.user, backend="appauth.custom_backends.CustomUserModelBackend")
+            request.session["is_code_user"] = True
+            request.session["code_question_id"] = login_code.question_id
+            return HttpResponseRedirect("/polls/regular_polls/code")
 
     return render(request, "login_with_code.html")

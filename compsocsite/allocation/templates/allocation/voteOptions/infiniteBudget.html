@@ -1,0 +1,184 @@
+{% load mathfilters %}
+<div id="InfiniteBudgetUISection" {% if request.flavour == "mobile" %}style="padding:0.4em;" {% endif %}>
+    <!-- This is the voting form. Submit results through a voting function -->
+    <form id="{% if num == 1 %}yesNo{% else %}single{% endif %}" action="{% url 'allocation:vote' question.id %}" method="post">
+        <div class="row">
+            {% csrf_token %}
+            <!-- If this user isn't logged in and hasn't voted before -->
+            {% if request.user.username == "" and 'anonymousid' not in request.session %}
+            <div class="col-md-12" style="clear:right; ">
+                <h4>Your name (optional)</h4>
+                <input type="text" size="50" class="form-control" style="width=50%; clear:right;" name="anonymousname"/>
+            </div>
+            {% endif %}
+
+            <div class="col-md-12">
+
+                <!-- Panel for your preferences -->
+                <div class="panel panel-default" >
+				{% if request.flavour == "mobile" %}
+				<div class = "row col-xs-12" style="padding:0%;margin:0%;margin-bottom: 4%;">
+						<button id="submitbutton-IBUI" type="submit" 
+                        onclick="VoteUtil.submitPref(this);" 
+                        class="submitbutton reset-button-mobile" 
+                        style = "height:2.7em;padding:0%;margin:0%;background:darkgreen;">
+                            <span class="glyphicon glyphicon-upload" style="font-size:140%;color:white;margin:0%;">Submit</span>
+                        </button> 
+                </div>
+				{% endif %}
+                    <!-- Your preferences header -->
+                    <div class="panel-heading" >
+                        <h4>Your preferences:
+                            {% if not request.flavour == "mobile" %}
+                                <button id="submitbutton-IBUI" type="submit" 
+                                onclick="VoteUtil.submitPref(this);"
+                                class = "submit_button" 
+                                style="float: right; margin-left: 10px;">
+                                    Submit
+                                </button>
+                                <button id="submitting-IBUI" type="button" class="submitting btn btn-default" style="visibility:hidden;position:absolute;z-index:1;">
+                                    Submitting...
+                                </button>
+                            {% endif %}
+                            <input type="hidden" id="pref_order" class="pref_order" name="pref_order" value=""/>
+                            <input type="hidden" id="record_data" class="record_data" name="record_data" value=""/>
+
+                            <div class="pull-right">
+                                {% if messages %}
+                                    {% for message in messages %}
+                                        <span id="successMessage" {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>
+                                            {{ message }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+							</div>
+
+                        </h4>
+                    </div> <!-- end of header -->
+
+                    <!-- Your preferences main panel -->
+                    <div class="panel-body" >
+                        <ul id="InfiniteBudgetUIList">
+                        <!-- The user hasn't voted on this poll yet -->
+                        {% for item in items %}
+                        <div>
+                            <!-- Display option text -->
+                                {% if item.image %}
+                                    <img class="item" src='{{ item.image.url }}' style="margin: 8px;"/>
+                                {% endif %}
+                                    <!-- Display image (external URL) -->
+                                {% if item.imageURL != Null %}
+                                    <img class="item" src='{{ item.imageURL }}' style="margin: 8px;"/>
+                                {% endif %}
+                                <!-- Display option text -->
+                                <strong>{{ item.item_text }}</strong> : 
+								{% if item.item_description %}
+                                    <div style="display:inline-block;"><span class="glyphicon glyphicon-info-sign pull-right" data-toggle="tooltip" data-placement="top" title="{{item.item_description}}" data-title="Meddelanden" >
+                                    </span></div>
+                                {% endif %}
+                            <div style="display: flex;">
+                                <input class = "infinite_budget_ui_pref_box" data-option="item{{ item.item_text }}" 
+                                type="text" id="item{{ item.item_text }}" type="{{ forloop.counter }}" 
+                                style="width: 80%;" onkeyup="setTotal()" value="0"></input>
+                                <!-- <div style="display:flex; width: 15%; margin-left: 10px;">
+                                    <div id="slash{{ forloop.counter }}"> / </div>
+                                    <div id="currSliderTotal{{ forloop.counter }}">100</div>
+                                </div> -->
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </ul> <!-- end of main panel (left-sortable) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% include "polls/voteOptions/_comment_section.html" %}
+    </form>
+</div>
+<script>
+
+    var list = '#InfiniteBudgetUIList';
+        var n = $(list).children().length;
+        var arr=[];
+        for(var i=0; i<n; i++){
+            arr.push($($($(list).children()[i]).children('div')).children('input')[0]);
+        }
+        // arr = $(list).children();
+        $.each(arr, function(index) {
+            this.addEventListener('input', function(event) {
+            var enteredText = event.target.value;
+            // document.getElementById("submitbutton-LUI").setAttribute("disabled","disabled");
+
+            // Validate if the entered text is numeric
+            if (!isNumeric(enteredText)) {
+                event.target.value = '';
+            } else {
+                // code here
+            }
+        });
+        });
+
+
+
+    $(window).load(function(){
+
+        var original_order = [];
+        var t = 1;
+        {% if currentSelection %}
+            {% for s in currentSelection %}
+                {% if s %}
+                    var inner = [];
+                    {% for selection in s %}
+                        inner.push(t);
+                        t = t + 1;
+                    {% endfor %}
+                    original_order.push(inner);
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        
+        {% if currentSelection == None %}
+            {% for item in items %}
+                original_order.push([t]);
+                t = t + 1;
+            {% endfor %}
+        {% else %}
+
+            {% if unrankedCandidates %}
+                {% for item in unrankedCandidates %}
+                    original_order.push([t]);
+                    t = t + 1;
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+        yesNoSort(5,original_order);
+	    var el = document.getElementsByClassName('checkbox');
+	    for (var i=0; i<el.length; i++) {
+	    el[i].addEventListener('click', function(event) {
+		    if (this === event.target) {
+			    onCheckEvent(this);
+			  }
+		    else {
+			    event.stopPropagation();
+			    select(this);
+			    return false;
+		    }
+	    }, false);
+	    }
+    });
+function onCheckEvent(checkbox) {
+	//console.log("allow ties?", allowTies);
+	if (!allowTies && !$(checkbox).children()[0].checked){
+                    var checkboxes = document.getElementsByClassName('checkbox');
+			    for (var i=0; i<checkboxes.length; ++i) {
+				   if ($(checkboxes[i]).children()[0].checked){
+					    //console.log("should uncheck!");
+					    $(checkboxes[i]).children()[0].checked = false;
+					    select(checkboxes[i]);
+				    }
+                            }
+	}
+                    select(checkbox);
+}
+</script>

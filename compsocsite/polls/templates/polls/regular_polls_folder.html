@@ -183,8 +183,8 @@
                                     {% endif %}
                                 {% endfor %}
 
-                                <a href="{% url 'polls:allocate_results' question.id %}" >
-                                    <span class = "glyphicon glyphicon-info-sign" href="{% url 'polls:allocate_results' question.id %}"></span>
+                                <a href="{% url 'allocation:allocate_results' question.id %}" >
+                                    <span class = "glyphicon glyphicon-info-sign" href="{% url 'allocation:allocate_results' question.id %}"></span>
                                 </a>
                             {% endif %}
                         </td>

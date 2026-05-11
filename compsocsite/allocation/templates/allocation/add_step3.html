@@ -1,0 +1,31 @@
+{% extends 'polls/base.html' %}
+
+{% block content %}
+{% if question.question_owner == request.user %}
+<div class="col-md-10 col-md-offset-1">
+    <h2 align="center">Create a New Allocation</h2>
+    <br/>
+    <div class="steps" align="center">
+        <p class="sameline">1. General <span class="glyphicon glyphicon-chevron-right"></span> 2. Items</p>
+        <p class="sameline" style="color:grey;"><span class="glyphicon glyphicon-chevron-right"></span> 3. Invite</p>
+        <p class="sameline"><span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
+    </div>
+    <div class="progress">
+        <div class="progress-bar progress-bar-info" role="progressbar" style="width: 75%">
+            <span class="sr-only">75% Complete</span>
+        </div>
+    </div>
+    <br/>
+
+    <h3>Users</h3>
+    {% include 'allocation/_invite_voters_new_ui.html' %}
+
+    <br/><br/>
+    <div class="col-md-6 col-md-offset-3" align="center">
+        <a href="{% url 'allocation:AddStep4' question.id %}">
+            <input type="submit" value="Next" class="btn btn-primary"/>
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

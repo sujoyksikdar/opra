@@ -1,0 +1,40 @@
+<form action="{% url 'allocation:editBasicInfo' question.id %}" method="post">
+    {% csrf_token %}
+
+    <fieldset class="form-group">
+        <label for="title">Title</label>
+        <input type="text" class="form-control" style="width:70%;" name="title" maxlength="50" size="50"
+               value="{{ question.question_text }}" {% if question.status != 1 %} disabled {% endif %} />
+    </fieldset>
+
+    <fieldset class="form-group">
+        <label for="description">Description</label>
+        <textarea class="form-control" style="width:70%;" name="desc" maxlength="1000">{% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}</textarea>
+    </fieldset>
+
+    <fieldset class="form-group">
+        <label>Ties</label><br />
+        <div class="btn-group" data-toggle="buttons">
+            <label class="btn btn-default {% if question.allowties %}active{% endif %}">
+                <input type="radio" name="allowties" value="1" {% if question.allowties %} checked {% endif %}>Enabled
+            </label>
+            <label class="btn btn-default {% if not question.allowties %}active{% endif %}">
+                <input type="radio" name="allowties" value="2" {% if not question.allowties %} checked {% endif %}>Disabled
+            </label>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-group">
+        <label>Allowed Interfaces</label>
+        <div>
+            <label class="checkbox-inline"><input type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %} checked {% endif %}>Two Column</label>
+            <label class="checkbox-inline"><input type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %} checked {% endif %}>One Column</label>
+            <label class="checkbox-inline"><input type="checkbox" value="BUI_slider" name="ui" {% if question.budgetUI_enabled %} checked {% endif %}>Budget UI</label>
+            <label class="checkbox-inline"><input type="checkbox" value="LUI" name="ui" {% if question.ListUI_enabled %} checked {% endif %}>List UI</label>
+            <label class="checkbox-inline"><input type="checkbox" value="IBUI" name="ui" {% if question.infiniteBudgetUI_enabled %} checked {% endif %}>Infinite Budget UI</label>
+        </div>
+    </fieldset>
+
+    <br/>
+    <input type="submit" class="btn btn-primary" value="Save Changes"/>
+</form>

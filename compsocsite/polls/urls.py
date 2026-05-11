@@ -12,14 +12,12 @@ urlpatterns = [
     
     #Two main types of polls
     re_path(r'^regular_polls$', login_required(views.RegularPollsView.as_view()), name='regular_polls'),
-    re_path(r'^allocation_tab$', login_required(views.RegularAllocationView.as_view()), name='allocation_tab'),
     re_path(r'^regular_polls/(?P<pk>[0-9]+)/folder$', login_required(views.RegularPollsFolderView.as_view()), name='regular_polls_folder'),
     re_path(r'^m_polls$', login_required(views.MultiPollsView.as_view()), name='m_polls'),
     re_path(r'^(?P<pk>[0-9]+)/demo$', views.DemoView.as_view(), name='voting_demo'),
     
     #code only pages
     re_path(r'^regular_polls/code$', views.CodePollsView.as_view(), name='regular_polls_code'),
-    re_path(r'^allocation_tab/code$', views.CodeAllocationView.as_view(), name='allocation_tab_code'),
     # Create a new poll
     re_path(r'^add_step1/$', views.AddStep1View, name='AddStep1'), 
     re_path(r'^(?P<pk>[0-9]+)/add_step2/$', views.AddStep2View.as_view(), name='AddStep2'), 
@@ -71,16 +69,13 @@ urlpatterns = [
     re_path(r'^delete/([0-9]+)/$', views.deletePoll, name='delpoll'),
     re_path(r'^quit/([0-9]+)/$', views.quitPoll, name='quitpoll'),
     re_path(r'^(?P<pk>[0-9]+)/vote/results/$', cache_page(60)(views.VoteResultsView.as_view()), name='voteresults'),
-    re_path(r'^(?P<pk>[0-9]+)/allocate/results/$', views.AllocateResultsView.as_view(), name='allocate_results'),
-    
+
     # settings
     re_path(r'^(?P<pk>[0-9]+)/pollinfo/$', views.PollInfoView.as_view(), name='pollinfo'),
     re_path(r'^(?P<resp_id>[0-9]+)/(?P<key>\w+)/voteEmail/$', email.voteEmail, name='voteEmail'),
     re_path(r'^(?P<question_id>[0-9]+)/settings/initial$', views.setInitialSettings, name='setinitial'),    
     re_path(r'^(?P<question_id>[0-9]+)/settings/algorithm$', views.setPollingSettings, name='setPollingSettings'),
     re_path(r'^(?P<question_id>[0-9]+)/settings/visibility$', views.setVisibilitySettings, name='setVisibilitySettings'),
-    re_path(r'^(?P<pk>[0-9]+)/allocate/order$', views.AllocationOrder.as_view(), name='viewAllocationOrder'),
-    re_path(r'^(?P<question_id>[0-9]+)/allocate/order/set/$', views.setAllocationOrder, name='setAllocationOrder'),
     #re_path(r'^(?P<question_id>[0-9]+)/sendEmail/$', views.sendEmail, name='sendEmail'),
     re_path(r'^(?P<question_id>[0-9]+)/emailNow/$', email.emailNow, name='emailNow'),
     re_path(r'^(?P<question_id>[0-9]+)/emailOptions/$', email.emailOptions, name='emailOptions'),
