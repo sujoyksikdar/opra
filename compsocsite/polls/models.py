@@ -427,7 +427,8 @@ class AllocationCache(models.Model):
     def generate_key(context_data):
         """Generate a deterministic hash key from context data"""
         # Create a stable representation of the data
-        data_str = json.dumps(context_data, sort_keys=True)
+        serializable_data = AllocationCache._make_serializable(context_data)
+        data_str = json.dumps(serializable_data, sort_keys=True)
         return hashlib.sha256(data_str.encode()).hexdigest()
     
     @staticmethod

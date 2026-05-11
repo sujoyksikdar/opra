@@ -200,7 +200,10 @@ def interpretResult(finalresult):
             for x in range(0, algonum):
                 tempList = []
                 for y in range(x*candnum, (x+1)*candnum):
-                    tempList.append(resultlist[y])
+                        if y < len(resultlist):
+                            tempList.append(resultlist[y])
+                        else:
+                            tempList.append("0")
                 tempResults.append(tempList)
         except Exception as e:
             print(f"  [interpretResult] ERROR during resultlist processing: {e}")
@@ -508,11 +511,26 @@ class AllocateResultsView(views.generic.DetailView):
         # extracting required information from response_set
         # using dictionary instead of list to avoid duplicate preferences in response_set
         for response in response_set:
-            candidates[response.user_id] = response.user.first_name 
-            url = response.user.userprofile.profile_pic.name;
-            profile_pics[response.user_id] = "/"+url if url != None else ''
-            pref_set[response.user_id] = ast.literal_eval(response.resp_str)
-            submitted_rankings[response.user_id]  = json.loads(response.behavior_data)["submitted_ranking"]
+            uid = str(response.user_id) if response.user_id else f"anon_{response.anonymous_id}"
+            if response.user:
+                candidates[uid] = response.user.first_name or response.user.username
+                try:
+                    url = response.user.userprofile.profile_pic.name
+                    profile_pics[uid] = "/" + url if url else ""
+                except Exception:
+                    profile_pics[uid] = ""
+            else:
+                candidates[uid] = response.anonymous_voter or "Anonymous"
+                profile_pics[uid] = ""
+            try:
+                pref_set[uid] = ast.literal_eval(response.resp_str or '[]')
+            except Exception:
+                pref_set[uid] = []
+            try:
+                b_data = json.loads(response.behavior_data or '{}')
+            except Exception:
+                b_data = {}
+            submitted_rankings[uid] = b_data.get("submitted_ranking", [])
         return pref_set, candidates, submitted_rankings, profile_pics
     
     def transformSubmittedRankings(self, items, submitted_rankings):
@@ -556,29 +574,51 @@ class AllocateResultsView(views.generic.DetailView):
         for i in range(len(allocated_items)):
             for j in range(len(allocated_items[i])):
                 item_obj = allocated_items[i][j]
-            if isinstance(item_obj, str):
-                allocated_items_transformed[i][j] = item_obj[4:]  # "itemcake" → "cake"
-            elif hasattr(item_obj, 'item_text'):
-                allocated_items_transformed[i][j] = item_obj.item_text
-            else:
-                allocated_items_transformed[i][j] = str(item_obj)
+                if isinstance(item_obj, str):
+                    if item_obj.startswith("item"):
+                        allocated_items_transformed[i][j] = item_obj[4:]  # "itemcake" → "cake"
+                    else:
+                        allocated_items_transformed[i][j] = item_obj
+                elif hasattr(item_obj, 'item_text'):
+                    allocated_items_transformed[i][j] = item_obj.item_text
+                else:
+                    allocated_items_transformed[i][j] = str(item_obj)
         return allocated_items_transformed
     
     def getSumOfAllocatedItems(self, allocated_items, submitted_rankings):
         # Computing allocated items and Sum of values of allocated items for each candidate
         sum_of_alloc_items_values = []
-        allocated_items_with_values =[]
+        allocated_items_with_values = []
+        submitted_rankings_list = list(submitted_rankings.values())
         for i in range(len(allocated_items)):
             sum_of_values = 0
             items_with_values = []
-            submitted_rankings_values = list(submitted_rankings.values())[i]
-            for j in range(len(allocated_items[i])):
-                #submitted_rankings_values = list(submitted_rankings.values())[i]
-                for k in range(len(submitted_rankings_values)):
-                    if "score" in submitted_rankings_values[k][0]:
-                        if(submitted_rankings_values[k][0]["name"] == allocated_items[i][j]):
-                            sum_of_values+=submitted_rankings_values[k][0]["score"]
-                            items_with_values.append((submitted_rankings_values[k][0]["name"][4:], submitted_rankings_values[k][0]["score"]))
+            if i < len(submitted_rankings_list):
+                submitted_rankings_values = submitted_rankings_list[i]
+                
+                flat_rankings = {}
+                for group in submitted_rankings_values:
+                    if isinstance(group, dict) and "score" in group:
+                        name = group.get("name", "")
+                        if name.startswith("item"): name = name[4:]
+                        flat_rankings[name] = group["score"]
+                    elif isinstance(group, list):
+                        for item_dict in group:
+                            if isinstance(item_dict, dict) and "score" in item_dict:
+                                name = item_dict.get("name", "")
+                                if name.startswith("item"): name = name[4:]
+                                flat_rankings[name] = item_dict["score"]
+
+                for j in range(len(allocated_items[i])):
+                    item_name = allocated_items[i][j]
+                    if isinstance(item_name, str) and item_name.startswith("item"):
+                        item_name = item_name[4:]
+                    
+                    score = flat_rankings.get(item_name, 0)
+                    if score > 0 or item_name in flat_rankings:
+                        sum_of_values += score
+                        items_with_values.append((item_name, score))
+
             sum_of_alloc_items_values.append(sum_of_values)
             allocated_items_with_values.append(items_with_values)
         return allocated_items_with_values, sum_of_alloc_items_values
@@ -586,85 +626,106 @@ class AllocateResultsView(views.generic.DetailView):
     def formatOptions(self, items):
         # remove 'item' from 'itemOption' string
         for i in range(len(items)):
-            items[i] = items[i][4:]
+            if isinstance(items[i], str) and items[i].startswith("item"):
+                items[i] = items[i][4:]
         return items
 
     def getPrefWithValues(self, submitted_rankings):
         # computing preferences with values for each candidate
         preferences_with_values = []
-        for i in range(len(submitted_rankings)):
-            curr_cand_preferences_with_values=[]
-            submitted_rankings_values = list(submitted_rankings.values())[i]
-            for j in range(len(submitted_rankings_values)):
-                if "score" in submitted_rankings_values[j][0]:
-                    curr_cand_preferences_with_values.append([submitted_rankings_values[j][0]["name"][4:], submitted_rankings_values[j][0]["score"]])
+        for submitted_rankings_values in submitted_rankings.values():
+            curr_cand_preferences_with_values = []
+            for group in submitted_rankings_values:
+                if isinstance(group, dict) and "score" in group:
+                    name = group.get("name", "")
+                    if name.startswith("item"): name = name[4:]
+                    curr_cand_preferences_with_values.append([name, group["score"]])
+                elif isinstance(group, list):
+                    for item_dict in group:
+                        if isinstance(item_dict, dict) and "score" in item_dict:
+                            name = item_dict.get("name", "")
+                            if name.startswith("item"): name = name[4:]
+                            curr_cand_preferences_with_values.append([name, item_dict["score"]])
             preferences_with_values.append(curr_cand_preferences_with_values)
         return preferences_with_values
     
-    def computeEnvyUptoEF1(self, preferences, allocated_items_with_values,preferences_with_values):
-        # compute envy matrix
-        envy_matrix = [[(0,0) for j in range(len(preferences))] for i in range(len(preferences))]
-        for i in range(len(allocated_items_with_values)):
-            for j in range(len(allocated_items_with_values)):
-                if i!=j:
-                    envy,sum2 = self.getEnvy(preferences_with_values[i], allocated_items_with_values[i], preferences_with_values[j],allocated_items_with_values[j])
-                    envy_matrix[i][j]  = (envy,sum2)
-                    if envy_matrix[i][j][0] < 0:
-                        ef1_val = self.getEF1(preferences_with_values[i], allocated_items_with_values[i], preferences_with_values[j],allocated_items_with_values[j])
-                        if ef1_val == "EF1":
-                            envy_matrix[i][j] = ("EF1",sum2)
-                else:
-                    envy_matrix[i][j] = (0,0)
-        return envy_matrix
-    
-    def computePureEF1(self, preferences, allocated_items_with_values, preferences_with_values):
-        # compute envy free upto 1 item matrix
-        ef1_matrix = [[0 for j in range(len(preferences))] for i in range(len(preferences))]
-        for i in range(len(allocated_items_with_values)):
-            for j in range(len(allocated_items_with_values)):
-                if i!=j:
-                    ef1_matrix[i][j] = self.getEF1(preferences_with_values[i], allocated_items_with_values[i], preferences_with_values[j],allocated_items_with_values[j])
-                else:
-                    ef1_matrix[i][j] = 0
+    def is_ef1(self, pref1, allocated_items1, allocated_items2):
+        """Check if agent 1 is EF1 towards agent 2."""
+        u_i_Ai = sum(val for _, val in allocated_items1)
+        pref_i_map = {item: val for item, val in pref1}
 
-    def getEnvy(self, pref1, allocated_items1, pref2, allocated_items2):  
+        if not allocated_items2:
+            return True
 
-        # cand 1 sum
-        sum1 = 0
-        print("allocated_items1:", allocated_items1)
+        u_i_Aj = sum(pref_i_map.get(item, 0) for item, _ in allocated_items2)
 
-        for item,val in allocated_items1:
-            sum1+=val
+        # If already no envy, it is EF1
+        if u_i_Ai >= u_i_Aj:
+            return True
 
-        # cand 2 sum with cand 1 preferences
-        sum2 = 0
-        for item1, val1 in allocated_items2:
-            for item2, val2 in pref1:
-                if(item1 == item2):sum2+=val2
+        # Check if there exists an item in j's bundle that can be removed to stop envy
+        for item_to_remove, _ in allocated_items2:
+            value_of_removed_item = pref_i_map.get(item_to_remove, 0)
+            u_i_Aj_minus_g = u_i_Aj - value_of_removed_item
             
-        return sum1-sum2,sum2
+            if u_i_Ai >= u_i_Aj_minus_g:
+                return True
+        
+        return False
 
-    def getEF1(self, pref1, allocated_items1, pref2, allocated_items2):
-        for i in range(len(allocated_items2)):
+    def is_efx(self, pref1, allocated_items1, allocated_items2):
+        """Check if agent 1 is EFX towards agent 2."""
+        u_i_Ai = sum(val for _, val in allocated_items1)
+        pref_i_map = {item: val for item, val in pref1}
 
-            copy_allocated_items2 = allocated_items2.copy()
-            copy_allocated_items2.remove(allocated_items2[i])
+        if not allocated_items2:
+            return True
 
-            # cand 1 sum
-            sum1 = 0
-            for item,val in allocated_items1:
-                sum1+=val
+        u_i_Aj = sum(pref_i_map.get(item, 0) for item, _ in allocated_items2)
 
-            # cand 2 sum with cand 1 preferences
-            sum2 = 0
-            for item1, val1 in copy_allocated_items2:
-                for item2, val2 in pref1:
-                    if(item1 == item2):sum2+=val2
+        # If already no envy, it is EFX
+        if u_i_Ai >= u_i_Aj:
+            return True
 
-            EF1_val = sum1-sum2   
-            if EF1_val >= 0:
-                return "EF1"
-        return "Not EF1"
+        # Check for every item in j's bundle
+        for item_to_remove, _ in allocated_items2:
+            value_of_removed_item = pref_i_map.get(item_to_remove, 0)
+            u_i_Aj_minus_g = u_i_Aj - value_of_removed_item
+            
+            # If for any item, envy still exists, it's not EFX
+            if u_i_Ai < u_i_Aj_minus_g:
+                return False
+        
+        return True
+
+    def compute_envy_properties(self, preferences, allocated_items_with_values, preferences_with_values):
+        """Computes a matrix of envy properties (No Envy, EFX, EF1, Envy)."""
+        num_agents = len(preferences)
+        envy_matrix = [[("No Envy", 0, 0) for _ in range(num_agents)] for _ in range(num_agents)]
+
+        for i in range(len(allocated_items_with_values)):
+            for j in range(len(allocated_items_with_values)):
+                if i == j:
+                    continue
+
+                agent_i_prefs = preferences_with_values[i]
+                agent_i_bundle = allocated_items_with_values[i]
+                agent_j_bundle = allocated_items_with_values[j]
+
+                u_i_Ai = sum(val for _, val in agent_i_bundle)
+                pref_i_map = {item: val for item, val in agent_i_prefs}
+                u_i_Aj = sum(pref_i_map.get(item, 0) for item, _ in agent_j_bundle)
+
+                if u_i_Ai >= u_i_Aj:
+                    envy_matrix[i][j] = ("No Envy", u_i_Ai, u_i_Aj)
+                elif self.is_efx(agent_i_prefs, agent_i_bundle, agent_j_bundle):
+                    envy_matrix[i][j] = ("EFX", u_i_Ai, u_i_Aj)
+                elif self.is_ef1(agent_i_prefs, agent_i_bundle, agent_j_bundle):
+                    envy_matrix[i][j] = ("EF1", u_i_Ai, u_i_Aj)
+                else:
+                    envy_matrix[i][j] = ("Envy", u_i_Ai, u_i_Aj)
+
+        return envy_matrix
     
     def getAllocatedItemObjects(self, item_objs, items_texts):
         allocated_items_objs = []
@@ -691,7 +752,7 @@ class AllocateResultsView(views.generic.DetailView):
         user_data = self._prepare_user_data(question)
         ctx.update(user_data)
         
-        current_user_id = self.request.user.id
+        current_user_id = str(self.request.user.id) if self.request.user.id else None
         current_user_name = user_data['user_names'].get(current_user_id, "")
         ctx['current_user_name'] = current_user_name
         ctx['empty_string'] = ""
@@ -762,34 +823,63 @@ class AllocateResultsView(views.generic.DetailView):
                 self.transformAllocatedItems(allocation_result['allocated_items']),
                 user_data['submitted_rankings']
             )
-            envy_matrix = self.computeEnvyUptoEF1(
+            envy_matrix = self.compute_envy_properties(
                 user_data['preferences'],
                 allocated_items_with_values,
                 preferences_with_values
             )
             ctx['envy_matrix'] = envy_matrix
+
+            # Summarize envy counts for verification
+            envy_summary = collections.defaultdict(int)
+            for i, row in enumerate(envy_matrix):
+                for j, cell in enumerate(row):
+                    if i == j:
+                        continue
+                    status = cell[0]
+                    envy_summary[status] += 1
+            ctx['envy_counts'] = {
+                'envy': envy_summary['Envy'], 'ef1': envy_summary['EF1'],
+                'efx': envy_summary['EFX'], 'no_envy': envy_summary['No Envy']
+            }
+
+            # Prepare data for easy rendering of envy graph
+            envy_graph_data = []
+            for i, row in enumerate(envy_matrix):
+                envy_graph_data.append({
+                    'user_name': user_data['candidates'][i],
+                    'profile_pic': user_data['profile_pics'][i],
+                    'envy_row': row
+                })
+            ctx['envy_graph_data'] = envy_graph_data
+            
             #allocation bundle
             allocated_items = allocation_result.get("allocated_items", [])
             items_obj = allocation_result.get("items_obj", [])
             sorted_user_ids = user_data["sorted_user_ids"]
             item_texts = [item.item_text for item in items_obj]
 
+            current_user_index = -1
             if current_user_id in sorted_user_ids:
                 current_user_index = sorted_user_ids.index(current_user_id)
                 user_alloc_items = allocated_items[current_user_index] if current_user_index < len(allocated_items) else []
 
                 ctx["curr_user_bundle"] = user_alloc_items
 
-            if current_user_index < len(user_data['preferences']):
+            if current_user_index != -1 and current_user_index < len(user_data['preferences']):
                 raw_ranking = user_data['submitted_rankings'].get(sorted_user_ids[current_user_index], [])
                 ranking_dict = {}
                 for entry in raw_ranking:
-                    if entry and isinstance(entry[0], dict):
-                        name = entry[0].get('name', '')
-                        if name.startswith("item"):
-                            item_text = name[4:]  # Strip prefix
-                            score = entry[0].get('score', 0)
-                            ranking_dict[item_text] = score
+                    if isinstance(entry, dict):
+                        name = entry.get('name', '')
+                        if name.startswith("item"): name = name[4:]
+                        ranking_dict[name] = entry.get('score', 0)
+                    elif isinstance(entry, list):
+                        for item_dict in entry:
+                            if isinstance(item_dict, dict):
+                                name = item_dict.get('name', '')
+                                if name.startswith("item"): name = name[4:]
+                                ranking_dict[name] = item_dict.get('score', 0)
 
                 total_value = 0
                 for item in user_alloc_items:
@@ -839,10 +929,16 @@ class AllocateResultsView(views.generic.DetailView):
                 # Map item_text -> score
                 ranked_items = []
                 for entry in raw_pref:
-                    if isinstance(entry[0], dict):
-                        name = entry[0].get("name", "")[4:]  # Remove "item" prefix
-                        score = entry[0].get("score", 0)
-                        ranked_items.append((name, score))
+                    if isinstance(entry, dict):
+                        name = entry.get("name", "")
+                        if name.startswith("item"): name = name[4:]
+                        ranked_items.append((name, entry.get("score", 0)))
+                    elif isinstance(entry, list):
+                        for item_dict in entry:
+                            if isinstance(item_dict, dict):
+                                name = item_dict.get("name", "")
+                                if name.startswith("item"): name = name[4:]
+                                ranked_items.append((name, item_dict.get("score", 0)))
 
                 # Sort items in descending preference (highest score = rank 1)
                 ranked_items.sort(key=lambda x: -x[1])
@@ -857,8 +953,23 @@ class AllocateResultsView(views.generic.DetailView):
                             rank_histogram[rank] += 1
         
         ctx["rank_histogram"] = rank_histogram
+
+
+        
+        print("\n--- DEBUG: CONTEXT DATA ---")
+        print("Preferences Matrix:")
+        for i, row in enumerate(ctx.get('preferences', [])):
+            print(f"  User {i}: {row}")
+            
+        print("Allocation Matrix:")
+        if ctx.get('allocation_matrix') is not None:
+            for i, row in enumerate(ctx['allocation_matrix']):
+                print(f"  User {i}: {row}")
+        print("---------------------------\n")
         
         return ctx
+        
+
     
     def _prepare_mechanism_info(self, question):
         """Prepare mechanism selection information"""
@@ -937,82 +1048,130 @@ class AllocateResultsView(views.generic.DetailView):
         submitted_rankings = {}
         
         for resp in response_set:
-            uid = resp.user_id
+            uid = str(resp.user_id) if resp.user_id else f"anon_{resp.anonymous_id}"
             if uid not in user_names:
-                user_names[uid] = resp.user.first_name
-                pic_path = resp.user.userprofile.profile_pic.name
-                user_pics[uid] = f"/{pic_path}" if pic_path else ""
-            submitted_rankings[uid] = json.loads(resp.behavior_data)["submitted_ranking"]
+                if resp.user:
+                    user_names[uid] = resp.user.first_name or resp.user.username
+                    try:
+                        pic_path = resp.user.userprofile.profile_pic.name
+                        user_pics[uid] = f"/{pic_path}" if pic_path else ""
+                    except Exception:
+                        user_pics[uid] = ""
+                else:
+                    user_names[uid] = resp.anonymous_voter or "Anonymous"
+                    user_pics[uid] = ""
+            try:
+                b_data = json.loads(resp.behavior_data or '{}')
+            except Exception:
+                b_data = {}
+            submitted_rankings[uid] = b_data.get("submitted_ranking", [])
 
         sorted_user_ids = sorted(user_names.keys())
+        ordered_submitted_rankings = {uid: submitted_rankings[uid] for uid in sorted_user_ids}
         
         # Build a matrix of numeric valuations
         preferences = self._extract_numeric_preferences(
             response_set, 
             sorted_user_ids, 
-            question.item_set.count()
+            list(question.item_set.all())
         )
         
         return {
             "candidates": [user_names[uid] for uid in sorted_user_ids],
             "profile_pics": [user_pics[uid] for uid in sorted_user_ids],
             "user_names": user_names,
-            "submitted_rankings": submitted_rankings,
+            "submitted_rankings": ordered_submitted_rankings,
             "sorted_user_ids": sorted_user_ids,
             "preferences": preferences,
             "current_user_id": current_user_id
         }
 
-    def _extract_numeric_preferences(self, response_set, sorted_user_ids, item_count):
-        """Extract numeric preference values from responses"""
+    def _extract_numeric_preferences(self, response_set, sorted_user_ids, items):
+        """
+        Extracts numeric preference values from responses, ensuring they are correctly
+        ordered according to the canonical item list.
+        """
         user_valuations_map = {}
+        item_count = len(items)
+
+        # 1. Create a map from all possible item identifiers to a canonical index (0, 1, 2, ...)
+        canonical_item_map = {}
+        for i, item in enumerate(items):
+            canonical_item_map[f"item{item.id}"] = i
+            canonical_item_map[str(item.id)] = i
+            canonical_item_map[item.item_text] = i
         
         # Process each response
         for resp in response_set:
-            uid = resp.user_id
-            raw_list = ast.literal_eval(resp.resp_str)
-            behavior_dict = json.loads(resp.behavior_data or '{}')
-            submitted_scores = behavior_dict.get("submitted_ranking", [])
+            uid = str(resp.user_id) if resp.user_id else f"anon_{resp.anonymous_id}"
+            user_vals = [0.0] * item_count
+            try:
+                raw_list = ast.literal_eval(resp.resp_str or '[]')
+            except Exception:
+                raw_list = []
+            try:
+                behavior_dict = json.loads(resp.behavior_data or '{}')
+                submitted_scores = behavior_dict.get("submitted_ranking", [])
+            except Exception:
+                submitted_scores = []
             item_score_map = {}
-            for group in submitted_scores:
-                if group and isinstance(group[0], dict):
-                    name = group[0].get("name", "")
-                    score = group[0].get("score", 0)
-                    item_score_map[name] = score
-            
-            numeric_vals = []
-            
-            for sublist in raw_list:
-                for x in sublist:  # handle multiple items per tier
-                    if isinstance(x, str):  # raw_list
-                        name=x
-                    elif isinstance(x, dict) and "name" in x:
-                        name=x["name"]
-                    if name:
-                        val=item_score_map.get(name,0.0)
-                    else:
-                        try:
-                            val = float(x[4:]) if isinstance(x, str) and x.startswith("item") else 0.0
-                        except:
-                            val = 0.0
-                    numeric_vals.append(val)
-            user_valuations_map[uid] = numeric_vals
+            has_explicit_scores = False
+            if submitted_scores:
+                max_score = 0
+                # This handles various structures for submitted_ranking
+                flat_scores = [item for tier in submitted_scores for item in (tier if isinstance(tier, list) else [tier])]
+                for item_dict in flat_scores:
+                    if isinstance(item_dict, dict):
+                        name = str(item_dict.get("name", ""))
+                        score = float(item_dict.get("score", 0))
+                        item_score_map[name] = score
+                        if score > max_score:
+                            max_score = score
+                if max_score > 0:
+                    has_explicit_scores = True
 
+            # 4. Populate the user's valuation vector based on the mode
+            if has_explicit_scores:
+                # Mode 1: Use explicit scores from behavior_data
+                for name, score in item_score_map.items():
+                    idx = canonical_item_map.get(name)
+                    if idx is None and name.startswith("item"):
+                        idx = canonical_item_map.get(name[4:])
+                    if idx is not None:
+                        user_vals[idx] = float(score)
+            elif raw_list:
+                # Mode 2: Use Borda scores calculated from the ranking in resp_str
+                normalized_list = []
+                for rank_idx, tier in enumerate(raw_list):
+                    # Handle both [[item1], [item2]] and [[item1, item2]] (ties)
+                    tier_items = tier if isinstance(tier, list) else [tier]
+                    for item_repr in tier_items:
+                        normalized_list.append((item_repr, rank_idx))
+
+                for item_repr, rank_idx in normalized_list:
+                    name = None
+                    if isinstance(item_repr, str):
+                        name = item_repr
+                    elif isinstance(item_repr, dict) and "name" in item_repr:
+                        name = item_repr["name"]
+
+                    if name:
+                        idx = canonical_item_map.get(name)
+                        if idx is None and name.startswith("item"):
+                            idx = canonical_item_map.get(name[4:])
+
+                        if idx is not None:
+                            borda_score = float(item_count - rank_idx)
+                            user_vals[idx] = borda_score
+
+            user_valuations_map[uid] = user_vals
+
+        # 5. Final assembly into a 2D list, ordered by sorted_user_ids
+        preferences = []
         # Fix for empty preferences
         for uid in sorted_user_ids:
-            if uid not in user_valuations_map or not user_valuations_map[uid]:
-                user_valuations_map[uid] = [0.0] * item_count
-        
-        # Make sure all preference lists have the same length
-        max_length = max([len(vals) for vals in user_valuations_map.values()]) if user_valuations_map else item_count
-        for uid in user_valuations_map:
-            if len(user_valuations_map[uid]) < max_length:
-                user_valuations_map[uid] += [0.0] * (max_length - len(user_valuations_map[uid]))
+            preferences.append(user_valuations_map.get(uid, [0.0] * item_count))
 
-        # Convert to a 2d list in user-id sorted order
-        preferences = []
-        for uid in sorted_user_ids:
-            preferences.append(user_valuations_map.get(uid, [0.0] * max_length))
         
         return preferences
 
@@ -1050,10 +1209,14 @@ class AllocateResultsView(views.generic.DetailView):
         allocation_data['allocated_items'] = allocated_items
         
         # Calculate sum of values for each agent
+        # TODO: fix the sum calculations evalutating to 0 
         sum_values = []
+        print(preferences)
         for i, prefs in enumerate(preferences):
             if i < len(allocation_matrix):
                 utility = sum(prefs[j] * allocation_matrix[i][j] for j in range(len(prefs)))
+                print(f"Computed relative bundle value for agent {i}: {utility}")
+                print(f"prefs[j] =  {prefs[j]} \n")
                 sum_values.append(utility)
         
         allocation_data['sum_of_alloc_items_values'] = sum_values
@@ -1064,6 +1227,7 @@ class AllocateResultsView(views.generic.DetailView):
         """Get cached allocation or compute a new one"""
         # # Try to get from cache
         cached_result, is_hit = AllocationCache.get_cached_result(context_data)
+        is_hit = False # Bypasses the cache to force recalculation
         
         if is_hit:
             logger.info(f"Cache hit for mechanism {mechanism_label}")
@@ -1090,6 +1254,7 @@ class AllocateResultsView(views.generic.DetailView):
                 context_data['sorted_user_ids'],
                 context_data.get('question_id')
             )
+            print(context_data['preferences'])
             
             # Store in cache
             AllocationCache.store_result(context_data, allocation_data)
@@ -1126,12 +1291,19 @@ class AllocateResultsView(views.generic.DetailView):
         all_user_prefs = []
         for uid in sorted_user_ids:
             username = user_names[uid]
-            ranking = submitted_rankings[uid]
+            ranking = submitted_rankings.get(uid, [])
             cleaned = []
             for group in ranking:
-                if group and isinstance(group[0], dict):
-                    item_name = group[0].get("name", "")[4:]
-                    cleaned.append((item_name))
+                if isinstance(group, dict):
+                    name = group.get("name", "")
+                    if name.startswith("item"): name = name[4:]
+                    cleaned.append(name)
+                elif isinstance(group, list):
+                    for item_dict in group:
+                        if isinstance(item_dict, dict):
+                            name = item_dict.get("name", "")
+                            if name.startswith("item"): name = name[4:]
+                            cleaned.append(name)
             all_user_prefs.append((username, cleaned))
         return all_user_prefs
 
@@ -1234,10 +1406,20 @@ class VoteResultsView(views.generic.DetailView):
         poll_alg_num = self.object.poll_algorithm
         while to_show > 0:
             if to_show % 2 == 1:
-                poll_algorithms.append(start_poll_algorithms[itr])
-                algorithm_links.append(start_algorithm_links[itr])
-                vote_results.append(l[0][itr])
-                shade_values.append(l[2][itr])
+                if itr < len(start_poll_algorithms):
+                    poll_algorithms.append(start_poll_algorithms[itr])
+                    algorithm_links.append(start_algorithm_links[itr])
+                else:
+                    poll_algorithms.append("Unknown")
+                    algorithm_links.append("")
+                if itr < len(l[0]):
+                    vote_results.append(l[0][itr])
+                else:
+                    vote_results.append({})
+                if itr < len(l[2]):
+                    shade_values.append(l[2][itr])
+                else:
+                    shade_values.append([])
                 if itr < len(l[1]):
                     margin_victory.append(l[1][itr])
                 to_show = to_show - 1
@@ -1836,7 +2018,7 @@ def setAllocationOrder(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
 
     # get the voter order
-    orderStr = request.POST["pref_order"]
+    orderStr = request.POST.get("pref_order", "")
     prefOrder = getPrefOrder(orderStr, question)
     if orderStr == "":
         # the user must rank all voters

@@ -169,68 +169,101 @@
     {% endif %}
 
     {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0 %}
-    <div class="panel panel-default" style="margin: 20px;">
-        <div class="panel-heading">Envy Matrix
-            <div class="pull-right" style="display: flex;">
-                <div style="margin-right: 15px;">
-                    <button type="button" class="btn btn-default" style="background-color: #66B032"></button>
-                    &nbsp;<span>No Envy</span>
-                </div>
-                <div style="margin-right: 15px;">
-                    <button type="button" class="btn btn-default" style="background-color: #FBA90A"></button>
-                    &nbsp;<span>EF1</span>
-                </div>
-                <div style="margin-right: 15px;">
-                    <button type="button" class="btn btn-default" style="background-color: #FE8176"></button>
-                    &nbsp;<span>Envy</span>
-                </div>
-            </div>
-        </div>
-        <div class="panel-body">
-            <div class="table-responsive">
-                <table class="table" id="envy_matrix" style="border-spacing: 3px; border-collapse: separate;">
+    <div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Envy Graph</h5>
+    </div>
+    <div class="card-body">
+        <p>This graph shows the envy relationship between voters. A cell from voter A (row) to voter B (column) shows how voter A feels about voter B's bundle.</p>
+        
+        <style>
+            .badge-success { color: #fff; background-color: #28a745; }
+        </style>
+        <style>
+            .badge-warning { color: #fff; background-color: #fff700; }
+        </style>
+        <style>
+            .badge-orange { color: #fff; background-color: #fd7e14; }
+        </style>
+        <style>
+            .badge-danger { color: #fff; background-color: #dc3545; }
+        </style>
+
+        <ul class="list-inline">
+            <li class="list-inline-item"><span class="badge badge-success" style="color: black;">No Envy</span>: Voter A prefers their own bundle.</li>
+            <li class="list-inline-item"><span class="badge badge-warning" style="color: black;">EFX</span>: Envy is removed if <em>any</em> item is removed from the other's bundle.</li>
+            <li class="list-inline-item"><span class="badge badge-orange" style="color: black;">EF1</span>: Envy is removed if the <em>best</em> item is removed from the other's bundle.</li>
+            <li class="list-inline-item"><span class="badge badge-danger" style="color: black;">Envy</span>: The envy is not EF1 or EFX.</li>
+        </ul>
+
+        {% if envy_counts %}
+        <p class="mt-3">
+            <strong>Summary:</strong>
+            {{ envy_counts.envy }} envious pairs,
+            {{ envy_counts.ef1 }} EF1 pairs,
+            {{ envy_counts.efx }} EFX pairs, and
+            {{ envy_counts.no_envy }} envy-free pairs.
+        </p>
+        {% endif %}
+        
+                <table class="table table-bordered table-sm" id="envyGraph">
+                <thead class="thead-light">
                     <tr>
-                        <th></th>
-                        {% for candidate in candidates %}
-                        <th style="text-align: center;">
-                            <div>
-                                <img src="{{ profile_pics|index:forloop.counter0 }}"
-                                    style="height: 40px; width: 40px;" />
-                                {{ candidate }}
-                            </div>
+                        <th scope="col" style="width: 150px; vertical-align: middle;">Voter</th>
+                        {% for candidate_name in candidates %}
+                        <th scope="col" class="text-center" style="width: 100px;">
+                            {{ candidate_name }}
                         </th>
                         {% endfor %}
                     </tr>
-                    {% for row in envy_matrix %}
+                </thead>
+                <tbody>
+                    {% for data in envy_graph_data %}
                     <tr>
-                        <td>
-                            <div>
-                                <img src="{{ profile_pics|index:forloop.counter0 }}"
-                                    style="height: 40px; width: 40px;" />
-                                {{ candidates|index:forloop.counter0 }}
-                            </div>
-                        </td>
-                        {% for envy, sum2 in row %}
-                        <td style="text-align: center;">
-                            <div style="height: 100%; width: 100%;" class="table-data">
-                                <input type="hidden" value="{{ envy }}" />
-                                <span class="hover-message">{{ sum2 }}</span>
-                                <span class="hide-sum">{{ sum2 }}</span>
-                            </div>
-                        </td>
+                        <th scope="row" class="text-left align-middle">
+                            <img src="{{ data.profile_pic }}" class="rounded-circle mr-2" width="30" height="30" alt="pic" style="object-fit: cover; display: inline-block; vertical-align: middle;">
+                            <span style="display: inline-block; vertical-align: middle;">{{ data.user_name }}</span>
+                        </th>
+                        {% for cell in data.envy_row %}
+                            {% if forloop.parentloop.counter0 == forloop.counter0 %}
+                                <td class="text-center align-middle" style="background-color: #e9ecef;">-</td>
+                            {% else %}
+                                {% with status=cell.0 own_val=cell.1 other_val=cell.2 %}
+                                    {% if status == "Envy" %}
+                                        <td class="text-center align-middle" style="background-color: #dc3545; color: white;" title="Own bundle value: {{ own_val|floatformat:2 }}. Other's bundle value: {{ other_val|floatformat:2 }}">
+                                            {{ status }}
+                                        </td>
+                                    {% elif status == "EF1" %}
+                                        <td class="text-center align-middle" style="background-color: #fd7e14; color: white;" title="Own bundle value: {{ own_val|floatformat:2 }}. Other's bundle value: {{ other_val|floatformat:2 }}">
+                                            {{ status }}
+                                        </td>
+                                    {% elif status == "EFX" %}
+                                        <td class="text-center align-middle" style="background-color: #ffc107; color: black;" title="Own bundle value: {{ own_val|floatformat:2 }}. Other's bundle value: {{ other_val|floatformat:2 }}">
+                                            {{ status }}
+                                        </td>
+                                    {% else %} {# No Envy #}
+                                        <td class="text-center align-middle" style="background-color: #28a745; color: white;" title="Own bundle value: {{ own_val|floatformat:2 }}. Other's bundle value: {{ other_val|floatformat:2 }}">
+                                            No Envy
+                                        </td>
+                                    {% endif %}
+                                {% endwith %}
+                            {% endif %}
                         {% endfor %}
                     </tr>
                     {% endfor %}
-                </table>
-            </div>
+                </tbody>
+            </table>
         </div>
     </div>
-    {% endif %}
+</div>
+{% endif %}
 
-    {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %}
+
+    {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 or selected_alloc_res_tables_sum|bitwise_and:256 != 0 or selected_alloc_res_tables_sum|bitwise_and:512 != 0 %}
     <div class="panel panel-default" style="margin: 20px;">
         <div class="panel-heading">Welfare Metrics</div>
         <div class="panel-body">
+            {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %}
             <div class="row">
                 <div class="col-md-6">
                     <p>
@@ -277,6 +310,7 @@
         {% endif %}
         </div>
     </div>
+    {% endif %}
 
     {% if fractional_share_data %}
     <div class="panel panel-default" style="margin: 20px;">
@@ -393,20 +427,8 @@
             // const ctx = document.getElementById('fractional-share-chart').getContext('2d');
             // new Chart(ctx, { ... });
         }
-
-        // color envy matrix
-        const envyCells = document.querySelectorAll('#envy_matrix .table-data');
-        envyCells.forEach(cell => {
-            const envyValue = parseInt(cell.querySelector('input').value);
-            if (envyValue === 0) {
-                cell.style.backgroundColor = '#66B032'; // no envy
-            } else if (envyValue === 1) {
-                cell.style.backgroundColor = '#FBA90A'; // ef1
-            } else if (envyValue > 1) {
-                cell.style.backgroundColor = '#FE8176'; // envy
-            }
-        });
     });
+    {% if selected_alloc_res_tables_sum|bitwise_and:512 != 0 and rank_histogram %}
     const ctxRankDist = document.getElementById('rank-distribution-chart').getContext('2d');
     const rankDistributionChart = new Chart(ctxRankDist, {
         type: 'bar',
@@ -438,6 +460,7 @@
             }
         }
     });
+    {% endif %}
 </script>
 {% endif %}
 {% endblock %}
