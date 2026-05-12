@@ -1,0 +1,64 @@
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
+{% block title %}Mock Election – OPRA{% endblock %}
+
+{% block content %}
+<div style="padding: 40px 32px; max-width: 860px;">
+
+  <!-- Hero -->
+  <div class="opra-card" style="padding: 40px; text-align:center; margin-bottom: 24px;">
+    <img src="{% static 'img/oprafullname.png' %}" alt="OPRA" style="max-width: 280px; margin-bottom: 20px;">
+    <h1 style="font-size: 28px; font-weight: 700; color: var(--green); margin: 0 0 8px;">Fair. Efficient. Secure.</h1>
+    <p style="font-size: 16px; color: var(--text-muted); margin: 0 0 24px;">Make Informed Decisions</p>
+    <a href="{% url 'mock_election:regular_polls' %}" class="opra-btn opra-btn-primary">Go to Mock Elections</a>
+  </div>
+
+  <!-- Features grid -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+    <div class="opra-card" style="padding: 24px;">
+      <div style="font-size: 28px; margin-bottom: 10px; color: var(--green);">
+        <i class="fa fa-users"></i>
+      </div>
+      <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 6px;">Customized Polls</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Choose voting algorithms, visibility settings, and anonymous voter access.</p>
+    </div>
+    <div class="opra-card" style="padding: 24px;">
+      <div style="font-size: 28px; margin-bottom: 10px; color: var(--green);">
+        <i class="fa fa-bar-chart"></i>
+      </div>
+      <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 6px;">Analyzed Results</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Powerful voting algorithms compute and analyze results for better decisions.</p>
+    </div>
+    <div class="opra-card" style="padding: 24px;">
+      <div style="font-size: 28px; margin-bottom: 10px; color: var(--green);">
+        <i class="fa fa-eye-slash"></i>
+      </div>
+      <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 6px;">Anonymity</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Optional anonymous voting keeps responses private.</p>
+    </div>
+    <div class="opra-card" style="padding: 24px;">
+      <div style="font-size: 28px; margin-bottom: 10px; color: var(--green);">
+        <i class="fa fa-shield"></i>
+      </div>
+      <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 6px;">Secure</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Safe, stable, and connected. Built for real elections.</p>
+    </div>
+  </div>
+
+  <!-- Contact -->
+  <div class="opra-card" style="padding: 24px;">
+    <h3 style="font-size: 15px; font-weight: 600; margin: 0 0 12px;">Contact Us</h3>
+    <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 6px;">
+      <i class="fa fa-map-marker" style="width:16px;"></i> Binghamton, NY, US
+    </p>
+    <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+      <i class="fa fa-envelope" style="width:16px;"></i> opra@cs.binghamton.edu
+    </p>
+    <p style="font-size: 12px; color: var(--text-muted); margin: 16px 0 0;">
+      Supported by <a href="https://people.cs.rutgers.edu/~lirong.xia/" style="color:var(--green);">Lirong Xia's group</a> at Rutgers University
+      and <a href="https://cs.binghamton.edu/~sikdar/" style="color:var(--green);">Sujoy Sikdar's group</a> at Binghamton University.
+    </p>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% if question.question_owner == request.user and question.creator_pref == 1 %}
+
+  <!-- Progress bar -->
+  <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:18px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+      <span style="font-size:12px; font-weight:600; color:var(--text);">Voting Progress</span>
+      <span style="font-size:12px; color:var(--text-muted);">{{ latest_responses|length }} / {{ question.question_voters.count }} voted</span>
+    </div>
+    <div style="height:6px; background:var(--border); border-radius:3px; overflow:hidden;">
+      <div style="height:100%; width:{{ progressPercentage|floatformat:0 }}%; background:var(--green); border-radius:3px;"></div>
+    </div>
+  </div>
+
+  {% if latest_responses|length > 0 %}
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for response, currentSelection in latest_responses %}
+      <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <div>
+            {% if response.user %}
+              {% if response.user.first_name == "" %}
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+              {% else %}
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.first_name }} {{ response.user.last_name }}</span>
+                <a href="mailto:{{ response.user.email }}" style="font-size:11px; color:var(--green); margin-left:6px;">{{ response.user.email }}</a>
+              {% endif %}
+            {% else %}
+              <span style="font-size:12px; font-weight:600; color:var(--text);">(Anonymous) {{ response.anonymous_voter }}</span>
+            {% endif %}
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+          </div>
+          <a href="{% url 'mock_election:deluservotes' response.id %}" class="opra-btn opra-btn-danger opra-btn-sm" title="Delete vote">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+          </a>
+        </div>
+        {% include 'mock_election/_display_vote.html' %}
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if previous_responses %}
+    <div style="margin-top:12px;">
+      <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';" class="opra-btn opra-btn-ghost opra-btn-sm">Show / Hide More History</button>
+      <div style="display:none; margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        {% for response, currentSelection in previous_responses %}
+        <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+          <div style="margin-bottom:8px;">
+            {% if response.user %}
+              <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+            {% else %}
+              <span style="font-size:12px; font-weight:600; color:var(--text);">(Anonymous) {{ response.anonymous_voter }}</span>
+            {% endif %}
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+          </div>
+          {% include 'mock_election/_display_vote.html' %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  {% else %}
+    <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No one has voted on this poll yet.</div>
+  {% endif %}
+
+{% endif %}
+
+
+{% if question.question_owner == request.user and question.creator_pref == 2 %}
+
+  <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:16px;">
+    <span style="font-size:12px; color:var(--text-muted);">{{ latest_responses|length }} / {{ question.question_voters.count }} have given their preference.</span>
+  </div>
+
+  {% if question.display_pref == 1 and question.display_user_info == 1 %}
+    <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Everyone can see all preferences cast.</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for response, currentSelection in latest_responses %}
+        {% if response.user != request.user %}
+        <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+          <div style="margin-bottom:8px;">
+            {% if response.user %}
+              {% if response.user.first_name == "" %}
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+              {% else %}
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.first_name }} {{ response.user.last_name }}</span>
+                <a href="mailto:{{ response.user.email }}" style="font-size:11px; color:var(--green); margin-left:6px;">{{ response.user.email }}</a>
+              {% endif %}
+            {% else %}
+              <span style="font-size:12px; font-weight:600; color:var(--text);">(Anonymous) {{ response.anonymous_voter }}</span>
+            {% endif %}
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+          </div>
+          {% include 'mock_election/_display_vote.html' %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if question.display_pref == 3 and question.display_user_info == 1 %}
+    <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">The following voters have voted on this poll:</div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      {% for response, currentSelection in latest_responses %}
+      <div style="padding:8px 12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:12px; color:var(--text);">
+        {{ response.user.username }} <span style="color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if question.display_user_info == 2 %}
+    <div style="font-size:12px; color:var(--text-sub);">{{ latest_responses|length }} / {{ question.question_voters.count }} have given their preference.</div>
+  {% endif %}
+
+  {% if question.display_pref == 2 %}
+    {% if latest_responses|length > 0 %}
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for response, currentSelection in latest_responses %}
+          {% if response.user.username == request.user.username %}
+          <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+            <div style="margin-bottom:8px;">
+              {% if response.user.first_name == "" %}
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+              {% else %}
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.first_name }} {{ response.user.last_name }}</span>
+              {% endif %}
+              <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+            </div>
+            {% include 'mock_election/_display_vote.html' %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% if previous_responses %}
+      <div style="margin-top:12px;">
+        <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';" class="opra-btn opra-btn-ghost opra-btn-sm">Show / Hide More History</button>
+        <div style="display:none; margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+          {% for response, currentSelection in previous_responses %}
+            {% if response.user.username == request.user.username %}
+            <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+              <div style="margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+                <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+              </div>
+              {% include 'mock_election/_display_vote.html' %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    {% else %}
+      <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No one has voted on this poll yet.</div>
+    {% endif %}
+  {% endif %}
+
+  {% if question.display_pref == 1 and question.display_user_info == 2 or question.display_pref == 1 and question.display_user_info == 3 %}
+    <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Total users: {{ question.question_voters.count }}. Preferences below (usernames hidden):</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for response, currentSelection in latest_responses %}
+        {% if response.user != request.user %}
+        <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+          <div style="margin-bottom:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--text);">{% if response.user.username == "" %}Anonymous{% else %}Hidden Username{% endif %}</span>
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+          </div>
+          {% include 'mock_election/_display_vote.html' %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% endif %}
+
+
+{% if question.question_owner != request.user %}
+
+  <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+      <span style="font-size:12px; font-weight:600; color:var(--text);">Overall Progress</span>
+      <span style="font-size:12px; color:var(--text-muted);">{{ latest_responses|length }} / {{ question.question_voters.count }}</span>
+    </div>
+    <div style="height:6px; background:var(--border); border-radius:3px; overflow:hidden;">
+      <div style="height:100%; width:{{ progressPercentage|floatformat:0 }}%; background:var(--green); border-radius:3px;"></div>
+    </div>
+  </div>
+
+  {% if user_latest_responses %}
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for response, currentSelection in user_latest_responses %}
+      <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+        <div style="margin-bottom:8px;">
+          <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+          <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+        </div>
+        {% include 'mock_election/_display_vote.html' %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if user_previous_responses %}
+    <div style="margin-top:12px;">
+      <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';" class="opra-btn opra-btn-ghost opra-btn-sm">Show / Hide History</button>
+      <div style="display:none; margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        {% for response, currentSelection in user_previous_responses %}
+        <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+          <div style="margin-bottom:8px;">
+            <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+          </div>
+          {% include 'mock_election/_display_vote.html' %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  {% else %}
+    <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">You haven't voted on this poll yet.</div>
+  {% endif %}
+
+{% endif %}

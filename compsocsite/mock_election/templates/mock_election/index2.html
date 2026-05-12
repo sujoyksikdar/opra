@@ -1,0 +1,21 @@
+{% extends 'mock_election/base_new.html' %}
+{% block title %}Mock Election – OPRA{% endblock %}
+        
+
+{% block content %}
+<meta http-equiv="refresh" content="0; url={% url 'mock_election:regular_polls' %}">
+{% endblock %}
+
+<!--
+<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+  
+  {% include "polls/poll_created_tab.html" %}
+  {% include "polls/poll_participated_tab.html" %}
+  {% include "polls/m_poll_created_tab.html" %}
+  {% include "polls/m_poll_participated_tab.html" %}
+
+    
+</div>
+-->
+
+

@@ -1,0 +1,281 @@
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
+
+{% block title %}Create – Step 3 – OPRA{% endblock %}
+{% block nav_mock %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Restyle _invite_voters_new_ui.html ── */
+
+  /* Remove Bootstrap panel chrome */
+  .voters-shell .panel { border:none; box-shadow:none; background:transparent; margin-bottom:16px; }
+  .voters-shell .panel-heading { display:none; }
+  .voters-shell .panel-body { padding:0; }
+
+  /* Section cards */
+  .voters-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .voters-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 14px 0;
+  }
+
+  /* Tab buttons (Add Registered / Groups / CSV / Codes) */
+  .voters-shell .tab-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-sub);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    margin-right: 6px;
+    margin-bottom: 10px;
+  }
+
+  .voters-shell .tab-btn:hover,
+  .voters-shell .tab-btn.active-tab {
+    background: var(--green-light);
+    color: var(--green);
+    border-color: var(--green);
+  }
+
+  /* Form inputs */
+  .voters-shell .form-control {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .voters-shell .form-control:focus { border-color: var(--green); }
+
+  /* Buttons */
+  .voters-shell .btn-success {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: var(--green); color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-top: 10px;
+  }
+  .voters-shell .btn-success:hover { background: var(--green-mid); }
+
+  .voters-shell .btn-danger {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: 1px solid var(--red); background: transparent; color: var(--red); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.15s; margin-top: 10px; margin-left: 6px;
+  }
+  .voters-shell .btn-danger:hover { background: var(--red); color: #fff; }
+
+  .voters-shell .btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: var(--green); color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-top: 10px;
+  }
+  .voters-shell .btn-primary:hover { background: var(--green-mid); }
+
+  .voters-shell .btn-info {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: #0891b2; color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s;
+  }
+  .voters-shell .btn-info:hover { background: #0e7490; }
+
+  .voters-shell .btn-warning {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: var(--status-paused); color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-left: 6px; margin-top: 10px;
+    text-decoration: none;
+  }
+  .voters-shell .btn-warning:hover { background: #b45309; text-decoration: none; }
+
+  /* User list box */
+  #userListBox {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--bg);
+    margin-top: 8px;
+  }
+
+  .user-item {
+    padding: 5px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .user-item:last-child { border-bottom: none; }
+  .user-item input[type="checkbox"] { accent-color: var(--green); }
+
+  /* Alert info */
+  .voters-shell .alert-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    color: #1d4ed8;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  /* Trix editor */
+  trix-editor {
+    min-height: 140px;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+  }
+  trix-toolbar .trix-button-group--file-tools { display: none; }
+
+  /* hr separator */
+  .voters-shell hr { border-color: var(--border); margin: 16px 0; }
+
+  /* Radio group for recipients */
+  .recipients-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .recipients-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .recipients-group input[type="radio"] { accent-color: var(--green); }
+  .recipients-group label:has(input:checked) {
+    background: var(--green-light);
+    color: var(--green);
+    border-color: var(--green);
+  }
+
+  /* jQuery autocomplete dropdown */
+  .ui-autocomplete {
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+    background: var(--surface) !important;
+    padding: 4px 0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    z-index: 9999 !important;
+  }
+  .ui-autocomplete .ui-menu-item-wrapper {
+    padding: 8px 14px !important;
+    color: var(--text) !important;
+  }
+  .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+    background: var(--green-light) !important;
+    color: var(--green) !important;
+    border: none !important;
+    font-weight: 600 !important;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if question.question_owner == request.user %}
+
+<div class="opra-topbar">
+  <div>
+    <h1>Create New {% if request.session.questionType == 1 %}Poll{% elif request.session.questionType == 2 %}Allocation{% endif %}</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+  <a href="{% url 'mock_election:regular_polls' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
+</div>
+
+<div style="padding:20px 32px 40px; max-width:760px; margin:0 auto;">
+
+  {% include 'mock_election/_wizard_steps.html' with current=3 %}
+
+  <!-- Section titles rendered outside the panel so we control them -->
+  <div class="voters-shell">
+
+    <!-- Add Users card -->
+    <div class="voters-section">
+      <div class="voters-section-title">Add Voters</div>
+      {% include 'mock_election/_invite_voters_new_ui.html' %}
+    </div>
+
+  </div>
+
+  <div style="display:flex; justify-content:space-between; margin-top:4px;">
+    <a href="{% url 'mock_election:AddStep2' question.id %}" class="opra-btn opra-btn-ghost">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      Back
+    </a>
+    <a href="{% url 'mock_election:AddStep4' question.id %}" class="opra-btn opra-btn-primary">
+      Next
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+  </div>
+
+</div>
+{% endif %}
+
+{% block extra_js %}
+<script>
+  // Highlight active tab button
+  function highlightTab(btn) {
+    btn.closest('.voters-shell').querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.remove('active-tab');
+    });
+    btn.classList.add('active-tab');
+  }
+
+  // Wrap the original switchAddTab / switchViewTab to also highlight
+  var _origSwitchAdd = window.switchAddTab;
+  document.querySelectorAll('[onclick^="switchAddTab"]').forEach(function(btn) {
+    btn.addEventListener('click', function() { highlightTab(this); });
+  });
+  document.querySelectorAll('[onclick^="switchViewTab"]').forEach(function(btn) {
+    btn.addEventListener('click', function() { highlightTab(this); });
+  });
+
+  // Mark first tab buttons as active on load
+  var firstAddBtn = document.querySelector('[onclick^="switchAddTab"]');
+  if (firstAddBtn) firstAddBtn.classList.add('active-tab');
+  var firstViewBtn = document.querySelector('[onclick^="switchViewTab"]');
+  if (firstViewBtn) firstViewBtn.classList.add('active-tab');
+</script>
+{% endblock %}
+
+{% endblock %}

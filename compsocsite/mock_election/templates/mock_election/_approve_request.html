@@ -1,0 +1,50 @@
+<!-- Self Sign Up -->
+<div style="border-top:1px solid var(--border); margin-top:20px; padding-top:20px;">
+  <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:14px;">Self Sign Up</div>
+
+  <form method="post" action="{% url 'mock_election:changeselfsignup' question.id %}">
+    {% csrf_token %}
+    <div style="display:flex; gap:8px; margin-bottom:14px;">
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allow_self_sign_up == 1 %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allow_self_sign_up == 1 %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;">
+        <input type="radio" name="selfsignup" value="allow" {% if question.allow_self_sign_up == 1 %}checked{% endif %} style="accent-color:var(--green);">
+        Allow
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allow_self_sign_up == 0 %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allow_self_sign_up == 0 %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;">
+        <input type="radio" name="selfsignup" value="notallow" {% if question.allow_self_sign_up == 0 %}checked{% endif %} style="accent-color:var(--green);">
+        Don't Allow
+      </label>
+    </div>
+    <button type="submit" class="opra-btn opra-btn-primary opra-btn-sm">Save</button>
+  </form>
+
+  {% if question.allow_self_sign_up == 1 %}
+  <div style="margin-top:14px; padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+    <div style="font-size:11px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Self Sign Up Link</div>
+    <div style="font-size:12px; color:var(--text-sub); font-family:monospace; word-break:break-all;">
+      <a href="{{ request.scheme }}://{{ request.get_host }}{% url 'mock_election:selfregister' question.id %}" style="color:var(--green); text-decoration:none;">
+        {{ request.scheme }}://{{ request.get_host }}{% url 'mock_election:selfregister' question.id %}
+      </a>
+    </div>
+  </div>
+
+  {% if request_list %}
+  <div style="margin-top:16px;">
+    <div style="font-size:12px; font-weight:700; color:var(--text); margin-bottom:10px;">Pending Requests</div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      {% for r in request_list %}
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg); border:1px solid var(--border); border-radius:8px;">
+        <div>
+          <span style="font-size:12px; font-weight:600; color:var(--text);">{{ r.user.username }}</span>
+          <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ r.item_name }}</span>
+        </div>
+        <form method="post" action="{% url 'mock_election:approverequest' r.id %}">
+          {% csrf_token %}
+          <button type="submit" class="opra-btn opra-btn-primary opra-btn-sm">Approve</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>

@@ -1,0 +1,44 @@
+{% load mock_election_extra %}
+<form method="post" action="{% url 'mock_election:setVisibilitySettings' question.id %}">
+  {% csrf_token %}
+
+  <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+
+    <div>
+      <label class="pi-label">Preference Visibility</label>
+      <select name="viewpreferences" class="pi-input">
+        <option value="1" {% if question.display_pref == 1 %}selected{% endif %}>Everyone can see all preferences</option>
+        <option value="2" {% if question.display_pref == 2 %}selected{% endif %}>Everyone can only see own preference</option>
+        <option value="3" {% if question.display_pref == 3 %}selected{% endif %}>Nothing</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="pi-label">User Info Visibility</label>
+      <select name="viewuserinfo" class="pi-input">
+        <option value="1" {% if question.display_user_info == 1 %}selected{% endif %}>Show usernames</option>
+        <option value="2" {% if question.display_user_info == 2 %}selected{% endif %}>Show only numbers</option>
+        <option value="3" {% if question.display_user_info == 3 %}selected{% endif %}>Nothing</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="pi-label">Creator Visibility</label>
+      <select name="creatorpreferences" class="pi-input" {% if question.status != 1 %}disabled{% endif %}>
+        <option value="1" {% if question.creator_pref == 1 %}selected{% endif %}>Creator can see everyone's vote</option>
+        <option value="2" {% if question.creator_pref == 2 %}selected{% endif %}>Creator has same visibility as all users</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="pi-label">Make Results Visible After (optional)</label>
+      <input type="datetime-local" name="results_visible_after"
+             value="{{ question.results_visible_after|date:'Y-m-d\\TH:i' }}"
+             class="pi-input">
+      <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Leave empty to not schedule by time.</div>
+    </div>
+
+  </div>
+
+  <button type="submit" class="opra-btn opra-btn-primary">Save</button>
+</form>

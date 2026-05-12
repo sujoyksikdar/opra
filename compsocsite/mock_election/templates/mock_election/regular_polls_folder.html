@@ -1,0 +1,183 @@
+{% extends 'mock_election/base_new.html' %}
+
+{% block title %}Folder – Mock Election – OPRA{% endblock %}
+{% block nav_mock %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  ul.ui-autocomplete { z-index: 1100; }
+  .folder-table { width: 100%; border-collapse: collapse; }
+  .folder-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+  .folder-table td:first-child { color: var(--text); }
+  .folder-table a { color: var(--text); text-decoration: none; }
+  .folder-table a:hover { color: var(--green); }
+  .action-icon { font-size: 16px; color: var(--text-muted); cursor: pointer; padding: 0 6px; }
+  .action-icon:hover { color: var(--green); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="padding: 32px; max-width: 900px;">
+
+  <!-- Back link -->
+  <a href="{% url 'mock_election:regular_polls' %}" style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted); text-decoration:none; margin-bottom:20px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    Back to all folders
+  </a>
+
+  <!-- Poll search -->
+  <div class="opra-card" style="margin-bottom: 20px; padding: 20px 24px;">
+    <label class="pi-label">Search polls</label>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <input id="poll-search" class="pi-input" type="text" placeholder="Type at least 2 characters…" style="flex:1;">
+    </div>
+    <div id="hidden-table" style="display:none; margin-top:12px;">
+      <table class="folder-table">
+        <tbody id="search-results"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Created by you -->
+  <div class="opra-card" style="margin-bottom: 20px;">
+    <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+      <h2 style="font-size:15px; font-weight:600; margin:0;">Regular polls created by you ({{ polls_folder|length }})</h2>
+      <a href="{% url 'mock_election:AddStep1' %}" class="opra-btn opra-btn-primary" style="font-size:12px; padding:5px 14px;">+ New poll</a>
+    </div>
+    <table class="folder-table">
+      <tbody>
+        {% for question in polls_folder %}
+        <tr>
+          <td>
+            <a href="{% url 'mock_election:pollinfo' question.id %}" title="{% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}">
+              {{ question.question_text }}
+            </a>
+          </td>
+          <td style="white-space:nowrap; text-align:right;">
+            {% if question.status == 2 and request.user in question.question_voters.all %}
+              <a href="{% url 'mock_election:detail' question.id %}" class="opra-btn opra-btn-primary" style="font-size:12px; padding:4px 12px; margin-right:6px;">Vote</a>
+            {% endif %}
+            {% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.mockelectionresponse_set.all.count > 0 %}
+              <a href="{% url 'mock_election:voteresults' question.id %}" target="_blank" class="opra-btn" style="font-size:12px; padding:4px 12px; margin-right:6px; border:1.5px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px; text-decoration:none; font-weight:500;">Current Winners</a>
+            {% endif %}
+
+            {% if question.status == 1 %}
+              <i class="fa fa-play action-icon" data-toggle="modal" data-target="#confirm-start{{ question.id }}" title="Start poll"></i>
+            {% elif question.status == 2 %}
+              <a href="{% url 'mock_election:pause' question.id %}" title="Pause"><i class="fa fa-pause action-icon"></i></a>
+              <i class="fa fa-stop action-icon" data-toggle="modal" data-target="#confirm-stop{{ question.id }}" title="Stop poll"></i>
+            {% elif question.status == 3 %}
+              {% if question.question_type == 1 %}
+                <a href="{% url 'mock_election:voteresults' question.id %}" style="font-size:12px; color:var(--green); text-decoration:none;">{{ question.winner }} wins</a>
+              {% elif question.question_type == 2 %}
+                <a href="{% url 'allocation:allocate_results' question.id %}" style="font-size:12px; color:var(--green); text-decoration:none;">Allocation Complete</a>
+              {% endif %}
+            {% else %}
+              <a href="{% url 'mock_election:resume' question.id %}" title="Resume"><i class="fa fa-play action-icon"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+
+        <!-- Start confirm modal -->
+        {% if question.status == 1 %}
+        <div class="modal fade" id="confirm-start{{ question.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header"><h4 class="modal-title">Start {{ question.question_text }}?</h4></div>
+            <div class="modal-body" style="font-size:14px;">Once a poll is started, you cannot modify settings or remove users.</div>
+            <div class="modal-footer">
+              <a href="{% url 'mock_election:start' question.id %}"><button class="opra-btn opra-btn-primary">Yes, start</button></a>
+              <button class="opra-btn" style="border:1.5px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;" data-dismiss="modal">Cancel</button>
+            </div>
+          </div></div>
+        </div>
+        {% endif %}
+
+        <!-- Stop confirm modal -->
+        {% if question.status == 2 %}
+        <div class="modal fade" id="confirm-stop{{ question.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header"><h4 class="modal-title">Stop poll?</h4></div>
+            <div class="modal-body" style="font-size:14px;">Once stopped, no more preferences can be changed.</div>
+            <div class="modal-footer">
+              <a href="{% url 'mock_election:stop' question.id %}"><button class="opra-btn" style="background:#e53e3e; color:#fff; border-radius:8px; border:none; padding:7px 16px; font-weight:600;">Yes, stop</button></a>
+              <button class="opra-btn" style="border:1.5px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;" data-dismiss="modal">Cancel</button>
+            </div>
+          </div></div>
+        </div>
+        {% endif %}
+
+        {% endfor %}
+        {% if not polls_folder %}
+        <tr><td colspan="2" style="text-align:center; color:var(--text-muted); padding:32px;">No polls in this folder.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Participated in -->
+  <div class="opra-card" style="margin-bottom: 20px;">
+    <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
+      <h2 style="font-size:15px; font-weight:600; margin:0;">Participated in ({{ polls_participated|length }})</h2>
+    </div>
+    <table class="folder-table">
+      <tbody>
+        {% for question in polls_participated %}
+        <tr>
+          <td>
+            <a href="{% url 'mock_election:pollinfo' question.id %}" title="{% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}">
+              {{ question.question_text }}
+            </a>
+          </td>
+          <td style="white-space:nowrap; text-align:right;">
+            {% if question.status == 2 %}
+              <a href="{% url 'mock_election:detail' question.id %}" class="opra-btn opra-btn-primary" style="font-size:12px; padding:4px 12px; margin-right:6px;">Vote</a>
+            {% endif %}
+            {% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.mockelectionresponse_set.all.count > 0 %}
+              <a href="{% url 'mock_election:voteresults' question.id %}" target="_blank" class="opra-btn" style="font-size:12px; padding:4px 12px; border:1.5px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px; text-decoration:none; font-weight:500;">Current Winners</a>
+            {% endif %}
+            <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">
+              {% if question.status == 1 %}Not started
+              {% elif question.status == 2 %}In session
+              {% elif question.status == 3 %}
+                {% if question.question_type == 1 %}<a href="{% url 'mock_election:voteresults' question.id %}" style="color:var(--green); text-decoration:none;">{{ question.winner }} wins</a>
+                {% elif question.question_type == 2 %}Allocation complete{% endif %}
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" style="text-align:center; color:var(--text-muted); padding:32px;">No polls participated in this folder.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Delete folder -->
+  <div style="text-align:right;">
+    <a href="{% url 'mock_election:deleteFolder' folder.id %}" class="opra-btn" style="background:#e53e3e; color:#fff; border-radius:8px; border:none; padding:8px 18px; font-size:13px; font-weight:600; text-decoration:none;">Delete Folder</a>
+  </div>
+
+</div>
+
+<script>
+$(function() {
+  $("#poll-search").autocomplete({
+    source: "/mock_election/api/get_polls/",
+    minLength: 2,
+    select: function(event, ui) {
+      $('#hidden-table').css('display', 'block');
+      var item = ui.item;
+      var row = '<td><a href="/mock_election/' + item.id + '/pollinfo/">' + item.value + '</a></td><td style="text-align:right;">';
+      if (item.status == 2 && item.voter) {
+        row += '<a href="/mock_election/' + item.id + '/" class="opra-btn opra-btn-primary" style="font-size:12px;padding:4px 12px;margin-right:6px;">Vote</a>';
+      }
+      if (item.curr_win) {
+        row += '<a href="/mock_election/' + item.id + '/vote/results/" target="_blank" class="opra-btn" style="font-size:12px;padding:4px 12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;text-decoration:none;font-weight:500;">Current Winners</a>';
+      }
+      row += '</td>';
+      $('#search-results').html(row);
+    }
+  });
+});
+</script>
+{% endblock %}

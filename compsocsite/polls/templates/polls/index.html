@@ -1,204 +1,225 @@
-{% extends 'polls/base.html' %}
-{% load static%}
-{% block extra_head %}
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
 
+{% block title %}OPRA – Online Preference Reporting & Aggregation{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block nav_mock %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Hero ─────────────────────────────────────────────────────── */
+  .home-hero {
+    position: relative;
+    background-image: url("{% static 'img/bubg-watson.jpg' %}");
+    background-size: cover;
+    background-position: top center;
+    min-height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 48px;
+  }
+  .home-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.25);
+  }
+  .home-hero-inner {
+    position: relative;
+    z-index: 1;
+    background: rgba(255,255,255,0.75);
+    border-radius: 12px;
+    padding: 40px 48px;
+    max-width: 680px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .home-hero-inner img { max-width: 220px; margin-bottom: 16px; }
+  .home-hero-inner h1 { font-size: 26px; font-weight: 800; color: rgb(0,93,64); margin: 0 0 6px; }
+  .home-hero-inner .tagline { font-size: 16px; color: rgb(191,7,17); font-weight: 700; margin: 0 0 16px; }
+  .home-hero-meta    { font-size: 13px; color: #555; line-height: 1.8; margin: 0 0 20px; }
+  .home-hero-meta a  { text-decoration: none; font-weight: 500; }
+  .home-hero-meta a.rutgers { color: rgb(191,7,17); }
+  .home-hero-meta a.bu      { color: rgb(0,93,64); }
+  .home-hero-cta {
+    display: inline-block;
+    padding: 10px 28px;
+    background: rgb(0,93,64);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .home-hero-cta:hover { opacity: 0.88; }
+
+  /* ── Feature sections ─────────────────────────────────────────── */
+  .home-feature {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .home-feature-img {
+    flex: 0 0 300px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+    min-height: 280px;
+  }
+  .home-feature-img img { max-width: 180px; max-height: 220px; object-fit: contain; border-radius: 8px; }
+  .home-feature-body { flex: 1; padding: 40px 48px; }
+  .home-feature-body h2 { font-size: 22px; font-weight: 700; color: var(--text); margin: 0 0 14px; }
+  .home-feature-body p  { font-size: 14px; color: var(--text-muted); line-height: 1.75; margin: 0; }
+  .home-feature.reverse { flex-direction: row-reverse; }
+  .home-feature.reverse .home-feature-img { background: #f0faf4; }
+
+  /* ── Feature icon cards ───────────────────────────────────────── */
+  .home-icons-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .home-icon-cell {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 16px;
+    text-align: center;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .home-icon-cell:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-color: var(--green); }
+  .home-icon-cell i { font-size: 28px; }
+  .home-icon-cell p { font-size: 12px; color: var(--text-muted); margin: 10px 0 0; font-weight: 600; }
+
+  /* ── Footer bar ───────────────────────────────────────────────── */
+  .home-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 32px;
+    font-size: 13px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .home-footer a { color: var(--green); text-decoration: none; }
+
+  /* ── Responsive ────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .home-hero { padding: 32px 16px; min-height: 320px; }
+    .home-hero-inner { padding: 28px 24px; }
+    .home-hero-inner h1 { font-size: 20px; }
+    .home-feature, .home-feature.reverse { flex-direction: column; }
+    .home-feature-img { flex: none; width: 100%; min-height: 180px; padding: 28px; }
+    .home-feature-body { padding: 28px 24px; }
+    .home-feature-body h2 { font-size: 18px; }
+    .home-icons-grid { grid-template-columns: repeat(2, 1fr); padding: 0 16px 24px; }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<style>
-    p.sameline{
-        display:inline-block;
-    }
-    .panel-default > .panel-heading {
-      color: #fff;
-      background-color: #4c94cc;
-      border-color: transparent;
-        border:0px;
-    }
-    .readable{
-        background-color:rgba(0, 0, 0, 0.5);
-    }
-    body, html {
-    height: 100%;
-    line-height: 1.8;
-    }
+<div style="width: 100%;">
 
-    img {margin-bottom: -8px;}
-    
-</style>
-
-
-<!-- Header -->
-
-<header class="bgimg w3-display-container"  id="home">
-  <!-- <img class="w3-image" src="/static/img/bg.jpg" style="opacity: 0.45;"> -->
-  <div class="w3-display-middle w3-margin-top w3-center">
-    <div class="w3-display-middle" style="white-space:nowrap; background-color:rgba(255, 255, 255, 0.9); padding:16px 16px 16px 16px;">
-      <div>
-        <h4 class="w3-xxlarge bu-text-green"><b>Fair. Efficient. Secure.</b></h4>
-      </div> 
-      <br>
-      <div><img src="/static/img/oprafullname.png" style="width:100%"></div>
-      <br>
-      <div>
-        <h3 class="w3-xxlarge rpi-text-red"><b>Make Informed Decisions</b></h3>
+  <!-- Hero -->
+  <div class="home-hero">
+    <div class="home-hero-inner">
+      <img src="{% static 'img/oprafullname.png' %}" alt="OPRA">
+      <h1>Fair. Efficient. Secure.</h1>
+      <p class="tagline">Make Informed Decisions</p>
+      <div class="home-hero-meta">
+        Supported by
+        <a href="https://people.cs.rutgers.edu/~lirong.xia/" class="rutgers">Lirong Xia's group</a>
+        at Rutgers University and
+        <a href="https://cs.binghamton.edu/~sikdar/" class="bu">Sujoy Sikdar's group</a>
+        at Binghamton University.
       </div>
-      <br>
-      <div><p style="color:black">	Supported by:
-        <br> <a href="https://people.cs.rutgers.edu/~lirong.xia/" style="color: rgb(191,7,17); "> Lirong Xia's group </a> at Rutgers University 
-        <br> and
-        <br> <a href="https://cs.binghamton.edu/~sikdar/" style="color: rgb(0,93,64); "> Sujoy Sikdar's group </a> at Binghamton University
-      </p></div>
-      </span>
+      {% if user.is_authenticated %}
+        <a href="{% url 'polls:regular_polls' %}" class="home-hero-cta">Go to Polls →</a>
+      {% else %}
+        <a href="{% url 'appauth:login' %}" class="home-hero-cta">Login to get started →</a>
+      {% endif %}
     </div>
   </div>
-</header>
 
-<!-- Single Poll Section -->
-<div class="w3-padding-64 w3-light-grey"  style="padding:128px 16px">
-  <div class="w3-row-padding">
-    <div class="w3-col l4 m6">
-      <img class="w3-image w3-round-large" src="{% static 'img/sranking.png' %}" width="335" height="471">
+  <!-- Feature 1: Customized Polls -->
+  <div class="home-feature">
+    <div class="home-feature-img">
+      <img src="{% static 'img/sranking.png' %}" alt="Ranking UI">
     </div>
-    <div class="w3-col l8 m6">
-      <h1 class="w3-xxlarge rpi-text-red"><b>Customized Singular Polls</b></h1>
-      <p class="w3-large"><span class="w3-xlarge">OPRA</span> allows you to customize your poll by choosing question types (Poll or Allocation), voting algorithms and visibility. Also, OPRA allows anonymous voters to join singular polls. You must set a question title (keep it short and concise). You can also add a description if you need to add more information. It will be shown when you hover over the title in the index page.</p>
+    <div class="home-feature-body">
+      <h2>Customized Singular Polls</h2>
+      <p>OPRA lets you tailor every poll to your needs — choose question types (Poll or Allocation), select voting algorithms, and control visibility. Anonymous voting is supported so participants can respond confidentially. Set a concise title and an optional description that voters can refer to throughout the process.</p>
     </div>
   </div>
-</div>
 
-
-
-
-<!-- The Result Section -->
-<div class="w3-padding-64 w3-white"  style="padding:128px 16px">
-  <div class="w3-row-padding">
-    <div class="w3-col l8 m6">
-      <h1 class="w3-xxlarge rpi-text-red"><b>Organized & Analyzed Results</b></h1>
-      <p w3-large><span class="w3-xlarge">OPRA </span> helps you make better decisions. After a poll ends, OPRA will compute and analyze, using powerful voting algorithms, the results for you. </p>
+  <!-- Feature 2: Results -->
+  <div class="home-feature reverse">
+    <div class="home-feature-img">
+      <img src="{% static 'img/analysis.png' %}" alt="Analysis">
     </div>
-      
-    <div class="w3-col l4 m6">
-        <img src="{% static 'img/analysis.png' %}" class="w3-image w3-margin-top" width="335" height="471">
-    
+    <div class="home-feature-body">
+      <h2>Organized & Analyzed Results</h2>
+      <p>After a poll ends, OPRA automatically computes and analyzes results using powerful preference aggregation algorithms. Get clear, structured outcomes that help your group make better, data-driven decisions — no manual tallying required.</p>
     </div>
-      
   </div>
-</div>
 
-
-
-
-<!-- Features Section -->
-<div class="w3-container w3-dark-grey w3-center"  style="padding:128px 16px">
-  <h1><b>Features</b></h1>
-  <p class="w3-center w3-large">More About OPRA</p>
-
-  <div class="w3-row" style="margin-top:64px">
-    <div class="w3-col s3">
-      <i class="fa fa-users w3-text-orange w3-jumbo"></i>
+  <!-- Features icon grid -->
+  <div style="padding: 32px 32px 8px;">
+    <h2 style="font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 4px;">Features</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 20px;">What makes OPRA powerful</p>
+  </div>
+  <div class="home-icons-grid" style="padding: 0 32px 32px;">
+    <div class="home-icon-cell">
+      <i class="fa fa-users" style="color: #e07b39;"></i>
       <p>Group</p>
     </div>
-    <div class="w3-col s3">
-      <i class="fa fa-envelope w3-text-red w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-envelope" style="color: #e05252;"></i>
       <p>Notification</p>
     </div>
-    <div class="w3-col s3">
-      <i class="fa fa-qrcode w3-text-yellow w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-qrcode" style="color: #c9a227;"></i>
       <p>QR Code</p>
     </div>
-    <div class="w3-col s3">
-      <i class="fa fa-eye-slash w3-text-green w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-eye-slash" style="color: var(--green);"></i>
       <p>Anonymity</p>
     </div>
-  </div>
-
-  <div class="w3-row" style="margin-top:64px">
-    <div class="w3-col s3">
-      <i class="fa fa-user w3-text-sand w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-user" style="color: #a0845c;"></i>
       <p>Safe</p>
     </div>
-    <div class="w3-col s3">
-      <i class="fa fa-shield w3-text-blue w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-shield" style="color: #4c94cc;"></i>
       <p>Stable</p>
     </div>
-    <div class="w3-col s3">
-      <i class="fa fa-wifi w3-text-grey w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-wifi" style="color: #888;"></i>
       <p>Connected</p>
     </div>
-    <div class="w3-col s3">
-      <i class="fa fa-bolt w3-text-pink w3-jumbo"></i>
+    <div class="home-icon-cell">
+      <i class="fa fa-bolt" style="color: #d16b8e;"></i>
       <p>Fast</p>
     </div>
   </div>
-</div>
 
-
-    
-
-<!-- Contact Section -->
-<div class="w3-container w3-light-grey" style="padding:128px 16px" id="contact">
-  <h1 class="w3-center"><b>Contact Us</b></h1>
-  <p class="w3-center w3-large">Lets get in touch. Send us a message:</p>
-  <div class="w3-row-padding" style="margin-top:64px">
-    <div class="w3-half">
-      <p><i class="fa fa-map-marker fa-fw w3-xxlarge w3-margin-right rpi-text-red"></i> Binghamton, NY, US</p>
-      <p><i class="fa fa-envelope fa-fw w3-xxlarge w3-margin-right rpi-text-red"> </i> Email: opra@cs.binghamton.edu</p>
-      <br>
-    <!-- <hr style="border:1px solid" class="w3-round rpi-text-red">
-      <form action="/message" method="post">
-		{% csrf_token %}
-        <p><input class="w3-input w3-border" type="text" placeholder="Name" required name="name"></p>
-        <p><input class="w3-input w3-border" type="text" placeholder="Email" required name="email"></p>
-        <p><input class="w3-input w3-border" type="text" placeholder="Message" required name="message"></p>
-        <p>
-          <button class="w3-button w3-black" type="submit">
-            <i class="fa fa-paper-plane"></i> SEND MESSAGE
-          </button>
-        </p>
-      </form> -->
+  <!-- Footer -->
+  <div class="home-footer">
+    <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+      <span><i class="fa fa-map-marker" style="margin-right: 6px; color: var(--green);"></i>Binghamton, NY, US</span>
+      <span><i class="fa fa-envelope" style="margin-right: 6px; color: var(--green);"></i><a href="mailto:opra@cs.binghamton.edu">opra@cs.binghamton.edu</a></span>
     </div>
-    <!-- Add Google Maps -->
-    <!-- <div class="w3-half">
-      <div id="googleMap" style="width:100%;height:510px;"></div>
-    </div> -->
+    <span>&copy; 2017 OPRA</span>
   </div>
+
 </div>
-
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-10 col-lg-offset-1 text-center">
-                    <p class="text-muted">Copyright &copy; 2017</p>
-                </div>
-            </div>
-        </div>
-        <a id="to-top" href="#top" class="btn btn-dark btn-lg"><i class="fa fa-chevron-up fa-fw fa-1x"></i></a>
-    </footer>
-
-
-<!-- Add Google Maps
-<script>
-function myMap()
-{
-  myCenter=new google.maps.LatLng(42.7302, -73.6788);
-  var mapOptions= {
-    center:myCenter,
-    zoom:12, scrollwheel: false, draggable: false,
-    mapTypeId:google.maps.MapTypeId.ROADMAP
-  };
-  var map=new google.maps.Map(document.getElementById("googleMap"),mapOptions);
-
-  var marker = new google.maps.Marker({
-    position: myCenter,
-  });
-  marker.setMap(map);
-}
-
-
-
-</script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBLFl_jwXM6BXWI3Ne5SlI2BXOtHhUGjR0&callback=myMap"></script>
--->
 {% endblock %}

@@ -55,6 +55,7 @@ SECURE_BROWSER_XSS_FILTER = eval(env('SECURE_BROWSER_XSS_FILTER'))
 INSTALLED_APPS = [
     'polls.apps.PollsConfig',
     'allocation.apps.AllocationConfig',
+    'mock_election.apps.MockElectionConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

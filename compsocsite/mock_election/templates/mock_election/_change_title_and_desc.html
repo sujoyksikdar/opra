@@ -1,0 +1,15 @@
+<form action="{% url 'mock_election:editBasicInfo' question.id %}" method="post">
+    {% csrf_token %}
+
+    <fieldset style="margin-bottom:16px; border:none; padding:0;">
+        <label class="pi-label" for="title">Title</label>
+        <input type="text" class="pi-input" name="title" maxlength="50" size="50" value="{{ question.question_text }}" {% if question.status != 1 %} disabled {% endif %} style="max-width:480px;" />
+    </fieldset>
+
+    <fieldset style="margin-bottom:16px; border:none; padding:0;">
+        <label class="pi-label" for="description">Description</label>
+        <textarea class="pi-input" name="desc" maxlength="1000" rows="4" style="max-width:480px; resize:vertical;">{% if question.question_desc %}{{ question.question_desc }}{% endif %}</textarea>
+    </fieldset>
+
+    <button type="submit" class="opra-btn opra-btn-primary">Save Changes</button>
+</form>
