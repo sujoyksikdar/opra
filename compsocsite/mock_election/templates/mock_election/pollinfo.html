@@ -4,6 +4,7 @@
 {% load qr_code %}
 
 {% block title %}{{ question.question_text }} – OPRA{% endblock %}
+{% block nav_mock %}active{% endblock %}
 
 {% block extra_head %}
 <script src='/static/js/qrcodejs/qrcode.js'></script>
@@ -93,14 +94,19 @@
   .pi-content {
     flex: 1;
     overflow-y: auto;
+    min-width: 0;
   }
 
   .pi-pane {
     display: none;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .pi-pane.active {
     display: block;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* Form helpers */

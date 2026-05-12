@@ -4,6 +4,7 @@
 {% load mock_election_extra %}
 
 {% block title %}{{ question.question_text }} – OPRA{% endblock %}
+{% block nav_mock %}active{% endblock %}
 
 {% block extra_head %}
 {% if request.flavour == "mobile" %}

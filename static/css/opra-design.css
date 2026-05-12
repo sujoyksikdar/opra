@@ -419,6 +419,17 @@ body.opra-new ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10
   gap: 8px;
 }
 
+.opra-poll-card-header > div:first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.opra-poll-card-header > .opra-badge,
+.opra-poll-card-header > span {
+  flex-shrink: 0;
+}
+
 .opra-poll-meta {
   display: flex;
   align-items: center;

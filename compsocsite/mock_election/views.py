@@ -107,7 +107,7 @@ class RegularPollsView(views.generic.ListView):
                                     m_poll=False, question_type = 1).order_by('-pub_date'))
         ctx['active_polls'] = list(MockElectionQuestion.objects.filter(question_type = 1).order_by('-pub_date'))
         # get all polls current user participates in and filter out those she is the owner of
-        polls = self.request.user.poll_participated.filter(m_poll=False, question_type = 1)
+        polls = self.request.user.mock_election_participated.filter(m_poll=False, question_type = 1)
         polls = polls.exclude(question_owner=self.request.user).order_by('-pub_date')
         ctx['polls_participated'] = list(polls) # .filter(question_type = 1)
         
@@ -2755,8 +2755,8 @@ def duplicatePoll(request, question_id):
         new_items.append(new_item)
     new_question.mockelectionitem_set.add(*new_items)
     setupEmail(new_question)
-    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    #return HttpResponseRedirect(reverse('mock_election:regular_polls'))
+    messages.success(request, f'Poll duplicated successfully. You are now viewing the duplicate of "{title}".')
+    return HttpResponseRedirect(reverse('mock_election:pollinfo', args=[new_question.id]))
 
 def deleteUserVotes(request, response_id):
     response = get_object_or_404(MockElectionResponse, pk=response_id)
@@ -3126,7 +3126,7 @@ def get_polls(request):
         polls = list(MockElectionQuestion.objects.filter(question_owner=request.user,
                                                     m_poll=False,
                                                     question_text__icontains = q).order_by('-pub_date'))
-        polls += list(request.user.poll_participated.filter(m_poll=False,
+        polls += list(request.user.mock_election_participated.filter(m_poll=False,
             question_text__icontains = q ).exclude(question_owner=request.user).order_by('-pub_date'))
         polls = polls[:20]
         results = []
