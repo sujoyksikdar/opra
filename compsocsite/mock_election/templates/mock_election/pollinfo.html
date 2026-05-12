@@ -167,6 +167,22 @@
     background: var(--surface);
   }
   trix-toolbar .trix-button-group--file-tools { display: none; }
+</style>
+<script>
+function updateTiesStyle() {
+  var enabled = document.querySelector('input[name="allowties"][value="1"]').checked;
+  var el = document.getElementById('ties-enabled-label');
+  var dl = document.getElementById('ties-disabled-label');
+  if (enabled) {
+    el.style.borderColor = 'var(--green)'; el.style.background = 'var(--green-light)';
+    dl.style.borderColor = 'var(--border)'; dl.style.background = 'var(--surface)';
+  } else {
+    dl.style.borderColor = 'var(--green)'; dl.style.background = 'var(--green-light)';
+    el.style.borderColor = 'var(--border)'; el.style.background = 'var(--surface)';
+  }
+}
+</script>
+<style>
 
   /* jQuery autocomplete dropdown styling */
   .ui-autocomplete {
@@ -256,10 +272,6 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
         Access &amp; QR
       </a>
-      <a class="pi-tab-link " href="#" data-pi="emailsetting">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-        Email
-      </a>
       <a class="pi-tab-link " href="#" data-pi="historyinfo">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.5"></path></svg>
         Preferences
@@ -335,6 +347,50 @@
     <div class="pi-pane opra-card " id="pi-choices" style="padding:24px;">
       <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Alternatives</h3>
       {% include 'mock_election/_add_choice.html' %}
+
+      <div style="border-top:1px solid var(--border); margin-top:24px; padding-top:20px;">
+        <form action="{% url 'mock_election:editBasicInfo' question.id %}" method="post" onsubmit="javascript:UICheckboxes();">
+          {% csrf_token %}
+
+          <fieldset style="margin-bottom:16px; border:none; padding:0;">
+            <label class="pi-label">Ties</label>
+            <div style="display:flex; gap:8px; margin-top:4px;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;" id="ties-enabled-label">
+                <input type="radio" name="allowties" value="1" {% if question.allowties %}checked{% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Enabled
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if not question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if not question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;" id="ties-disabled-label">
+                <input type="radio" name="allowties" value="2" {% if not question.allowties %}checked{% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Disabled
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset style="margin-bottom:20px; border:none; padding:0;">
+            <label class="pi-label">Allowed Interfaces</label>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+              {% if question.question_type == 1 %}
+              <label class="pi-ui-chip"><input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %}checked{% endif %}>Two Column</label>
+              <label class="pi-ui-chip"><input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %}checked{% endif %}>One Column</label>
+              <label class="pi-ui-chip"><input id="slider_checkbox" type="checkbox" value="slider" name="ui" {% if question.slider_enabled %}checked{% endif %}>Slider</label>
+              <label class="pi-ui-chip"><input id="star_checkbox" type="checkbox" value="star" name="ui" {% if question.star_enabled %}checked{% endif %}>Star Rating</label>
+              <label class="pi-ui-chip"><input id="yesno_checkbox" type="checkbox" value="yesno" name="ui" {% if question.yesno_enabled %}checked{% endif %}>Yes/No</label>
+              <label class="pi-ui-chip"><input id="yesno2_checkbox" type="checkbox" value="yesno2" name="ui" {% if question.yesno2_enabled %}checked{% endif %}>Yes/No Grid</label>
+              {% elif question.question_type == 2 %}
+              <label class="pi-ui-chip"><input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %}checked{% endif %}>Two Column</label>
+              <label class="pi-ui-chip"><input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %}checked{% endif %}>One Column</label>
+              <label class="pi-ui-chip"><input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui" {% if question.budgetUI_enabled %}checked{% endif %}>Budget UI</label>
+              <label class="pi-ui-chip"><input id="listUI_checkbox" type="checkbox" value="LUI" name="ui" {% if question.ListUI_enabled %}checked{% endif %}>List UI</label>
+              <label class="pi-ui-chip"><input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui" {% if question.infiniteBudgetUI_enabled %}checked{% endif %}>Infinite Budget UI</label>
+              {% endif %}
+            </div>
+          </fieldset>
+
+          <!-- Pass title/desc hidden so editBasicInfo doesn't overwrite them -->
+          <input type="hidden" name="title" value="{{ question.question_text }}">
+          <input type="hidden" name="desc" value="{{ question.question_desc|default:'' }}">
+
+          <button type="submit" class="opra-btn opra-btn-primary">Save</button>
+        </form>
+      </div>
     </div>
 
     <!-- Algorithms -->
@@ -394,65 +450,6 @@
       {% include 'mock_election/_approve_request.html' %}
     </div>
 
-    <!-- Email -->
-    <div class="pi-pane opra-card " id="pi-emailsetting" style="padding:24px;">
-      <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Email Settings</h3>
-
-      <form action="{% url 'mock_election:emailSettings' question.id %}" method="post" style="margin-bottom:24px;">
-        {% csrf_token %}
-        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-          <!-- Start email toggle -->
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
-            <div>
-              <div style="font-size:13px; font-weight:600; color:var(--text);">Send email when poll starts</div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when the poll goes live</div>
-            </div>
-            <input type="checkbox" name="emailStart" value="email" {% if question.emailStart %}checked{% endif %} onchange="this.form.submit()" style="width:18px; height:18px; accent-color:var(--green);">
-          </div>
-          <!-- Stop email toggle -->
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
-            <div>
-              <div style="font-size:13px; font-weight:600; color:var(--text);">Send email when poll stops</div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when results are available</div>
-            </div>
-            <input type="checkbox" name="emailStop" value="email" {% if question.emailStop %}checked{% endif %} onchange="this.form.submit()" style="width:18px; height:18px; accent-color:var(--green);">
-          </div>
-        </div>
-
-        <!-- Editable email bodies -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-          <div>
-            <label class="pi-label" for="startSubject">Start Email Subject</label>
-            <input type="text" class="pi-input" id="startSubject" name="startSubject" value="{{ emailStart.subject }}" maxlength="100" style="margin-bottom:8px;">
-            <label class="pi-label" for="startMessage">Start Email Body</label>
-            <textarea class="pi-input" id="startMessage" name="startMessage" rows="5">{{ emailStart.message }}</textarea>
-          </div>
-          <div>
-            <label class="pi-label" for="stopSubject">Stop Email Subject</label>
-            <input type="text" class="pi-input" id="stopSubject" name="stopSubject" value="{{ emailStop.subject }}" maxlength="100" style="margin-bottom:8px;">
-            <label class="pi-label" for="stopMessage">Stop Email Body</label>
-            <textarea class="pi-input" id="stopMessage" name="stopMessage" rows="5">{{ emailStop.message }}</textarea>
-          </div>
-        </div>
-        <button type="submit" class="opra-btn opra-btn-primary">Save Email Settings</button>
-      </form>
-
-      <!-- Send now -->
-      <div style="border-top:1px solid var(--border); padding-top:20px;">
-        <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:12px;">Send Email Now</div>
-        <form action="{% url 'mock_election:emailNow' question.id %}" method="post">
-          {% csrf_token %}
-          <label class="pi-label" for="subject">Subject</label>
-          <input type="text" class="pi-input" id="subject" name="subject" maxlength="100" style="margin-bottom:10px;">
-          <label class="pi-label" for="message">Message</label>
-          <textarea class="pi-input" id="message" name="message" rows="5" style="margin-bottom:10px;"></textarea>
-          <button type="submit" class="opra-btn opra-btn-outline">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            Send Now
-          </button>
-        </form>
-      </div>
-    </div>
     {% endif %}
 
     <!-- Preferences (history) -->
@@ -550,7 +547,7 @@
     '1':  'voters',
     '2':  'algorithm',
     '4':  'visibility',
-    '5':  'emailsetting',
+    '5':  'voters',
     '6':  'historyinfo',
     '7':  'danger',
     '8':  'title',

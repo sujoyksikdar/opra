@@ -43,71 +43,35 @@ def setupEmail(question):
     title = question.question_text
     creator = question.question_owner.username
 
-    # Setup/Update the MockElectionEmail subject and body for inviting users
-    emailInvite = MockElectionEmail.objects.filter(question=question, type=1)
-    if not emailInvite.exists():
-        emailInvite = MockElectionEmail(question=question, type=1,
-            subject="",
-            message="<p>Hello [user_name],</p>"
-                    f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
-                    "<p>Sincerely,<br>OPRA Staff</p>")
-        emailInvite.save()
-    else:
-        emailInvite.update(subject="You have been invited to vote on " + title,
-            message="<p>Hello [user_name],</p>"
-                    f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
-                    "<p>Sincerely,<br>OPRA Staff</p>")
-        
-    # Setup/Update the MockElectionEmail subject and body for removing users
-    emailRemove = MockElectionEmail.objects.filter(question=question, type=2)
-    if not emailRemove.exists():
-        emailRemove = MockElectionEmail(question=question, type=2,
-            subject="You have been removed from " + title,
-            message='Hello [user_name],\n\n' + creator
-                    + ' has deleted you from a poll.\n\nSincerely,\nOPRAH Staff')
-        emailRemove.save()
-    else:
-        emailRemove.update(subject="You have been removed from " + title,
-            message='Hello [user_name],\n\n' + creator
-                    + ' has deleted you from a poll.\n\nSincerely,\nOPRAH Staff')
-    
-    # Setup/Update the MockElectionEmail subject and body while starting an instance
-    emailStart = MockElectionEmail.objects.filter(question=question, type=3)
-    if not emailStart.exists():
-        emailStart = MockElectionEmail(question=question, type=3,
-            subject=title + ' has started!',
-            message='Hello [user_name],\n\n' + creator
-                    + ' has started a poll. It is now available to vote on at [url] \n\nSincerely,\nOPRA Staff')
-        emailStart.save()
-    else:
-        emailStart.update(subject=title + ' has started!',
-            message='Hello [user_name],\n\n' + creator
-                    + ' has started a poll. It is now available to vote on at [url] \n\nSincerely,\nOPRA Staff')
-    
-    # Setup/Update the MockElectionEmail subject and body while stopping an instance
-    emailStop = MockElectionEmail.objects.filter(question=question, type=4)
-    if not emailStop.exists():
-        emailStop = MockElectionEmail(question=question, type=4,
-            subject=title + ' has stopped',
-            message='Hello [user_name],\n\n' + creator
-                    + ' has ended a poll. Please visit [url] to view the decision.\n\nSincerely,\nOPRA Staff')
-        emailStop.save()
-    else:
-        emailStop.update(subject=title + ' has stopped',
-            message='Hello [user_name],\n\n' + creator
-                    + ' has ended a poll. Please visit [url] to view the decision.\n\nSincerely,\nOPRA Staff')
-        
-    # Setup/Update the MockElectionEmail subject and body inviting users by giving CSV email-IDs
-    emailInviteCSV = MockElectionEmail.objects.filter(question=question, type=5)
-    if not emailInviteCSV.exists():
-        emailInviteCSV = MockElectionEmail(question=question, type=5,
+    # Create email templates only if they don't already exist (never overwrite user edits)
+    if not MockElectionEmail.objects.filter(question=question, type=1).exists():
+        MockElectionEmail.objects.create(question=question, type=1,
             subject="You have been invited to vote on " + title,
             message="<p>Hello [user_name],</p>"
                     f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
                     "<p>Sincerely,<br>OPRA Staff</p>")
-        emailInviteCSV.save()
-    else:
-        emailInviteCSV.update(subject="You have been invited to vote on " + title,
+
+    if not MockElectionEmail.objects.filter(question=question, type=2).exists():
+        MockElectionEmail.objects.create(question=question, type=2,
+            subject="You have been removed from " + title,
+            message='Hello [user_name],\n\n' + creator
+                    + ' has deleted you from a poll.\n\nSincerely,\nOPRA Staff')
+
+    if not MockElectionEmail.objects.filter(question=question, type=3).exists():
+        MockElectionEmail.objects.create(question=question, type=3,
+            subject=title + ' has started!',
+            message='Hello [user_name],\n\n' + creator
+                    + ' has started a poll. It is now available to vote on at [url]\n\nSincerely,\nOPRA Staff')
+
+    if not MockElectionEmail.objects.filter(question=question, type=4).exists():
+        MockElectionEmail.objects.create(question=question, type=4,
+            subject=title + ' has stopped',
+            message='Hello [user_name],\n\n' + creator
+                    + ' has ended a poll. Please visit [url] to view the decision.\n\nSincerely,\nOPRA Staff')
+
+    if not MockElectionEmail.objects.filter(question=question, type=5).exists():
+        MockElectionEmail.objects.create(question=question, type=5,
+            subject="You have been invited to vote on " + title,
             message="<p>Hello [user_name],</p>"
                     f"<p>{creator} has invited you to vote on a poll. Please login at [url] to check it out.</p>"
                     "<p>Sincerely,<br>OPRA Staff</p>")

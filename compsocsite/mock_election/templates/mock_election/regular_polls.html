@@ -144,10 +144,10 @@
           {% endif %}
         </div>
         <a href="{% url 'mock_election:pollinfo' question.id %}" class="opra-poll-title" style="display:block; color: var(--text);">
-          {{ question.question_text }}
+          {{ question.display_title }}
         </a>
         <div class="opra-poll-desc">
-          {% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}
+          {{ question.display_desc|default:"No description" }}
         </div>
       </div>
 
@@ -321,10 +321,10 @@
           {% endif %}
         </div>
         <a href="{% url 'mock_election:pollinfo' question.id %}" class="opra-poll-title" style="display:block; color: var(--text);">
-          {{ question.question_text }}
+          {{ question.display_title }}
         </a>
         <div class="opra-poll-desc">
-          {% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}
+          {{ question.display_desc|default:"No description" }}
         </div>
       </div>
 

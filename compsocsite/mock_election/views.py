@@ -124,6 +124,14 @@ class RegularPollsView(views.generic.ListView):
         ctx['draft_count']  = sum(1 for q in created if q.status == 1)
         ctx['ended_count']  = sum(1 for q in created if q.status == 3)
 
+        # pre-truncate for card display
+        def truncate(text, length):
+            return text if len(text) <= length else text[:length - 1] + '…'
+
+        for q in ctx['polls_created'] + ctx['polls_participated']:
+            q.display_title = truncate(q.question_text, 30)
+            q.display_desc  = truncate(q.question_desc, 40) if q.question_desc else ''
+
         self.request.session['questionType'] = 1
         return ctx
 

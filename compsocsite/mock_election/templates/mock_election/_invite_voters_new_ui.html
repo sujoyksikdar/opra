@@ -451,15 +451,17 @@
   <div class="vm-card-header">
     <div class="vm-card-title">View Users</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      {% with unreg_count=unRegisteredUsers|length %}
       <button class="vm-viewtab vm-subtab-active" onclick="switchViewTab('viewAll', this)">
-        All ({{ question.question_voters.count|add:unRegisteredUsers|length }})
+        All ({{ question.question_voters.count|add:unreg_count }})
       </button>
       <button class="vm-viewtab" onclick="switchViewTab('viewRegistered', this)">
         Registered ({{ question.question_voters.count }})
       </button>
       <button class="vm-viewtab" onclick="switchViewTab('viewUnregistered', this)">
-        Unregistered ({{ unRegisteredUsers|length }})
+        Unregistered ({{ unreg_count }})
       </button>
+      {% endwith %}
     </div>
   </div>
   <div class="vm-card-body">
@@ -514,7 +516,7 @@
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               Export CSV
             </a>
-            <button type="submit" class="vm-btn vm-btn-danger">
+            <button type="submit" class="vm-btn vm-btn-danger" {% if question.status == 2 %}disabled title="Cannot remove voters while poll is running"{% endif %} style="{% if question.status == 2 %}opacity:0.45; cursor:not-allowed;{% endif %}">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
               Remove Selected
             </button>
@@ -561,7 +563,63 @@
   </div>
 </div>
 
-<!-- ══ 3. SEND EMAIL ══════════════════════════════════════════════════════ -->
+<!-- ══ 3. EMAIL SETTINGS ══════════════════════════════════════════════════════ -->
+<div class="vm-card">
+  <div class="vm-card-header">
+    <div class="vm-card-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+      Email Settings
+    </div>
+  </div>
+  <div class="vm-card-body">
+    <form action="{% url 'mock_election:emailSettings' question.id %}" method="post">
+      {% csrf_token %}
+
+      <!-- Start email -->
+      <div style="padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:12px; font-weight:600; color:var(--text);">Send email when poll starts</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when the poll goes live</div>
+          </div>
+          <input type="checkbox" id="emailStartToggle" name="emailStart" value="email" {% if question.emailStart %}checked{% endif %} onchange="toggleEmailFields('startFields', this.checked)" style="width:16px; height:16px; accent-color:var(--green);">
+        </div>
+        <div id="startFields" style="margin-top:12px; {% if not question.emailStart %}display:none;{% endif %}">
+          <label class="vm-label" for="startSubject">Subject</label>
+          <input type="text" class="vm-input" id="startSubject" name="startSubject" value="{{ emailStart.subject }}" maxlength="100" style="margin-bottom:8px;">
+          <label class="vm-label" for="startMessage">Message</label>
+          <textarea class="vm-textarea" id="startMessage" name="startMessage" rows="4">{{ emailStart.message }}</textarea>
+        </div>
+      </div>
+
+      <!-- Stop email -->
+      <div style="padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:12px; font-weight:600; color:var(--text);">Send email when poll stops</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when results are available</div>
+          </div>
+          <input type="checkbox" id="emailStopToggle" name="emailStop" value="email" {% if question.emailStop %}checked{% endif %} onchange="toggleEmailFields('stopFields', this.checked)" style="width:16px; height:16px; accent-color:var(--green);">
+        </div>
+        <div id="stopFields" style="margin-top:12px; {% if not question.emailStop %}display:none;{% endif %}">
+          <label class="vm-label" for="stopSubject">Subject</label>
+          <input type="text" class="vm-input" id="stopSubject" name="stopSubject" value="{{ emailStop.subject }}" maxlength="100" style="margin-bottom:8px;">
+          <label class="vm-label" for="stopMessage">Message</label>
+          <textarea class="vm-textarea" id="stopMessage" name="stopMessage" rows="4">{{ emailStop.message }}</textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="vm-btn vm-btn-primary">Save Email Settings</button>
+    </form>
+  </div>
+</div>
+<script>
+function toggleEmailFields(id, show) {
+  document.getElementById(id).style.display = show ? 'block' : 'none';
+}
+</script>
+
+<!-- ══ 4. SEND EMAIL ══════════════════════════════════════════════════════ -->
 <div class="vm-card">
   <div class="vm-card-header">
     <div class="vm-card-title">
@@ -583,10 +641,10 @@
         placeholder="Emails separated by commas" rows="2" style="display:none; margin-bottom:10px;"></textarea>
 
       <label class="vm-label">Subject</label>
-      <input type="text" name="mailSubject" id="mailSubject" class="vm-input" placeholder="Email subject…" required value="{{ emailInviteCSV.subject }}" style="margin-bottom:10px;">
+      <input type="text" name="mailSubject" id="mailSubject" class="vm-input" placeholder="Email subject…" required value="" style="margin-bottom:10px;">
 
       <label class="vm-label">Message</label>
-      <input class="vm-input" type="hidden" id="mailBody" name="mailBody" value="{{ emailInviteCSV.message|safe }}">
+      <input class="vm-input" type="hidden" id="mailBody" name="mailBody" value="">
       <trix-editor input="mailBody"></trix-editor>
 
       <div style="display:flex; gap:8px; margin-top:12px;">

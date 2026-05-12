@@ -1,4 +1,4 @@
-<form action="{% url 'mock_election:editBasicInfo' question.id %}" method="post" onsubmit="javascript:UICheckboxes();">
+<form action="{% url 'mock_election:editBasicInfo' question.id %}" method="post">
     {% csrf_token %}
 
     <fieldset style="margin-bottom:16px; border:none; padding:0;">
@@ -8,59 +8,8 @@
 
     <fieldset style="margin-bottom:16px; border:none; padding:0;">
         <label class="pi-label" for="description">Description</label>
-        <textarea class="pi-input" name="desc" maxlength="1000" rows="4" style="max-width:480px; resize:vertical;">{% if question.question_desc %}{{ question.question_desc }}{% else %}{% endif %}</textarea>
-    </fieldset>
-
-    <fieldset style="margin-bottom:16px; border:none; padding:0;">
-        <label class="pi-label">Ties</label>
-        <div style="display:flex; gap:8px; margin-top:4px;">
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;" id="ties-enabled-label">
-                <input type="radio" name="allowties" value="1" {% if question.allowties %} checked {% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Enabled
-            </label>
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if not question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if not question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;" id="ties-disabled-label">
-                <input type="radio" name="allowties" value="2" {% if not question.allowties %} checked {% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Disabled
-            </label>
-        </div>
-    </fieldset>
-
-    <fieldset style="margin-bottom:20px; border:none; padding:0;">
-        <label class="pi-label">Allowed Interfaces</label>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
-            {% if question.question_type == 1 %}
-            <label class="pi-ui-chip"><input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %} checked {% endif %}>Two Column</label>
-            <label class="pi-ui-chip"><input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %} checked {% endif %}>One Column</label>
-            <label class="pi-ui-chip"><input id="slider_checkbox" type="checkbox" value="slider" name="ui" {% if question.slider_enabled %} checked {% endif %}>Slider</label>
-            <label class="pi-ui-chip"><input id="star_checkbox" type="checkbox" value="star" name="ui" {% if question.star_enabled %} checked {% endif %}>Star Rating</label>
-            <label class="pi-ui-chip"><input id="yesno_checkbox" type="checkbox" value="yesno" name="ui" {% if question.yesno_enabled %} checked {% endif %}>Yes/No</label>
-            <label class="pi-ui-chip"><input id="yesno2_checkbox" type="checkbox" value="yesno2" name="ui" {% if question.yesno2_enabled %} checked {% endif %}>Yes/No Grid</label>
-            {% elif question.question_type == 2 %}
-            <label class="pi-ui-chip"><input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %} checked {% endif %}>Two Column</label>
-            <label class="pi-ui-chip"><input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %} checked {% endif %}>One Column</label>
-            <label class="pi-ui-chip"><input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui" {% if question.budgetUI_enabled %} checked {% endif %}>Budget UI</label>
-            <label class="pi-ui-chip"><input id="listUI_checkbox" type="checkbox" value="LUI" name="ui" {% if question.ListUI_enabled %} checked {% endif %}>List UI</label>
-            <label class="pi-ui-chip"><input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui" {% if question.infiniteBudgetUI_enabled %} checked {% endif %}>Infinite Budget UI</label>
-            {% endif %}
-        </div>
+        <textarea class="pi-input" name="desc" maxlength="1000" rows="4" style="max-width:480px; resize:vertical;">{% if question.question_desc %}{{ question.question_desc }}{% endif %}</textarea>
     </fieldset>
 
     <button type="submit" class="opra-btn opra-btn-primary">Save Changes</button>
 </form>
-
-<script>
-function updateTiesStyle() {
-  var enabled = document.querySelector('input[name="allowties"][value="1"]').checked;
-  var enabledLabel = document.getElementById('ties-enabled-label');
-  var disabledLabel = document.getElementById('ties-disabled-label');
-  if (enabled) {
-    enabledLabel.style.borderColor = 'var(--green)';
-    enabledLabel.style.background = 'var(--green-light)';
-    disabledLabel.style.borderColor = 'var(--border)';
-    disabledLabel.style.background = 'var(--surface)';
-  } else {
-    disabledLabel.style.borderColor = 'var(--green)';
-    disabledLabel.style.background = 'var(--green-light)';
-    enabledLabel.style.borderColor = 'var(--border)';
-    enabledLabel.style.background = 'var(--surface)';
-  }
-}
-</script>
