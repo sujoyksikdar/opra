@@ -37,6 +37,9 @@
                     <label class="checkbox-inline"><input id="vis8"  type="checkbox" value="8"  name="alloc_algorithms"> MarketEq (EQ1)</label>
                     <label class="checkbox-inline"><input id="vis16" type="checkbox" value="16" name="alloc_algorithms"> Leximin</label>
                     <label class="checkbox-inline"><input id="vis32" type="checkbox" value="32" name="alloc_algorithms"> MNW Binary</label>
+
+                    <!-- Market EQ1 PO => bit=64 -->
+                    <label class="checkbox-inline"><input id="vis64" type="checkbox" value="64" name="alloc_algorithms"> Market EQ1 PO</label>
                 </div>
             </div>
         </div>
@@ -142,13 +145,17 @@
             lockSelectedAlgorithm();
         });
         function lockSelectedAlgorithm() {
-            $("#visible").find('input[type=checkbox]').each(function() {
-                $(this).prop("disabled", false).prop("checked", false);
-            });
+            // 1) Re-enable all boxes
+            $('input[name="vr"], input[name="alloc_algorithms"]').prop("disabled", false);
+
+            // 2) If there's a valid selection in the dropdown, compute the bit
             var selectedVal = parseInt($('#pollpreferences option:selected').val());
             if (!isNaN(selectedVal)) {
                 var changed = Math.pow(2, selectedVal - 1);
-                $('#vis' + changed).prop("checked", true).prop("disabled", true);
+                // check & disable that box
+                $('input[name="vr"][value="' + changed + '"], input[name="alloc_algorithms"][value="' + changed + '"]')
+                    .prop("checked", true)
+                    .prop("disabled", true);
             }
         }
         </script>

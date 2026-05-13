@@ -30,6 +30,7 @@ from prefpy.mechanism import (
     MechanismLeximinAllocation,
     MechanismMaximumNashWelfareBinary,
 )
+from prefpy.allocation_mechanism import MechanismMarketEQ1PO
 from prefpy.allocation_properties import is_po
 
 from groups.models import Folder, Group
@@ -1035,6 +1036,37 @@ class AllocateResultsView(views.generic.DetailView):
             )
             ctx['envy_matrix'] = envy_matrix
 
+            # Build envy_graph_data and envy_counts for the new template format
+            counts = {"no_envy": 0, "efx": 0, "ef1": 0, "envy": 0}
+            envy_graph_data = []
+            for i, row in enumerate(envy_matrix):
+                uid = user_data["sorted_user_ids"][i]
+                converted_row = []
+                for j, cell in enumerate(row):
+                    if i == j:
+                        converted_row.append(("self", 0, 0))
+                        continue
+                    val, sum2 = cell if isinstance(cell, tuple) and len(cell) == 2 else (cell, 0)
+                    own_val = sum(v for _, v in allocated_items_with_values[i]) if i < len(allocated_items_with_values) else 0
+                    other_val = sum2
+                    if val == "EF1":
+                        status = "EF1"
+                        counts["ef1"] += 1
+                    elif isinstance(val, (int, float)) and val >= 0:
+                        status = "No Envy"
+                        counts["no_envy"] += 1
+                    else:
+                        status = "Envy"
+                        counts["envy"] += 1
+                    converted_row.append((status, own_val, other_val))
+                envy_graph_data.append({
+                    "user_name": user_data["user_names"].get(uid, str(uid)),
+                    "profile_pic": user_data["profile_pics"][i] if i < len(user_data["profile_pics"]) else "",
+                    "envy_row": converted_row,
+                })
+            ctx["envy_graph_data"] = envy_graph_data
+            ctx["envy_counts"] = counts
+
             items_obj = allocation_result.get("items_obj", [])
             sorted_user_ids = user_data["sorted_user_ids"]
             item_texts = [item.item_text for item in items_obj]
@@ -1096,6 +1128,7 @@ class AllocateResultsView(views.generic.DetailView):
             (8, "MarketEq (EQ1)", MechanismMarketEqAllocation),
             (16, "Leximin", MechanismLeximinAllocation),
             (32, "MNW Binary", MechanismMaximumNashWelfareBinary),
+            (64, "Market EQ1 PO", MechanismMarketEQ1PO),
         ]
 
         available_mechanisms = [
@@ -1140,7 +1173,7 @@ class AllocateResultsView(views.generic.DetailView):
         for resp in response_set:
             uid = resp.user_id
             if uid not in user_names:
-                user_names[uid] = resp.user.first_name
+                user_names[uid] = resp.user.first_name or resp.user.username
                 pic_path = resp.user.userprofile.profile_pic.name
                 user_pics[uid] = f"/{pic_path}" if pic_path else ""
             submitted_rankings[uid] = json.loads(resp.behavior_data)["submitted_ranking"]

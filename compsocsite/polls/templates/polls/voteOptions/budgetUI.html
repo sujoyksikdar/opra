@@ -129,12 +129,15 @@
             // Check if the sum is less than or equal to 100
             if (sum <= BUDGET) {
                 // Allow the current slider to be moved
-                var id = currentSlider.id.toString(); 
-                document.getElementById("sliderValue".concat(id[id.length-1])).innerHTML = currentSlider.value;
+                var num = currentSlider.id.replace("slideBUI", "");
+                document.getElementById("sliderValue" + num).innerHTML = currentSlider.value;
                 setSliderTotal(sliders);
             } else {
                 // Prevent the current slider from being moved if the sum is more than 100
                 currentSlider.value = parseInt(currentSlider.value) - (sum - BUDGET);
+                var num = currentSlider.id.replace("slideBUI", "");
+                document.getElementById("sliderValue" + num).innerHTML = currentSlider.value;
+                setSliderTotal(sliders);
             }
         }
     });
@@ -155,8 +158,13 @@
             return false;
         } else {
             event.preventDefault();
+            // Ensure submitPref takes the budget-UI branch. detail.html
+            // resets `method` to 1 after init, which would otherwise
+            // cause submitPref to read the (empty) twoCol list and
+            // submit blank rankings.
+            method = 7;
             VoteUtil.submitPref();
-            document.getElementById("budget").submit();    
+            document.getElementById("budget").submit();
             return false;
         }
     }
@@ -200,7 +208,11 @@
             {% endif %}
         {% endif %}
         //sliderSort(original_order);
-        sliderBUIZeroSort(original_order);
-        order1 = JSON.stringify(dictSlideStar('slide_BUI'));
+        if (typeof sliderBUIZeroSort === "function") {
+            sliderBUIZeroSort();
+        }
+        if (typeof dictSlideStar === "function") {
+            order1 = JSON.stringify(dictSlideStar('slide_BUI'));
+        }
     });
 </script>

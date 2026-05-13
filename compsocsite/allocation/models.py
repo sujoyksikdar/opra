@@ -221,7 +221,8 @@ class AllocationCache(models.Model):
 
     @staticmethod
     def generate_key(context_data):
-        data_str = json.dumps(context_data, sort_keys=True)
+        serializable_data = AllocationCache._make_serializable(context_data)
+        data_str = json.dumps(serializable_data, sort_keys=True)
         return hashlib.sha256(data_str.encode()).hexdigest()
 
     @staticmethod

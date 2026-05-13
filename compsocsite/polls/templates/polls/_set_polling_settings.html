@@ -65,38 +65,44 @@
         <div id="visible">
             <!-- round robin => bit=1, always checked & disabled -->
             <label class="checkbox-inline">
-                <input id="round_robin_alloc" type="checkbox" value="1" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:1 != 0 %} checked {% endif %} disabled>
+                <input id="round_robin_alloc" type="checkbox" value="1" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:1 != 0 %} checked {% endif %} {% if question.poll_algorithm == 1 %} disabled {% endif %}>
                 round robin
             </label>
 
             <!-- max nash welfare => bit=2 -->
             <label class="checkbox-inline">
-                <input id="mnw_alloc" type="checkbox" value="2" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:2 != 0 %} checked {% endif %}>
+                <input id="mnw_alloc" type="checkbox" value="2" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:2 != 0 %} checked {% endif %} {% if question.poll_algorithm == 2 %} disabled {% endif %}>
                 max nash welfare
             </label>
 
             <!-- market => bit=4 -->
             <label class="checkbox-inline">
-                <input id="market_alloc" type="checkbox" value="4" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:4 != 0 %} checked {% endif %}>
+                <input id="market_alloc" type="checkbox" value="4" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:4 != 0 %} checked {% endif %} {% if question.poll_algorithm == 3 %} disabled {% endif %}>
                 market (ef1)
             </label>
 
             <!-- marketeq => bit=8 -->
             <label class="checkbox-inline">
-                <input id="market_eq_alloc" type="checkbox" value="8" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:8 != 0 %} checked {% endif %}>
+                <input id="market_eq_alloc" type="checkbox" value="8" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:8 != 0 %} checked {% endif %} {% if question.poll_algorithm == 4 %} disabled {% endif %}>
                 marketeq (eq1)
             </label>
 
             <!-- leximin => bit=16 -->
             <label class="checkbox-inline">
-                <input id="leximin_alloc" type="checkbox" value="16" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:16 != 0 %} checked {% endif %}>
+                <input id="leximin_alloc" type="checkbox" value="16" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:16 != 0 %} checked {% endif %} {% if question.poll_algorithm == 5 %} disabled {% endif %}>
                 leximin
             </label>
 
             <!-- mnw binary => bit=32 -->
             <label class="checkbox-inline">
-                <input id="mnw_bin_alloc" type="checkbox" value="32" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:32 != 0 %} checked {% endif %}>
+                <input id="mnw_bin_alloc" type="checkbox" value="32" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:32 != 0 %} checked {% endif %} {% if question.poll_algorithm == 6 %} disabled {% endif %}>
                 mnw binary
+            </label>
+
+            <!-- market eq1 po => bit=64 -->
+            <label class="checkbox-inline">
+                <input id="market_eq1_po_alloc" type="checkbox" value="64" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:64 != 0 %} checked {% endif %} {% if question.poll_algorithm == 7 %} disabled {% endif %}>
+                Market EQ1 PO
             </label>
         </div>
     </fieldset>
@@ -160,42 +166,51 @@
     {% endif %}
 
     <!-- script: bit-based logic -->
-    <script>
-       /* // the 'bools' variable must come from your view's context
+<script>
+    $(document).ready(function() {
+        {% if question.question_type == 1 %}
         var val = 0;
-        var bools = {{ bools }};
+        // Fallback to 0 prevents a JS syntax error if {{ bools }} is empty
+        var bools = {{ bools|default:"0" }};
 
-        // assign bit values to each checkbox in #visible
-        $("#visible").children().each(function (index, labelContainer) {
-            $(labelContainer).children().each(function (i, checkbox) {
-                $(checkbox).val(Math.pow(2, val));
-                $(checkbox).attr('id', 'vis' + Math.pow(2, val));
-                if (bools % 2 === 1) {
-                    $(checkbox).prop("checked", true);
-                    bools = bools - 1;
-                }
-            });
-            bools = bools / 2;
-            val = val + 1;
+        $("input[name='vr']").each(function () {
+            // Update both property and attribute so CSS selectors work later
+            var bitValue = Math.pow(2, val);
+            $(this).val(bitValue).attr('value', bitValue);
+            
+            // Check odd/even and force integer division to prevent float bugs
+            if (bools % 2 !== 0) {
+                $(this).prop("checked", true);
+            }
+            bools = Math.floor(bools / 2);
+            val += 1;
         });
-        */
+        {% endif %}
 
-        // whenever pollpreferences changes, lock the bit that matches 2^(selectedVal-1)
         $('#pollpreferences').change(function () {
-            $("#visible").children().each(function (index, labelContainer) {
-                $(labelContainer).children().each(function (i, checkbox) {
-                    $(checkbox).prop("disabled", false);
-                });
-            });
-            var selectedVal = parseInt($('#pollpreferences option:selected').val());
+            // re-enable all elements 
+            $('input[name="vr"], input[name="alloc_algorithms"]').prop("disabled", false);
+            
+            var selectedVal = parseInt($('#pollpreferences option:selected').val(), 10);
+            
             if (!isNaN(selectedVal)) {
-                var changed = Math.pow(2, selectedVal - 1);
-                // check + disable that box
-                $('#vis' + changed).prop("checked", true).prop("disabled", true);
+                var changed = Math.pow(2, selectedVal - 1).toString();
+                
+                // Use .filter() to accurately match properties
+                $('input[name="vr"], input[name="alloc_algorithms"]')
+                    .filter(function() { return $(this).val() === changed; })
+                    .prop("checked", true)
+                    .prop("disabled", true);
             }
         });
-    </script>
 
-    <br />
-    <input type="submit" value="submit" class="btn btn-success">
+        // Re-enable disabled inputs right before submit so the browser actually sends the locked data to the server.
+        $('form').on('submit', function() {
+            $('input[name="vr"], input[name="alloc_algorithms"]').prop("disabled", false);
+        });
+    });
+</script>
+
+<br />
+<input type="submit" value="submit" class="btn btn-success">
 </form>
