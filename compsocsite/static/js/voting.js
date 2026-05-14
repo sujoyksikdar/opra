@@ -480,16 +480,19 @@ function sliderSort( order ){
 	});
 }
 
-function sliderBUIZeroSort( order ){
-	$.each(order, function(index, value){
-		$.each(value, function(i, v){
-			const wrapper = $(`.slider_item[id='${v.name}']`);
-			const slider = wrapper.find(".slide_BUI");
-			slider.val(0);  // input element
-			const scoreDisplay = document.getElementById("sliderValue" + slider.attr("id").replace("slideBUI", ""));
-			if (scoreDisplay) scoreDisplay.innerText = 0;
-		});
+function sliderBUIZeroSort(){
+	// Zero out every Budget-UI slider and its displayed value.
+	// Caller passes an order array, but we ignore it: the only correct
+	// "zero" state is all sliders at 0, and previous code crashed when
+	// the order entries weren't {name, score} objects.
+	document.querySelectorAll('.slide_BUI').forEach(function(slider){
+		slider.value = 0;
+		const num = slider.id.replace("slideBUI", "");
+		const scoreDisplay = document.getElementById("sliderValue" + num);
+		if (scoreDisplay) scoreDisplay.innerText = 0;
 	});
+	const total = document.getElementById("scoreSlideBUICurrTotal");
+	if (total) total.innerHTML = "0";
 }
 function sliderBUIRestore(prefOrder) {
 	if (!Array.isArray(prefOrder)) return;

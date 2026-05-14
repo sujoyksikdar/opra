@@ -33,33 +33,40 @@
         <div id="visible">
             <label class="checkbox-inline">
                 <input id="round_robin_alloc" type="checkbox" value="1" name="alloc_algorithms"
-                    {% if question.alloc_algorithms|bitwise_and:1 != 0 %} checked {% endif %} disabled>
+                    {% if question.alloc_algorithms|bitwise_and:1 != 0 %} checked {% endif %} {% if question.poll_algorithm == 1 %} disabled {% endif %}>
                 Round Robin
             </label>
             <label class="checkbox-inline">
                 <input id="mnw_alloc" type="checkbox" value="2" name="alloc_algorithms"
-                    {% if question.alloc_algorithms|bitwise_and:2 != 0 %} checked {% endif %}>
+                    {% if question.alloc_algorithms|bitwise_and:2 != 0 %} checked {% endif %} {% if question.poll_algorithm == 2 %} disabled {% endif %}>
                 Max Nash Welfare
             </label>
             <label class="checkbox-inline">
                 <input id="market_alloc" type="checkbox" value="4" name="alloc_algorithms"
-                    {% if question.alloc_algorithms|bitwise_and:4 != 0 %} checked {% endif %}>
+                    {% if question.alloc_algorithms|bitwise_and:4 != 0 %} checked {% endif %} {% if question.poll_algorithm == 3 %} disabled {% endif %}>
                 Market (EF1)
             </label>
             <label class="checkbox-inline">
                 <input id="market_eq_alloc" type="checkbox" value="8" name="alloc_algorithms"
-                    {% if question.alloc_algorithms|bitwise_and:8 != 0 %} checked {% endif %}>
+                    {% if question.alloc_algorithms|bitwise_and:8 != 0 %} checked {% endif %} {% if question.poll_algorithm == 4 %} disabled {% endif %}>
                 MarketEq (EQ1)
             </label>
             <label class="checkbox-inline">
                 <input id="leximin_alloc" type="checkbox" value="16" name="alloc_algorithms"
-                    {% if question.alloc_algorithms|bitwise_and:16 != 0 %} checked {% endif %}>
+                    {% if question.alloc_algorithms|bitwise_and:16 != 0 %} checked {% endif %} {% if question.poll_algorithm == 5 %} disabled {% endif %}>
                 Leximin
             </label>
             <label class="checkbox-inline">
                 <input id="mnw_bin_alloc" type="checkbox" value="32" name="alloc_algorithms"
-                    {% if question.alloc_algorithms|bitwise_and:32 != 0 %} checked {% endif %}>
+                    {% if question.alloc_algorithms|bitwise_and:32 != 0 %} checked {% endif %} {% if question.poll_algorithm == 6 %} disabled {% endif %}>
                 MNW Binary
+            </label>
+
+            <!-- Market EQ1 PO => bit=64 -->
+            <label class="checkbox-inline">
+                <input id="market_eq1_po_alloc" type="checkbox" value="64" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:64 != 0 %} checked {% endif %} {% if question.poll_algorithm == 7 %} disabled {% endif %}>
+                Market EQ1 PO
             </label>
         </div>
     </fieldset>

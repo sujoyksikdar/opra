@@ -125,6 +125,7 @@ def getAllocMethods():
         "MarketEq",
         "Leximin",
         "MNW Binary",
+        "Market EQ1 PO",
     ]
 
 
