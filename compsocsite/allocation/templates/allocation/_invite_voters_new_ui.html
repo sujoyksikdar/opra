@@ -1,377 +1,658 @@
 <script>
-    function add_voter(username){
+  /* ── Autocomplete: search OPRA users, filter checkbox list ── */
+  $(function() {
+    $("#user-search").on("input", function() {
+      var filter = $(this).val().toLowerCase().trim();
+      $("#addRegisteredList label").each(function() {
+        var text = $(this).text().toLowerCase();
+        $(this).toggle(!filter || text.includes(filter));
+      });
+    });
+
+    $("#user-search").autocomplete({
+      source: function(request, response) {
         $.ajax({
-            url: "{% url 'allocation:addvoter' question.id %}",
-            data: {
-                'voters': username,
-            },
-            dataType: 'json',
-            success: function (data) {
-                $('#user-search').val("");
-                $('#currentVoters').html($('#currentVoters').html() + "<option value=\"" + username + "\">" + username + "</option>");
-            }
+          url: "{% url 'allocation:get_allocation_voters' %}",
+          dataType: "json",
+          data: { term: request.term, poll_id: {{ question.id }} },
+          success: function(data) { response(data); }
         });
-    }
-
-    $(function() {
-        $("#user-search").autocomplete({
-            source: function(request, response) {
-                $.ajax({
-                    url: "{% url 'allocation:get_allocation_voters' %}",
-                    dataType: "json",
-                    data: {
-                        term : request.term,
-                        poll_id : {{question.id}}
-                    },
-                    success: function(data) {
-                        response(data);
-                    }
-                });
-            },
-            minLength: 2,
-            select: function( event, ui ) {
-                add_voter(ui.item.value);
-            }
-        });
+      },
+      minLength: 2,
+      select: function(event, ui) {
+        /* Highlight matching checkbox */
+        $("#addRegisteredList input[value='" + ui.item.value + "']").prop("checked", true);
+        $("#user-search").val("");
+        return false;
+      }
     });
+  });
 
-    function toggleTextbox(){
-        const textAreaForCustomMails = document.getElementById("textAreaForCustomMails");
-        const customEmailsRadioButton = document.getElementById("customEmailsRadioButton");
+  function validateCSV() {
+    var csvText = document.getElementById("csvTextArea").value;
+    var emails = csvText.split(",");
+    var regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    for (var i = 0; i < emails.length; i++) {
+      if (!regex.test(emails[i].trim())) {
+        document.getElementById("csv_error").innerHTML = "Invalid email address or wrong format.";
+        return false;
+      }
+    }
+    return true;
+  }
 
-        if (customEmailsRadioButton.checked) {
-            textAreaForCustomMails.classList.remove('hide');
-            textAreaForCustomMails.classList.add('show');
+  function switchAddTab(tabId, btn) {
+    document.querySelectorAll(".vm-add-content").forEach(function(el) { el.style.display = "none"; });
+    document.getElementById(tabId).style.display = "block";
+    document.querySelectorAll(".vm-subtab").forEach(function(b) { b.classList.remove("vm-subtab-active"); });
+    btn.classList.add("vm-subtab-active");
+  }
+
+  function switchViewTab(tabId, btn) {
+    document.querySelectorAll(".vm-view-content").forEach(function(el) { el.style.display = "none"; });
+    document.getElementById(tabId).style.display = "block";
+    document.querySelectorAll(".vm-viewtab").forEach(function(b) { b.classList.remove("vm-subtab-active"); });
+    btn.classList.add("vm-subtab-active");
+  }
+
+  /* ── View Users: search filter ── */
+  document.addEventListener("DOMContentLoaded", function() {
+    var searchInput = document.getElementById("viewUserSearch");
+    if (searchInput) {
+      searchInput.addEventListener("input", function() {
+        var filter = this.value.toLowerCase().trim();
+        document.querySelectorAll(".vm-user-row").forEach(function(row) {
+          var text = row.innerText.toLowerCase();
+          row.style.display = !filter || text.includes(filter) ? "" : "none";
+        });
+      });
+    }
+
+    var selectAll = document.getElementById("selectAllUsers");
+    if (selectAll) {
+      selectAll.addEventListener("change", function() {
+        document.querySelectorAll(".userCheckbox:not([style*='display: none'])").forEach(function(cb) {
+          cb.checked = selectAll.checked;
+        });
+      });
+    }
+
+    /* toggleTextbox for custom email recipients */
+    var radioButtons = document.querySelectorAll("input[name='recepients']");
+    radioButtons.forEach(function(radio) {
+      radio.addEventListener("change", function() {
+        var textarea = document.getElementById("textAreaForCustomMails");
+        if (document.getElementById("customEmailsRadioButton").checked) {
+          textarea.style.display = "block";
         } else {
-            textAreaForCustomMails.classList.remove('show');
-            textAreaForCustomMails.classList.add('hide');
+          textarea.style.display = "none";
         }
-    }
-
-    function toggleMailDiv(emailNotification, mailNotificationDiv){
-        if(emailNotification.checked) {
-            mailNotificationDiv.classList.remove('hide');
-            mailNotificationDiv.classList.add('show');
-        } else {
-            mailNotificationDiv.classList.remove('show');
-            mailNotificationDiv.classList.add('hide');
-        }
-    }
-
-    function populateDefaultText(mailSubjectElementId, mailContentElementId, subjectText, mailText){
-        const mailSubEle = document.getElementById(mailSubjectElementId);
-        const mailBodyEle = document.getElementById(mailContentElementId);
-
-        mailSubEle.value = subjectText || '';
-        mailBodyEle.innerHTML = mailText;
-    }
-
-    function validateEmailAddress(email){
-        var regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        return regex.test(email)
-    }
-
-    function validateCSV(){
-        const csvTextAreaEle = document.getElementById('csvTextArea');
-        csvText = csvTextAreaEle.value;
-        usernames = csvText.split(',')
-        for(var i=0; i<usernames.length; i+=1){
-            if(usernames[i].trim() === '') continue;
-            let csvError = document.getElementById("csv_error");
-            csvError.innerHTML = "";
-        }
-        return true;
-    }
-
-    function switchAddTab(tabId) {
-        document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('show'));
-        document.getElementById(tabId).classList.add('show');
-    }
-    function switchViewTab(tabId) {
-        document.querySelectorAll('.tab-section-view').forEach(sec => sec.classList.remove('show'));
-        document.getElementById(tabId).classList.add('show');
-    }
-
-    $(window).load(function(){
-        const selectAllCheckbox = document.getElementById('selectAllUsers');
-        const allBoxes = document.querySelectorAll('.userCheckbox');
-        selectAllCheckbox?.addEventListener('change', () => {
-            allBoxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
-        });
-
-        const radioButtons = document.querySelectorAll('input[name="recepients"]');
-        radioButtons?.forEach(radio => {
-            radio.addEventListener('change', toggleTextbox);
-        });
-
-        const emailNotification = document.getElementById('emailNotification');
-        const mailNotificationDiv = document.getElementById("mailNotificationDiv");
-        emailNotification?.addEventListener('change', ()=>{
-            toggleMailDiv(emailNotification, mailNotificationDiv);
-        });
-
-        const emailNotificationToRemove = document.getElementById('emailNotificationToRemove');
-        const mailNotificationDivToRemove = document.getElementById("mailNotificationDivToRemove");
-        emailNotificationToRemove?.addEventListener('change', ()=>{
-            toggleMailDiv(emailNotificationToRemove, mailNotificationDivToRemove);
-        });
-
-        var url = window.location;
-        var protocol = url.protocol;
-        var host = url.host;
-        let instanceURL = protocol + "//" + host + "{% url 'allocation:detail' question.id %}";
-        let question_text = ""+ "{{ question.question_text | safe }}";
-
-        var mailSubEleID = "mailNotificationSubject";
-        var mailBodyEleID = "mailNotificationBody";
-        var mailSubjectContent = "You have been removed from {{ question.question_text | safe }}";
-        var mailBodyContent = "You have been removed from {{ question.question_text | safe }}." +
-        "\nInstance link: "+instanceURL;
-
-        mailSubEleID = "mailNotificationSubject1";
-        mailBodyEleID = "mailNotificationBody1";
-        mailSubjectContent = "You have been added to {{ question.question_text | safe }}";
-        mailBodyContent = "You have been added to {{ question.question_text | safe }}. "+
-        "\nTo access it, follow the link : "+ instanceURL;
-
-        var loginLink = protocol + "//" + host + "/allocations/allocation_tab";
-        mailSubEleID = "mailSubject";
-        mailBodyEleID = "mailBody";
-        mailSubjectContent = "You have been added to {{ question.question_text | safe }}";
-        mailBodyContent = "You have been added to {{ question.question_text | safe }}."+
-        "\n\nIf you already have an OPRA account, login into the account using the below link. "+
-        "\nLogin link: "+loginLink;
-
-        const emailNotificationToInvite = document.getElementById("emailNotificationToInvite");
-        const emailDivForInvite = document.getElementById("emailDivForInvite");
-        emailNotificationToInvite?.addEventListener('change', ()=>{
-            toggleMailDiv(emailNotificationToInvite, emailDivForInvite);
-        });
+      });
     });
+  });
 </script>
+
 <style>
-.height-100{ height: 100px; }
-.hide{ display: none; }
-.show{ display: block; }
-.tab-btn { margin-right: 10px; }
-.tab-section, .tab-section-view{ display: none; }
-.tab-section.show, .tab-section-view.show{ display: block; }
-trix-editor {
-    min-height: 200px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    padding: 10px;
-}
-trix-toolbar .trix-button-group--file-tools {
-    display: none;
-}
+  .vm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .vm-card-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .vm-card-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .vm-card-body {
+    padding: 14px;
+  }
+  .vm-subtabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .vm-subtab, .vm-viewtab {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text-sub);
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .vm-subtab:hover, .vm-viewtab:hover,
+  .vm-subtab-active {
+    background: var(--green-light);
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .vm-add-content { display: none; }
+  .vm-add-content.vm-show { display: block; }
+  .vm-view-content { display: none; }
+  .vm-view-content.vm-show { display: block; }
+
+  .vm-search-wrap {
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .vm-search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .vm-search-input {
+    width: 100%;
+    padding: 8px 12px 8px 30px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    box-sizing: border-box;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color 0.15s;
+  }
+  .vm-search-input:focus { border-color: var(--green); }
+
+  .vm-checkbox-list {
+    max-height: 160px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    margin-bottom: 10px;
+  }
+  .vm-checkbox-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text);
+    transition: background 0.1s;
+  }
+  .vm-checkbox-list label:last-child { border-bottom: none; }
+  .vm-checkbox-list label:hover { background: var(--green-light); }
+  .vm-checkbox-list input[type="checkbox"] { accent-color: var(--green); flex-shrink: 0; }
+
+  .vm-user-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 11px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+    margin-bottom: 5px;
+  }
+  .vm-user-row:last-child { margin-bottom: 0; }
+  .vm-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--green-light);
+    border: 1px solid var(--border);
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .vm-avatar-unreg {
+    background: var(--bg);
+    color: var(--text-muted);
+  }
+  .vm-user-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vm-user-email {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .vm-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .vm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .vm-btn-primary { background: var(--green); color: #fff; border: none; }
+  .vm-btn-primary:hover { background: var(--green-mid); color: #fff; }
+  .vm-btn-ghost { background: transparent; color: var(--text-sub); border: 1px solid var(--border); }
+  .vm-btn-ghost:hover { background: var(--border); color: var(--text); }
+  .vm-btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .vm-btn-danger:hover { background: var(--red); color: #fff; }
+
+  .vm-info-box {
+    padding: 8px 12px;
+    background: var(--green-light);
+    border: 1px solid rgba(0,93,64,0.15);
+    border-radius: 7px;
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+  }
+  .vm-info-box b { color: var(--green); }
+
+  .vm-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-sub);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+  .vm-label:first-child { margin-top: 0; }
+  .vm-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    box-sizing: border-box;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color 0.15s;
+  }
+  .vm-input:focus { border-color: var(--green); }
+  .vm-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color 0.15s;
+  }
+  .vm-textarea:focus { border-color: var(--green); }
+
+  .vm-recipients {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .vm-recipients label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-sub);
+    cursor: pointer;
+  }
+  .vm-recipients input[type="radio"] { accent-color: var(--green); }
 </style>
 
-<div class="panel panel-default">
-    <div class="panel-heading"><h4>Add Users:<h4></div>
-    <div class="panel-body">
-        <div class="row">
-
-            <div style="margin-bottom: 15px;">
-                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addRegistered')">Add Registered Users</button>
-                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaGroups')">Add via Groups</button>
-                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addViaCSV')">Add via CSV</button>
-                <button type="button" class="btn btn-default tab-btn" onclick="switchAddTab('addCode')">Add Codes</button>
-            </div>
-
-            <!-- Add Registered -->
-            <div id="addRegistered" class="tab-section show col-md-6">
-                <form id="addUsersForm" action="{% url 'allocation:addvoter' question.id %}" method="post">
-                    <label style="width: 100%;">Add users registered with OPRA: </label>
-                    {% csrf_token %}
-                    <select name="voters" class="form-control multiple-select" style="width: 100%;" multiple>
-                        {% for user in users %}
-                            <option value="{{ user.username }}">{{ user.username }}</option>
-                        {% endfor %}
-                    </select>
-                    <br>
-                    <input type="submit" value="Add Users" class="btn btn-success" style="margin-top: 15px;">
-                </form>
-            </div>
-
-            <!-- Add via Groups -->
-            <div id="addViaGroups" class="tab-section col-md-6">
-                <form action="{% url 'allocation:addvoter' question.id %}" method="post">
-                    <label style="width: 100%;">Add{% if question.status == 1 %}/Remove{% endif %} groups of users registered with OPRA: </label>
-                    {% csrf_token %}
-                    <select name="groups" class="form-control multiple-select" style="width: 100%;" multiple>
-                        {% for group in groups %}
-                            {% if group.owner == request.user %}
-                                <option value="{{ group.name }}">{{ group.name }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    <br>
-                    <input type="submit" class="btn btn-success" value="Add" style="margin-top: 15px;" />
-                    {% if question.status == 1 %}
-                        <input type="submit" class="btn btn-danger" value="Remove" style="margin-top: 15px;" formaction="{% url 'allocation:removegroupvoters' question.id %}">
-                    {% endif %}
-                </form>
-            </div>
-
-            <!-- Add via CSV -->
-            <div id="addViaCSV" class="tab-section col-md-6">
-                <form id="csvTextAreaForm" action="{% url 'allocation:savelatestcsv' question.id %}" method="post" onsubmit="return validateCSV()">
-                    {% csrf_token %}
-                    <label>Enter CSV Username List:</label>
-                    <textarea class="form-control" id="csvTextArea" name="votersCSVText" rows="5" style="height: 221px;">{{ recentCSVText }}</textarea>
-                    <br>
-                    <div id="csv_error" style="color: #ff4d4d;"></div>
-                    <div class="alert alert-info">
-                        <p><strong>Note:</strong>
-                            Input usernames as CSV as shown in below example. Need not worry about white spaces!<br>
-                            Example: user1,user2,user3<br>
-                        </p>
-                    </div>
-                    <input type="submit" value="Submit CSV" class="btn btn-primary" style="margin-top: 10px;">
-                </form>
-            </div>
-
-            <!-- Add Codes -->
-            <div id="addCode" class="tab-section col-md-6">
-                <form method="post" action="{% url 'allocation:addcodes' question.id %}" style="display:inline-block; margin-left:10px;">
-                    {% csrf_token %}
-                    <label style="width: 100%;">Add Login Codes: </label>
-                    <input type="number" name="count" class="form-control"
-                           min="1" max="100" placeholder="Enter number of codes"
-                           style="width:250px; display:inline-block;" required>
-                    <button type="submit" class="btn btn-info">Add Codes</button>
-                </form>
-            </div>
-
-        </div>
+<!-- ══ 1. ADD USERS ══════════════════════════════════════════════════════ -->
+<div class="vm-card">
+  <div class="vm-card-header">
+    <div class="vm-card-title">Add Users</div>
+  </div>
+  <div class="vm-card-body">
+    <div class="vm-subtabs">
+      <button class="vm-subtab vm-subtab-active" onclick="switchAddTab('addRegistered', this)">Registered Users</button>
+      <button class="vm-subtab" onclick="switchAddTab('addViaGroups', this)">Via Groups</button>
+      <button class="vm-subtab" onclick="switchAddTab('addViaCSV', this)">Via CSV</button>
+      <button class="vm-subtab" onclick="switchAddTab('addCode', this)">Login Codes</button>
     </div>
+
+    <!-- Registered Users -->
+    <div id="addRegistered" class="vm-add-content vm-show">
+      <div style="font-size:12px; color:var(--text-sub); margin-bottom:8px;">Search and add users registered with OPRA:</div>
+      <div class="vm-search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="user-search" class="vm-search-input" placeholder="Search by username…" autocomplete="off">
+      </div>
+      <form action="{% url 'allocation:addvoter' question.id %}" method="post">
+        {% csrf_token %}
+        <div class="vm-checkbox-list" id="addRegisteredList">
+          {% for user in users %}
+          <label>
+            <input type="checkbox" name="voters" value="{{ user.username }}">
+            <span>{{ user.username }}</span>
+          </label>
+          {% empty %}
+          <div style="padding:14px; text-align:center; font-size:12px; color:var(--text-muted);">No registered users found.</div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="vm-btn vm-btn-primary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add Selected
+        </button>
+      </form>
+    </div>
+
+    <!-- Via Groups -->
+    <div id="addViaGroups" class="vm-add-content">
+      <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Add or remove entire groups:</div>
+      <form action="{% url 'allocation:addvoter' question.id %}" method="post">
+        {% csrf_token %}
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+          {% for group in groups %}
+          {% if group.owner == request.user %}
+          <label style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg); border:1px solid var(--border); border-radius:7px; cursor:pointer; font-size:13px; color:var(--text);">
+            <input type="checkbox" name="groups" value="{{ group.name }}" style="accent-color:var(--green);">
+            {{ group.name }}
+          </label>
+          {% endif %}
+          {% empty %}
+          <div style="font-size:12px; color:var(--text-muted);">No groups found.</div>
+          {% endfor %}
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="submit" class="vm-btn vm-btn-primary">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Groups
+          </button>
+          {% if question.status == 1 %}
+          <button type="submit" class="vm-btn vm-btn-danger" formaction="{% url 'allocation:removegroupvoters' question.id %}">Remove Groups</button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <!-- Via CSV -->
+    <div id="addViaCSV" class="vm-add-content">
+      <div style="font-size:12px; color:var(--text-sub); margin-bottom:8px;">Enter comma-separated email addresses:</div>
+      <form action="{% url 'allocation:savelatestcsv' question.id %}" method="post" onsubmit="return validateCSV()">
+        {% csrf_token %}
+        <textarea class="vm-textarea" id="csvTextArea" name="votersCSVText" rows="4"
+          placeholder="user1@gmail.com, user2@example.com, user3@binghamton.edu"
+          style="font-family:monospace;">{{ recentCSVText }}</textarea>
+        <div id="csv_error" style="color:var(--red); font-size:11px; margin-bottom:6px;"></div>
+        <div class="vm-info-box">
+          <b>Format:</b> Comma-separated email addresses. Unregistered users will receive an invite to sign up.
+        </div>
+        <button type="submit" class="vm-btn vm-btn-primary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Submit CSV
+        </button>
+      </form>
+    </div>
+
+    <!-- Login Codes -->
+    <div id="addCode" class="vm-add-content">
+      <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Generate anonymous login codes for voters who don't have accounts:</div>
+      <form method="post" action="{% url 'allocation:addcodes' question.id %}">
+        {% csrf_token %}
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <label style="font-size:12px; color:var(--text); white-space:nowrap;">Number of codes:</label>
+          <input type="number" name="count" class="vm-input" min="1" max="100" placeholder="10" required style="width:80px;">
+          <button type="submit" class="vm-btn vm-btn-primary">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Generate Codes
+          </button>
+        </div>
+      </form>
+      <a href="{% url 'allocation:exportcodes' question.id %}" class="vm-btn vm-btn-ghost">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        Export Codes (CSV)
+      </a>
+    </div>
+
+  </div>
 </div>
 
-<!-- View Users -->
-<div class="panel panel-default">
-    <div class="panel-heading"><h4>View Users</h4></div>
-    <div class="panel-body">
-        <div style="margin-bottom: 15px;">
-            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewAllUsers')">View All</button>
-            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewRegistered')">Registered</button>
-            <button type="button" class="btn btn-default tab-btn" onclick="switchViewTab('viewUnregistered')">Unregistered</button>
-        </div>
-
-        <!-- All Added Users -->
-        <div id="viewAllUsers" class="tab-section-view show">
-            <form action="{% url 'allocation:delvoter' question.id %}" method="post">
-                {% csrf_token %}
-                <label>Users added to the instance:</label>
-                <div style="margin-bottom:15px; max-width:400px;">
-                    <input type="text" id="userSearchInput" class="form-control" placeholder="Search users...">
-                </div>
-                <input type="checkbox" id="selectAllUsers" style="margin-right:5px;">
-                <label for="selectAllUsers">Select All</label>
-                <div id="userListBox" style="max-height:220px; overflow-y:auto; border:1px solid #ddd; border-radius:4px; padding:8px; background:#fff;">
-                {% for user in question.question_voters.all %}
-                <div class="user-item" style="padding:4px 0;">
-                    <input type="checkbox" name="voters" value="{{ user.username }}" class="userCheckbox" style="margin-right:6px;">
-                    <span>{{ user.username }}</span>
-                </div>
-                {% empty %}
-                    <!-- If no registered, skip silently -->
-                {% endfor %}
-                {% for email in unRegisteredUsers %}
-                    {% if email %}
-                    <div class="user-item" style="padding:4px 0;">
-                        <input type="checkbox" name="voters" value="{{ email }}" class="userCheckbox" style="margin-right:6px;">
-                        <span>{{ email }}</span> <small style="color:#999;">(unregistered)</small>
-                    </div>
-                    {% endif %}
-                {% empty %}
-                {% endfor %}
-
-                    {% if question.question_voters.count == 0 and unRegisteredUsers|length == 0 %}
-                        <em>No users added yet.</em>
-                    {% endif %}
-                </div>
-
-                <div style="margin-top:15px;">
-                    <input type="checkbox" name="email" id="emailCheckbox" style="margin-right:6px;"
-                    {% if request.user.userprofile.emailDelete %}checked{% endif %}>
-                    <label for="emailCheckbox">Send email notification to removed users</label>
-                </div>
-
-                <div style="margin-top:15px;">
-                    <button type="submit" class="btn btn-danger">Delete Selected Users</button>
-                    <a class="btn btn-warning" href="{% url 'allocation:exportcodes' question.id %}">
-                        Export Codes (CSV)
-                    </a>
-                </div>
-            </form>
-
-            <script>
-                document.getElementById('userSearchInput').addEventListener('keyup', function() {
-                const filter = this.value.toLowerCase().trim();
-                const users = document.querySelectorAll('#userListBox .user-item');
-                users.forEach(div => {
-                    const text = div.innerText.toLowerCase();
-                    div.style.display = text.includes(filter) ? '' : 'none';
-                });
-                });
-
-                const selectAll = document.getElementById('selectAllUsers');
-                selectAll?.addEventListener('change', function() {
-                const allBoxes = document.querySelectorAll('.userCheckbox');
-                allBoxes.forEach(cb => cb.checked = selectAll.checked);
-                });
-            </script>
-
-            <hr>
-        </div>
-
-        <!-- Registered Users -->
-        <div id="viewRegistered" class="tab-section-view">
-            <label>Users registered with OPRA:</label>
-            <select id="registeredVoters" name="registeredVoters" class="form-control" multiple>
-                {% for username in registeredUsers %}
-                    <option value="{{ username }}">{{ username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Unregistered Users -->
-        <div id="viewUnregistered" class="tab-section-view">
-            <label>Users not registered with OPRA:</label>
-            <select id="unregisteredVoters" name="unregisteredVoters" class="form-control" multiple>
-                {% for username in unRegisteredUsers %}
-                    <option value="{{ username }}">{{ username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
+<!-- ══ 2. VIEW USERS ══════════════════════════════════════════════════════ -->
+<div class="vm-card">
+  <div class="vm-card-header">
+    <div class="vm-card-title">View Users</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      {% with unreg_count=unRegisteredUsers|length %}
+      <button class="vm-viewtab vm-subtab-active" onclick="switchViewTab('viewAll', this)">
+        All ({{ question.question_voters.count|add:unreg_count }})
+      </button>
+      <button class="vm-viewtab" onclick="switchViewTab('viewRegistered', this)">
+        Registered ({{ question.question_voters.count }})
+      </button>
+      <button class="vm-viewtab" onclick="switchViewTab('viewUnregistered', this)">
+        Unregistered ({{ unreg_count }})
+      </button>
+      {% endwith %}
     </div>
-</div>
+  </div>
+  <div class="vm-card-body">
 
-<!-- Section 3: Email -->
-<div class="panel panel-default" style="margin-top: 30px;">
-    <div class="panel-heading">Send E-mail to users:</div>
-    <div class="panel-body">
-        <form action="{% url 'allocation:send_email_invites' question.id %}" method="post">
-            {% csrf_token %}
-            <label>Recipients:</label>
-            <div style="margin-left: 15px;">
-                <input type="radio" name="recepients" value="regVotersOnly"> Users registered with OPRA
-                <input type="radio" name="recepients" value="unregVotersOnly"> Users not registered with OPRA
-                <input type="radio" name="recepients" value="allVoters" checked> Both
-                <input type="radio" name="recepients" value="customEmails" id="customEmailsRadioButton"> Custom
+    <!-- All -->
+    <div id="viewAll" class="vm-view-content vm-show">
+      <form action="{% url 'allocation:delvoter' question.id %}" method="post">
+        {% csrf_token %}
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+          <div class="vm-search-wrap" style="flex:1; margin-bottom:0;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="viewUserSearch" class="vm-search-input" placeholder="Search users…">
+          </div>
+          <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text-sub); cursor:pointer; white-space:nowrap;">
+            <input type="checkbox" id="selectAllUsers" style="accent-color:var(--green);"> Select All
+          </label>
+        </div>
+
+        <div style="max-height:220px; overflow-y:auto;">
+          {% for user in question.question_voters.all %}
+          <div class="vm-user-row">
+            <input type="checkbox" name="voters" value="{{ user.username }}" class="userCheckbox" style="accent-color:var(--green); flex-shrink:0;">
+            <div class="vm-avatar">{{ user.username|slice:":2"|upper }}</div>
+            <div style="flex:1; min-width:0;">
+              <div class="vm-user-name">{{ user.username }}</div>
+              <div class="vm-user-email">{{ user.email }}</div>
             </div>
+          </div>
+          {% endfor %}
+          {% for email in unRegisteredUsers %}{% if email %}
+          <div class="vm-user-row">
+            <input type="checkbox" name="voters" value="{{ email }}" class="userCheckbox" style="accent-color:var(--green); flex-shrink:0;">
+            <div class="vm-avatar vm-avatar-unreg">??</div>
+            <div style="flex:1; min-width:0;">
+              <div class="vm-user-name">{{ email }}</div>
+              <div class="vm-user-email" style="color:var(--status-paused);">unregistered</div>
+            </div>
+          </div>
+          {% endif %}{% endfor %}
+          {% if question.question_voters.count == 0 and not unRegisteredUsers %}
+          <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">No users added yet.</div>
+          {% endif %}
+        </div>
 
-            <textarea id="textAreaForCustomMails" name="textAreaForCustomMails" class="form-control hide" placeholder="Emails separated by commas" style="margin-top: 15px;"></textarea>
-            <br>
-            <input type="text" id="mailSubject" name="mailSubject" class="form-control" placeholder="Subject of the Mail" required value="{{ emailInviteCSV.subject|default:'' }}">
-            <br>
-            <input class="form-control" type="hidden" id="mailBody" name="mailBody" rows="9" placeholder="Content of the E-mail..." required value="{{ emailInviteCSV.message|default:''|safe }}">
-            <trix-editor input="mailBody"></trix-editor>
-            <br>
-            <input type="submit" value="Send Email" class="btn btn-primary">
-        </form>
+        <div class="vm-actions-row">
+          <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text-sub); cursor:pointer;">
+            <input type="checkbox" name="email" {% if request.user.userprofile.emailDelete %}checked{% endif %} style="accent-color:var(--green);">
+            Notify removed users by email
+          </label>
+          <div style="margin-left:auto; display:flex; gap:6px;">
+            <a href="{% url 'allocation:exportcodes' question.id %}" class="vm-btn vm-btn-ghost">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              Export CSV
+            </a>
+            <button type="submit" class="vm-btn vm-btn-danger" {% if question.status == 2 %}disabled title="Cannot remove voters while allocation is running"{% endif %} style="{% if question.status == 2 %}opacity:0.45; cursor:not-allowed;{% endif %}">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+              Remove Selected
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
+
+    <!-- Registered only -->
+    <div id="viewRegistered" class="vm-view-content">
+      <div style="max-height:220px; overflow-y:auto;">
+        {% for user in question.question_voters.all %}
+        <div class="vm-user-row">
+          <div class="vm-avatar">{{ user.username|slice:":2"|upper }}</div>
+          <div style="flex:1; min-width:0;">
+            <div class="vm-user-name">{{ user.username }}</div>
+            <div class="vm-user-email">{{ user.email }}</div>
+          </div>
+        </div>
+        {% empty %}
+        <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">No registered users.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Unregistered only -->
+    <div id="viewUnregistered" class="vm-view-content">
+      <div style="max-height:220px; overflow-y:auto;">
+        {% for email in unRegisteredUsers %}{% if email %}
+        <div class="vm-user-row">
+          <div class="vm-avatar vm-avatar-unreg">??</div>
+          <div style="flex:1; min-width:0;">
+            <div class="vm-user-name">{{ email }}</div>
+            <div class="vm-user-email" style="color:var(--status-paused);">unregistered</div>
+          </div>
+        </div>
+        {% endif %}{% endfor %}
+        {% if not unRegisteredUsers %}
+        <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">No unregistered users.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
 </div>
-<br><br><br>
+
+<!-- ══ 3. EMAIL SETTINGS ══════════════════════════════════════════════════════ -->
+<div class="vm-card">
+  <div class="vm-card-header">
+    <div class="vm-card-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+      Email Settings
+    </div>
+  </div>
+  <div class="vm-card-body">
+    <form action="{% url 'allocation:emailSettings' question.id %}" method="post">
+      {% csrf_token %}
+
+      <!-- Start email -->
+      <div style="padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:12px; font-weight:600; color:var(--text);">Send email when allocation starts</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when the allocation goes live</div>
+          </div>
+          <input type="checkbox" id="emailStartToggle" name="emailStart" value="email" {% if question.emailStart %}checked{% endif %} onchange="toggleEmailFields('startFields', this.checked)" style="width:16px; height:16px; accent-color:var(--green);">
+        </div>
+        <div id="startFields" style="margin-top:12px; {% if not question.emailStart %}display:none;{% endif %}">
+          <label class="vm-label" for="startSubject">Subject</label>
+          <input type="text" class="vm-input" id="startSubject" name="startSubject" value="{{ emailStart.subject }}" maxlength="100" style="margin-bottom:8px;">
+          <label class="vm-label" for="startMessage">Message</label>
+          <textarea class="vm-textarea" id="startMessage" name="startMessage" rows="4">{{ emailStart.message }}</textarea>
+        </div>
+      </div>
+
+      <!-- Stop email -->
+      <div style="padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:12px; font-weight:600; color:var(--text);">Send email when allocation stops</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Notify all voters when results are available</div>
+          </div>
+          <input type="checkbox" id="emailStopToggle" name="emailStop" value="email" {% if question.emailStop %}checked{% endif %} onchange="toggleEmailFields('stopFields', this.checked)" style="width:16px; height:16px; accent-color:var(--green);">
+        </div>
+        <div id="stopFields" style="margin-top:12px; {% if not question.emailStop %}display:none;{% endif %}">
+          <label class="vm-label" for="stopSubject">Subject</label>
+          <input type="text" class="vm-input" id="stopSubject" name="stopSubject" value="{{ emailStop.subject }}" maxlength="100" style="margin-bottom:8px;">
+          <label class="vm-label" for="stopMessage">Message</label>
+          <textarea class="vm-textarea" id="stopMessage" name="stopMessage" rows="4">{{ emailStop.message }}</textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="vm-btn vm-btn-primary">Save Email Settings</button>
+    </form>
+  </div>
+</div>
+<script>
+function toggleEmailFields(id, show) {
+  document.getElementById(id).style.display = show ? 'block' : 'none';
+}
+</script>
+
+<!-- ══ 4. SEND EMAIL ══════════════════════════════════════════════════════ -->
+<div class="vm-card">
+  <div class="vm-card-header">
+    <div class="vm-card-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+      Send Email to Users
+    </div>
+  </div>
+  <div class="vm-card-body">
+    <form action="{% url 'allocation:send_email_invites' question.id %}" method="post">
+      {% csrf_token %}
+      <label class="vm-label">Recipients</label>
+      <div class="vm-recipients" style="margin-bottom:10px;">
+        <label><input type="radio" name="recepients" value="allVoters" checked> All Voters</label>
+        <label><input type="radio" name="recepients" value="regVotersOnly"> Registered Only</label>
+        <label><input type="radio" name="recepients" value="unregVotersOnly"> Unregistered Only</label>
+        <label><input type="radio" name="recepients" value="customEmails" id="customEmailsRadioButton"> Custom</label>
+      </div>
+      <textarea id="textAreaForCustomMails" name="textAreaForCustomMails" class="vm-textarea"
+        placeholder="Emails separated by commas" rows="2" style="display:none; margin-bottom:10px;"></textarea>
+
+      <label class="vm-label">Subject</label>
+      <input type="text" name="mailSubject" id="mailSubject" class="vm-input" placeholder="Email subject…" required value="" style="margin-bottom:10px;">
+
+      <label class="vm-label">Message</label>
+      <input class="vm-input" type="hidden" id="mailBody" name="mailBody" value="">
+      <trix-editor input="mailBody"></trix-editor>
+
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button type="submit" class="vm-btn vm-btn-primary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          Send Email
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
