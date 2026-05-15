@@ -14,7 +14,7 @@
     </select>
     <br />
 
-    {% if question.poll_algorithm == 3 %}
+    {% if question.poll_algorithm == 1 %}
     <span class="btn btn-group">
         {% for voter in question.allocationvoter_set.all %}
         <span class="btn btn-default">{{ voter.user }}</span>

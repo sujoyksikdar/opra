@@ -44,21 +44,6 @@
     </select>
     <br />
 
-    <!-- optional: if poll_algorithm == 3 => show manual order link, etc. -->
-    {% if question.poll_algorithm == 3 %}
-    <span class="btn btn-group">
-        {% for voter in question.allocationvoter_set.all %}
-        <span class="btn btn-default">{{ voter.user }}</span>
-        {% endfor %}
-    </span>
-    {% if question.status == 1 or question.status == 2 %}
-        <a href="{% url 'allocation:viewAllocationOrder' question.id %}" class="btn btn-dark" role="button">
-            set allocation order
-        </a>
-        <br />
-    {% endif %}
-    {% endif %}
-
     <!-- checkboxes for each algorithm -->
     <fieldset class="form-group">
         <label>allocation algorithms to show results</label>

@@ -1,68 +1,231 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
+
+{% block title %}Global Settings – OPRA{% endblock %}
+
+{% block extra_head %}
+<style>
+  .settings-shell {
+    display: flex;
+    gap: 24px;
+    padding: 32px;
+    max-width: 860px;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+  .settings-nav {
+    width: 180px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .settings-nav-header {
+    padding: 13px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-nav a {
+    display: block;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-sub);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s, color 0.15s;
+  }
+  .settings-nav a:last-child { border-bottom: none; }
+  .settings-nav a:hover { background: var(--bg); color: var(--text); }
+  .settings-nav a.active { background: var(--green-light); color: var(--green); font-weight: 700; }
+  .settings-body { flex: 1; min-width: 0; }
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .settings-card-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .settings-card-body { padding: 24px; }
+  .settings-field { margin-bottom: 16px; }
+  .settings-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    margin-bottom: 6px;
+  }
+  .settings-select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .settings-select:focus { border-color: var(--green); }
+  .settings-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-toggle-row:last-of-type { border-bottom: none; }
+  .settings-toggle-label {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .settings-toggle-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  /* Toggle switch */
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-track::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 3px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--green); }
+  .toggle-switch input:checked + .toggle-track::before { transform: translateX(18px); }
+</style>
+{% endblock %}
 
 {% block content %}
-<br />
-<div class="row">
-    <div class="col-md-3">
-        <div class="panel panel-default">
-            <div class="panel-heading">Settings</div>
-            <div class="list-group">
-                <a href="{% url 'appauth:settings' %}" class="list-group-item">Profile</a>
-                <a href="{% url 'appauth:passwordpage' %}" class="list-group-item">Account</a>
-                <a href="{% url 'appauth:globalSettings' %}" class="list-group-item active">Global</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-9">
-        <div class="panel panel-default">
-            <div class="panel-heading">Global Settings</div>
-            <div class="panel-body">
-                <form class="form-group" method="post" action="{% url 'appauth:updateGlobalSettings' %}" align="center" style="font-size:100%;">
-                    {% csrf_token %}
-                    <label for="viewpreferences">Visibility setting of displaying preferences for all future polls</label>
-                    <select name="viewpreferences" class="form-control">
-                        <option value="1" {% if request.user.userprofile.displayPref == 1 %} selected {% endif %} >Everyone can see all preferences</option>
-                        <option value="2" {% if request.user.userprofile.displayPref == 2 %} selected {% endif %}>Everyone can only see own preference</option>
-                        <option value="3" {% if request.user.userprofile.displayPref == 3 %} selected {% endif %}>Nothing</option>
-                    </select>
-                    <br/>
+<div class="settings-shell">
 
-                    <label for="viewuserinfo">Visibility setting of displaying user-info for all future polls</label>
-                    <select name="viewuserinfo" class="form-control">
-                        <option value="1" {% if request.user.userprofile.display_user_info == 1 %} selected {% endif %} >Username of users will be shown</option>
-                        <option value="2" {% if request.user.userprofile.display_user_info == 2 %} selected {% endif %}>Only numbers of users will be shown</option>
-                        <option value="3" {% if request.user.userprofile.display_user_info == 3 %} selected {% endif %}>Nothing</option>
-                    </select>
-                    <br />
-                    
-                    <!-- <div class="col-md-6">
-                        <label for="emailInvite">Send email when inviting users</label>
-                        <input type="checkbox" name="emailInvite" id="emailInvite" value="email" {% if request.user.userprofile.emailInvite == True %} checked {% endif %}>
-                    </div> -->
-                    <div class="col-md-6">
-                        <label for="emailStart">Send email when the poll starts</label>
-                        <input type="checkbox" name="emailStart" id="emailStart" value="email" {% if request.user.userprofile.emailStart %} checked {% endif %}>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="emailDelete">Send email when deleting users</label>
-                        <input type="checkbox" name="emailDelete" id="emailDelete" value="email" {% if request.user.userprofile.emailDelete %} checked {% endif %}>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="emailStop">Send email when the poll stops</label>
-                        <input type="checkbox" name="emailStop" id="emailStop" value="email" {% if request.user.userprofile.emailStop %} checked {% endif %}>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                        <label for="showHint">Show all hints</label>
-                        <input type="checkbox" name="showHint" id="showHint" value="hint" {% if request.user.userprofile.showHint == True %} checked {% endif %}>
-                        </div>
-                    </div>
-                    <div class="row">
-                    <input type="submit" value="Save Settings" class="btn btn-success">
-                    </div>
-                </form>
-            </div>
+  <nav class="settings-nav">
+    <div class="settings-nav-header">Settings</div>
+    <a href="{% url 'appauth:settings' %}">Profile</a>
+    <a href="{% url 'appauth:passwordpage' %}">Account</a>
+    <a href="{% url 'appauth:globalSettings' %}" class="active">Global</a>
+  </nav>
+
+  <div class="settings-body">
+    <form method="post" action="{% url 'appauth:updateGlobalSettings' %}">
+      {% csrf_token %}
+
+      <!-- Visibility defaults -->
+      <div class="settings-card">
+        <div class="settings-card-header">Default Visibility</div>
+        <div class="settings-card-body">
+
+          <div class="settings-field">
+            <label class="settings-label" for="viewpreferences">Preference Visibility (for all future polls)</label>
+            <select class="settings-select" id="viewpreferences" name="viewpreferences">
+              <option value="1" {% if request.user.userprofile.displayPref == 1 %}selected{% endif %}>Everyone can see all preferences</option>
+              <option value="2" {% if request.user.userprofile.displayPref == 2 %}selected{% endif %}>Everyone can only see own preference</option>
+              <option value="3" {% if request.user.userprofile.displayPref == 3 %}selected{% endif %}>Nothing</option>
+            </select>
+          </div>
+
+          <div class="settings-field">
+            <label class="settings-label" for="viewuserinfo">User Info Visibility (for all future polls)</label>
+            <select class="settings-select" id="viewuserinfo" name="viewuserinfo">
+              <option value="1" {% if request.user.userprofile.display_user_info == 1 %}selected{% endif %}>Show usernames</option>
+              <option value="2" {% if request.user.userprofile.display_user_info == 2 %}selected{% endif %}>Show only numbers</option>
+              <option value="3" {% if request.user.userprofile.display_user_info == 3 %}selected{% endif %}>Nothing</option>
+            </select>
+          </div>
+
         </div>
-    </div>
+      </div>
+
+      <!-- Email notifications -->
+      <div class="settings-card">
+        <div class="settings-card-header">Email Notifications</div>
+        <div class="settings-card-body" style="padding-top:8px; padding-bottom:8px;">
+
+          <div class="settings-toggle-row">
+            <div>
+              <div class="settings-toggle-label">Poll starts</div>
+              <div class="settings-toggle-desc">Send email when a poll you're in starts</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="emailStart" id="emailStart" value="email" {% if request.user.userprofile.emailStart %}checked{% endif %}>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="settings-toggle-row">
+            <div>
+              <div class="settings-toggle-label">Poll stops</div>
+              <div class="settings-toggle-desc">Send email when a poll you're in stops</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="emailStop" id="emailStop" value="email" {% if request.user.userprofile.emailStop %}checked{% endif %}>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="settings-toggle-row">
+            <div>
+              <div class="settings-toggle-label">Removed from poll</div>
+              <div class="settings-toggle-desc">Send email when you are removed from a poll</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="emailDelete" id="emailDelete" value="email" {% if request.user.userprofile.emailDelete %}checked{% endif %}>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <div class="settings-toggle-row">
+            <div>
+              <div class="settings-toggle-label">Show hints</div>
+              <div class="settings-toggle-desc">Display interface hints while voting</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="showHint" id="showHint" value="hint" {% if request.user.userprofile.showHint %}checked{% endif %}>
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+      <button type="submit" class="opra-btn opra-btn-primary">Save Settings</button>
+    </form>
+  </div>
+
 </div>
 {% endblock %}

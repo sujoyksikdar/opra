@@ -1,4 +1,6 @@
-{% extends 'polls/base.html' %}
+{% extends 'allocation/base_new.html' %}
+{% block nav_allocation %}active{% endblock %}
+{% block title %}Allocation Order – {{ question.question_text }} – OPRA{% endblock %}
 
 {% block extra_head %}
 <script src='/static/js/voting.js'></script>
@@ -7,125 +9,155 @@
 {% else %}
 <script src='/static/js/desktop.js'></script>
 {% endif %}
-
+<style>
+  .order-col {
+    flex: 1;
+    min-width: 260px;
+  }
+  .order-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .order-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .order-list {
+    list-style: none;
+    margin: 0;
+    padding: 10px 12px;
+    min-height: 120px;
+  }
+  .order-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    font-size: 13px;
+    color: var(--text);
+    cursor: grab;
+    user-select: none;
+  }
+  .order-list li:hover { background: #f0f4ff; border-color: var(--green); }
+  .order-list li .drag-handle {
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  #right-sortable li { cursor: pointer; }
+</style>
 {% endblock %}
 
 {% block content %}
 
-{% if question.status == 1 or question.status == 2 %}
-<div class="row">
-	<form action="{% url 'allocation:setAllocationOrder' question.id %}" method="post">
-		{% csrf_token %}
-
-		{% if request.flavour == "mobile" %}
-		<div class="col-md-6 margin-panel-top">
-		{% else %}
-		<div class="col-md-6 margin-panel-top">
-		{% endif %}
-
-
-			<div class="panel panel-default panel-border">
-				<div class="panel-heading" >
-					<b>Your preferences:</b>
-					{% if request.flavour == "mobile" %}
-						<button id="submitbutton" type="submit" onclick="VoteUtil.submitPref();" class="submit-button-mobile" >
-							<span class="glyphicon glyphicon-upload" style="font-size:80%;color:white;">Submit</span>
-            </button>
-						
-						<button id="submitbutton" type="submit" onclick="VoteUtil.submitPref();" class="btn btn-success" style ="float: right; display: none;">
-							Submit
-						</button>	
-					{% else %}
-							<a href="{% url 'allocation:viewAllocationOrder' question.id %}?order=null" class="btn btn-danger reset-button">Clear</a>
-							<button id="submitbutton" type="submit" onclick="VoteUtil.submitPref();" class="btn btn-success submit-button">
-				                Submit
-							</button>
-					{% endif %}
-				    <input type="hidden" id="pref_order" name="pref_order" value=""/>
-				</div>
-
-				<div class="panel-body" >
-					<ul id="left-sortable" class="list-group droptrue">
-						{% if currentSelection %}
-							{% for selection in currentSelection %}
-								{% for item in question_voters %}
-									{% if selection.user == item %}
-										<li class="list-group-item"  id="item{{ forloop.counter }}">
-											{{ selection.user }}
-										</li>
-									{% endif %}
-								{% endfor %}
-							{% endfor %}
-						{% endif %}
-					</ul>
-				</div>
-
-				{% if request.flavour == "mobile" %}
-					<button onclick="javascript:window.location.href='{% url 'allocation:viewAllocationOrder' question.id %}?order=null'; return false;" class="reset-button-mobile">
-				        <a href="{% url 'allocation:viewAllocationOrder' question.id %}?order=null" class="glyphicon glyphicon-trash redcolor" style="color:white;">Clear</a>
-				    </button>
-				{% endif %}
-			</div>
-		</div>
-
-
-		{% if request.flavour == "mobile" %}
-		<div class="col-md-6 margin-panel-top">
-		{% else %}
-		<div class="col-md-6 margin-panel-top">
-		{% endif %}
-
-			<div class="panel panel-default panel-border">
-				<div class="panel-heading">
-					<b>Remaining Options:</b>
-
-					{% if request.flavour == "mobile" %}
-						<button onclick="VoteUtil.moveAll(); return false;" class="move-all-button-mobile">
-					<span class="glyphicon glyphicon-arrow-up bluecolor" style="font-size:80%;float: center; color:white;">All</span>
-				        </button>
-				    {% else %}
-				        <button onclick="VoteUtil.moveAll(); return false;" class="btn btn-primary move-all-button" >
-					       Accept this Order
-				        </button>
-					{% endif %}
-				</div>
-				<div class="panel-body">
-					<ul id="right-sortable" class="list-group">
-						{% if currentSelection == None %}
-						{% for item in question_voters %}
-						<li class="list-group-item" onclick = "VoteUtil.moveToPref(this)" id="item{{ forloop.counter }}">
-							{{ item }}
-						</li>
-						{% endfor %}
-						{% endif %}
-					</ul>
-				</div>
-			</div>
-		</div>
-	</form>
+<div class="opra-topbar">
+  <div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+      <a href="{% url 'allocation:allocationinfo' question.id %}" style="color:var(--text-muted); font-size:12px; text-decoration:none; display:flex; align-items:center; gap:4px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        {{ question.question_text }}
+      </a>
+    </div>
+    <h1>Allocation Order</h1>
+    <p>Drag voters into the order they will pick items (Round Robin)</p>
+  </div>
 </div>
 
+<div style="padding: 0 32px 40px;">
+
+{% if question.status == 1 or question.status == 2 %}
+
+<form action="{% url 'allocation:setAllocationOrder' question.id %}" method="post">
+  {% csrf_token %}
+  <input type="hidden" id="pref_order" name="pref_order" value=""/>
+
+  <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:20px;">
+
+    <!-- Left: ordered list -->
+    <div class="order-col">
+      <div class="order-card">
+        <div class="order-card-header">
+          <span>Picking Order</span>
+          <div style="display:flex; gap:8px;">
+            <a href="{% url 'allocation:viewAllocationOrder' question.id %}?order=null" class="opra-btn opra-btn-ghost opra-btn-sm">Clear</a>
+            <button type="submit" onclick="VoteUtil.submitPref();" class="opra-btn opra-btn-primary opra-btn-sm">Save Order</button>
+          </div>
+        </div>
+        <ul id="left-sortable" class="order-list droptrue">
+          {% if currentSelection %}
+            {% for selection in currentSelection %}
+              {% for item in question_voters %}
+                {% if selection.user == item %}
+                  <li id="item{{ forloop.counter }}">
+                    <svg class="drag-handle" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                    {{ selection.user }}
+                  </li>
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Right: remaining voters -->
+    <div class="order-col">
+      <div class="order-card">
+        <div class="order-card-header">
+          <span>Remaining Voters</span>
+          <button type="button" onclick="VoteUtil.moveAll(); return false;" class="opra-btn opra-btn-ghost opra-btn-sm">Accept This Order</button>
+        </div>
+        <ul id="right-sortable" class="order-list">
+          {% if currentSelection == None %}
+            {% for item in question_voters %}
+            <li onclick="VoteUtil.moveToPref(this)" id="item{{ forloop.counter }}">
+              <svg class="drag-handle" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+              {{ item }}
+            </li>
+            {% endfor %}
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</form>
+
 <script>
-	var wholeHeight1 = $('#left-sortable')[0].scrollHeight;
-	var wholeHeight2 = $('#right-sortable')[0].scrollHeight;
-	if (wholeHeight1 > wholeHeight2) {
-		$('#right-sortable').css("height", wholeHeight1);
-	} else {
-		$('#left-sortable').css("height", wholeHeight2);
-	}
-	$('#left-sortable').sortable('refresh');
-	$('#right-sortable').sortable('refresh');
-
+  var wholeHeight1 = document.getElementById('left-sortable').scrollHeight;
+  var wholeHeight2 = document.getElementById('right-sortable').scrollHeight;
+  var maxH = Math.max(wholeHeight1, wholeHeight2, 120) + 'px';
+  document.getElementById('left-sortable').style.minHeight = maxH;
+  document.getElementById('right-sortable').style.minHeight = maxH;
+  $('#left-sortable').sortable('refresh');
+  $('#right-sortable').sortable('refresh');
 </script>
-
-{% elif question.status == 1 %}
-
-<p>This poll has not started yet.</p>
 
 {% else %}
 
-<p>	This poll has ended.</p>
+<div class="opra-card" style="text-align:center; padding:48px 24px; color:var(--text-muted);">
+  <p style="font-size:14px; margin:0;">
+    {% if question.status == 0 %}
+      This allocation has not started yet.
+    {% else %}
+      This allocation has ended — the order can no longer be changed.
+    {% endif %}
+  </p>
+</div>
 
 {% endif %}
 
+</div>
 {% endblock %}

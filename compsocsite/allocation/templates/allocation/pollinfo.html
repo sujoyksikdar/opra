@@ -8,27 +8,172 @@
 {% block extra_head %}
 <style>
   /* ── _add_choice.html scoped restyling ── */
-  #choicesetting { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0; }
-  #choicesetting > li:first-child,
-  #choicesetting > li:nth-child(2) { background:none; border:none; padding:0 0 12px 0; }
-  #choicesetting .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:12px; font-weight:600; border-radius:8px; border:1px solid var(--red); background:transparent; color:var(--red); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; margin-right:6px; }
-  #choicesetting .btn-danger:hover { background:var(--red); color:#fff; }
-  #choicesetting .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:12px; font-weight:600; border-radius:8px; border:none; background:var(--green); color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.15s; }
-  #choicesetting .btn-primary:hover { background:var(--green-mid); }
-  #choicesetting form#choiceform > li.list-group-item { border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:10px 14px; margin-bottom:8px; box-shadow:var(--shadow); list-style:none; }
-  #choicesetting form#choiceform > li .row { display:flex; align-items:center; gap:10px; cursor:pointer; }
-  .item-checkbox { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; cursor:pointer; }
-  #choicesetting .input-sm.form-control[name^="item"] { border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); background:var(--bg); outline:none; width:100%; transition:border-color 0.15s; }
-  #choicesetting .input-sm.form-control[name^="item"]:focus { border-color:var(--green); background:var(--surface); }
-  #choicesetting .btn-default { padding:5px 10px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text-sub); cursor:pointer; font-size:12px; transition:all 0.15s; }
-  #choicesetting .btn-default:hover { border-color:var(--green); color:var(--green); }
-  .caret { color:var(--text-muted) !important; }
-  .accordian-body textarea.form-control { border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); background:var(--bg); outline:none; width:100%; resize:vertical; }
-  .accordian-body textarea.form-control:focus { border-color:var(--green); }
-  #choicesetting > li:last-child { border:2px dashed var(--border); border-radius:10px; background:transparent; padding:10px 14px; list-style:none; transition:border-color 0.2s; }
-  #choicesetting > li:last-child:hover { border-color:var(--green); }
-  #choicesetting > li:last-child input[type="text"] { border:none; border-radius:8px; padding:7px 10px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); background:transparent; outline:none; width:100%; }
-  #choicesetting > li:last-child input[type="text"]::placeholder { color:var(--text-muted); }
+  #choicesetting {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #choicesetting>li:first-child,
+  #choicesetting>li:nth-child(2) {
+    background: none;
+    border: none;
+    padding: 0 0 12px 0;
+  }
+
+  #choicesetting .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--red);
+    background: transparent;
+    color: var(--red);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    margin-right: 6px;
+  }
+
+  #choicesetting .btn-danger:hover {
+    background: var(--red);
+    color: #fff;
+  }
+
+  #choicesetting .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    background: var(--green);
+    color: #fff;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s;
+  }
+
+  #choicesetting .btn-primary:hover {
+    background: var(--green-mid);
+  }
+
+  #choicesetting form#choiceform>li.list-group-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+    list-style: none;
+  }
+
+  #choicesetting form#choiceform>li .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .item-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--green);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  #choicesetting .input-sm.form-control[name^="item"] {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  #choicesetting .input-sm.form-control[name^="item"]:focus {
+    border-color: var(--green);
+    background: var(--surface);
+  }
+
+  #choicesetting .btn-default {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text-sub);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+
+  #choicesetting .btn-default:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .caret {
+    color: var(--text-muted) !important;
+  }
+
+  .accordian-body textarea.form-control {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    width: 100%;
+    resize: vertical;
+  }
+
+  .accordian-body textarea.form-control:focus {
+    border-color: var(--green);
+  }
+
+  #choicesetting>li:last-child {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: transparent;
+    padding: 10px 14px;
+    list-style: none;
+    transition: border-color 0.2s;
+  }
+
+  #choicesetting>li:last-child:hover {
+    border-color: var(--green);
+  }
+
+  #choicesetting>li:last-child input[type="text"] {
+    border: none;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: transparent;
+    outline: none;
+    width: 100%;
+  }
+
+  #choicesetting>li:last-child input[type="text"]::placeholder {
+    color: var(--text-muted);
+  }
 
   /* ── Pollinfo layout ─────────────────────────────── */
   .pi-shell {
@@ -130,7 +275,9 @@
     transition: border-color 0.15s;
   }
 
-  .pi-input:focus { border-color: var(--green); }
+  .pi-input:focus {
+    border-color: var(--green);
+  }
 
   /* Checkbox chip labels */
   .pi-ui-chip {
@@ -148,8 +295,32 @@
     transition: border-color 0.15s, background 0.15s;
     user-select: none;
   }
-  .pi-ui-chip input[type="checkbox"] { accent-color: var(--green); }
+
+  .pi-ui-chip input[type="checkbox"] {
+    accent-color: var(--green);
+  }
+
   .pi-ui-chip:has(input:checked) {
+    border-color: var(--green);
+    background: var(--green-light);
+  }
+
+  .access-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .access-chip-active {
     border-color: var(--green);
     background: var(--green-light);
   }
@@ -164,24 +335,29 @@
     font-family: 'DM Sans', sans-serif;
     background: var(--surface);
   }
-  trix-toolbar .trix-button-group--file-tools { display: none; }
+
+  trix-toolbar .trix-button-group--file-tools {
+    display: none;
+  }
 
   /* jQuery autocomplete dropdown styling */
   .ui-autocomplete {
     border: 1px solid var(--border) !important;
     border-radius: 8px !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10) !important;
     background: var(--surface) !important;
     padding: 4px 0 !important;
     font-family: 'DM Sans', sans-serif !important;
     font-size: 13px !important;
     z-index: 9999 !important;
   }
+
   .ui-autocomplete .ui-menu-item-wrapper {
     padding: 8px 14px !important;
     color: var(--text) !important;
     border-radius: 0 !important;
   }
+
   .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
     background: var(--green-light) !important;
     color: var(--green) !important;
@@ -190,23 +366,23 @@
   }
 </style>
 <script>
-$(function() {
-    $(".auto_submit").change(function() {
-        $("#choiceform").submit();
+  $(function () {
+    $(".auto_submit").change(function () {
+      $("#choiceform").submit();
     });
-});
-function updateTiesStyle() {
-  var enabled = document.querySelector('input[name="allowties"][value="1"]').checked;
-  var el = document.getElementById('ties-enabled-label');
-  var dl = document.getElementById('ties-disabled-label');
-  if (enabled) {
-    el.style.borderColor = 'var(--green)'; el.style.background = 'var(--green-light)';
-    dl.style.borderColor = 'var(--border)'; dl.style.background = 'var(--surface)';
-  } else {
-    dl.style.borderColor = 'var(--green)'; dl.style.background = 'var(--green-light)';
-    el.style.borderColor = 'var(--border)'; el.style.background = 'var(--surface)';
+  });
+  function updateTiesStyle() {
+    var enabled = document.querySelector('input[name="allowties"][value="1"]').checked;
+    var el = document.getElementById('ties-enabled-label');
+    var dl = document.getElementById('ties-disabled-label');
+    if (enabled) {
+      el.style.borderColor = 'var(--green)'; el.style.background = 'var(--green-light)';
+      dl.style.borderColor = 'var(--border)'; dl.style.background = 'var(--surface)';
+    } else {
+      dl.style.borderColor = 'var(--green)'; dl.style.background = 'var(--green-light)';
+      el.style.borderColor = 'var(--border)'; el.style.background = 'var(--surface)';
+    }
   }
-}
 </script>
 {% endblock %}
 
@@ -216,7 +392,8 @@ function updateTiesStyle() {
 <div class="opra-topbar">
   <div style="display:flex; align-items:center; gap:12px;">
     <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-ghost opra-btn-sm">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
       Back
@@ -228,19 +405,22 @@ function updateTiesStyle() {
   </div>
   <div style="display:flex; align-items:center; gap:10px;">
     {% if question.status == 1 %}
-      <span class="opra-badge opra-badge-draft">Draft</span>
-      <a href="{% url 'allocation:start' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        Start Allocation
-      </a>
+    <span class="opra-badge opra-badge-draft">Draft</span>
+    <a href="{% url 'allocation:start' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+      Start Allocation
+    </a>
     {% elif question.status == 2 %}
-      <span class="opra-badge opra-badge-active">Active</span>
-      <a href="{% url 'allocation:stopAllocation' question.id %}" class="opra-btn opra-btn-danger opra-btn-sm">Stop Allocation</a>
+    <span class="opra-badge opra-badge-active">Active</span>
+    <a href="{% url 'allocation:stopAllocation' question.id %}" class="opra-btn opra-btn-danger opra-btn-sm">Stop
+      Allocation</a>
     {% elif question.status == 3 %}
-      <span class="opra-badge opra-badge-ended">Ended</span>
+    <span class="opra-badge opra-badge-ended">Ended</span>
     {% elif question.status == 4 %}
-      <span class="opra-badge opra-badge-paused">Paused</span>
-      <a href="{% url 'allocation:resume' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Resume</a>
+    <span class="opra-badge opra-badge-paused">Paused</span>
+    <a href="{% url 'allocation:resume' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Resume</a>
     {% endif %}
   </div>
 </div>
@@ -248,7 +428,7 @@ function updateTiesStyle() {
 {% if messages %}
 <div style="padding:0 32px 8px;">
   {% for message in messages %}
-  <div {% if message.tags %}class="alert alert-{{ message.tags }}"{% endif %} style="font-size:13px;">
+  <div {% if message.tags %}class="alert alert-{{ message.tags }}" {% endif %} style="font-size:13px;">
     {{ message }}
     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
       <span aria-hidden="true">&times;</span>
@@ -265,64 +445,131 @@ function updateTiesStyle() {
   <nav class="pi-tabs">
 
     {% if question.question_owner == request.user %}
-      <a class="pi-tab-link" href="#" data-pi="title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-        General Info
-      </a>
-      <a class="pi-tab-link" href="#" data-pi="choices">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-        Alternatives
-      </a>
-      <a class="pi-tab-link" href="#" data-pi="algorithm">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-        Algorithms
-      </a>
-      {% if question.m_poll == False %}
-      <a class="pi-tab-link" href="#" data-pi="voters">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        User Management
-      </a>
-      <a class="pi-tab-link" href="#" data-pi="visibility">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-        Access &amp; QR
-      </a>
-      <a class="pi-tab-link" href="#" data-pi="historyinfo">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.5"></path></svg>
-        Preferences
-      </a>
-      <a class="pi-tab-link" href="#" data-pi="recycle">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.5"></path></svg>
-        Deleted Preferences
-      </a>
-      <a class="pi-tab-link" href="{% url 'allocation:recordView' question.id %}">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-        User Records
-      </a>
-      <a class="pi-tab-link" href="{% url 'allocation:viewAllocationOrder' question.id %}">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-        Allocation Order
-      </a>
-      <div style="margin: 6px 0; border-top: 1px solid var(--border);"></div>
-      <a class="pi-tab-link danger" href="#" data-pi="danger">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
-        Danger Zone
-      </a>
-      {% endif %}
+    <a class="pi-tab-link" href="#" data-pi="title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      General Info
+    </a>
+    <a class="pi-tab-link" href="#" data-pi="choices">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      Alternatives
+    </a>
+    <a class="pi-tab-link" href="#" data-pi="algorithm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+      </svg>
+      Algorithms
+    </a>
+    {% if question.m_poll == False %}
+    <a class="pi-tab-link" href="#" data-pi="voters">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+      User Management
+    </a>
+    <a class="pi-tab-link" href="#" data-pi="visibility">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      Access &amp; QR
+    </a>
+    <a class="pi-tab-link" href="#" data-pi="historyinfo">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 .49-3.5"></path>
+      </svg>
+      Preferences
+    </a>
+    <a class="pi-tab-link" href="#" data-pi="recycle">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 .49-3.5"></path>
+      </svg>
+      Deleted Preferences
+    </a>
+    <a class="pi-tab-link" href="{% url 'allocation:recordView' question.id %}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      User Records
+    </a>
+    <a class="pi-tab-link" href="{% url 'allocation:viewAllocationOrder' question.id %}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      Allocation Order
+    </a>
+    <div style="margin: 6px 0; border-top: 1px solid var(--border);"></div>
+    <a class="pi-tab-link danger" href="#" data-pi="danger">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+      </svg>
+      Danger Zone
+    </a>
+    {% endif %}
 
     {% else %}
-      <!-- Voter view -->
-      <a class="pi-tab-link active" href="#" data-pi="general">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-        General Info
-      </a>
-      <a class="pi-tab-link" href="#" data-pi="historyinfo">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.5"></path></svg>
-        History
-      </a>
-      <a class="pi-tab-link danger" href="#" data-pi="quit">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-        Quit Allocation
-      </a>
+    <!-- Voter view -->
+    <a class="pi-tab-link active" href="#" data-pi="general">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      General Info
+    </a>
+    <a class="pi-tab-link" href="#" data-pi="historyinfo">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 .49-3.5"></path>
+      </svg>
+      History
+    </a>
+    <a class="pi-tab-link danger" href="#" data-pi="quit">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+      Quit Allocation
+    </a>
     {% endif %}
 
   </nav>
@@ -338,29 +585,35 @@ function updateTiesStyle() {
 
       <!-- Voting stats -->
       <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;">
-        <div style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
+        <div
+          style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
           <div style="font-size:22px; font-weight:700; color:var(--green);">{{ voted_count }}</div>
           <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Voted</div>
         </div>
-        <div style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
+        <div
+          style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
           <div style="font-size:22px; font-weight:700; color:var(--text);">{{ question.question_voters.count }}</div>
           <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Total Invited</div>
         </div>
-        <div style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
+        <div
+          style="padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:9px; text-align:center;">
           <div style="font-size:22px; font-weight:700; color:var(--status-paused);">{{ pending_count }}</div>
           <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Pending</div>
         </div>
       </div>
 
       <!-- Poll details form -->
-      <div style="padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:16px;">
-        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:10px;">Allocation Details</div>
+      <div
+        style="padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:16px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:10px;">Allocation Details
+        </div>
         {% include 'allocation/_change_title_and_desc.html' %}
       </div>
 
       {% if request.user == question.question_owner and question.status != 1 %}
       <div style="margin-top:12px;">
-        <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm" target="_blank">View Results</a>
+        <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm"
+          target="_blank">View Results</a>
       </div>
       {% endif %}
     </div>
@@ -371,17 +624,24 @@ function updateTiesStyle() {
       {% include 'allocation/_add_choice.html' %}
 
       <div style="border-top:1px solid var(--border); margin-top:24px; padding-top:20px;">
-        <form action="{% url 'allocation:editBasicInfo' question.id %}" method="post" onsubmit="javascript:UICheckboxes();">
+        <form action="{% url 'allocation:editBasicInfo' question.id %}" method="post"
+          onsubmit="javascript:UICheckboxes();">
           {% csrf_token %}
 
           <fieldset style="margin-bottom:16px; border:none; padding:0;">
             <label class="pi-label">Ties</label>
             <div style="display:flex; gap:8px; margin-top:4px;">
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;" id="ties-enabled-label">
-                <input type="radio" name="allowties" value="1" {% if question.allowties %}checked{% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Enabled
+              <label
+                style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;"
+                id="ties-enabled-label">
+                <input type="radio" name="allowties" value="1" {% if question.allowties %}checked{% endif %}
+                  style="accent-color:var(--green);" onchange="updateTiesStyle()">Enabled
               </label>
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if not question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if not question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;" id="ties-disabled-label">
-                <input type="radio" name="allowties" value="2" {% if not question.allowties %}checked{% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Disabled
+              <label
+                style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if not question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if not question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;"
+                id="ties-disabled-label">
+                <input type="radio" name="allowties" value="2" {% if not question.allowties %}checked{% endif %}
+                  style="accent-color:var(--green);" onchange="updateTiesStyle()">Disabled
               </label>
             </div>
           </fieldset>
@@ -389,11 +649,21 @@ function updateTiesStyle() {
           <fieldset style="margin-bottom:20px; border:none; padding:0;">
             <label class="pi-label">Allowed Interfaces</label>
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
-              <label class="pi-ui-chip"><input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %}checked{% endif %}>Two Column</label>
-              <label class="pi-ui-chip"><input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %}checked{% endif %}>One Column</label>
-              <label class="pi-ui-chip"><input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui" {% if question.budgetUI_enabled %}checked{% endif %}>Budget UI</label>
-              <label class="pi-ui-chip"><input id="listUI_checkbox" type="checkbox" value="LUI" name="ui" {% if question.ListUI_enabled %}checked{% endif %}>List UI</label>
-              <label class="pi-ui-chip"><input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui" {% if question.infiniteBudgetUI_enabled %}checked{% endif %}>Infinite Budget UI</label>
+              <label class="pi-ui-chip">
+                <input id="twocol_checkbox" type="checkbox" value="twocol" name="ui"
+                  {% if question.twocol_enabled %}checked{% endif %}>Two Column</label>
+              <label class="pi-ui-chip">
+                <input id="onecol_checkbox" type="checkbox" value="onecol" name="ui"
+                  {% if question.onecol_enabled %}checked{% endif %}>One Column</label>
+              <label class="pi-ui-chip">
+                <input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui"
+                  {% if question.budgetUI_enabled %}checked{% endif %}>Budget UI</label>
+              <label class="pi-ui-chip">
+                <input id="listUI_checkbox" type="checkbox" value="LUI" name="ui"
+                  {% if question.ListUI_enabled %}checked{% endif %}>List UI</label>
+              <label class="pi-ui-chip">
+                <input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui"
+                  {% if question.infiniteBudgetUI_enabled %}checked{% endif %}>Infinite Budget UI</label>
             </div>
           </fieldset>
 
@@ -419,13 +689,17 @@ function updateTiesStyle() {
 
       <!-- Voting progress bar -->
       {% if question.question_voters.count > 0 %}
-      <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:18px;">
+      <div
+        style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px; margin-bottom:18px;">
         <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
           <span style="font-size:12px; font-weight:600; color:var(--text);">Voting Progress</span>
-          <span style="font-size:12px; color:var(--text-muted);">{{ voted_count }} / {{ question.question_voters.count }} voted</span>
+          <span style="font-size:12px; color:var(--text-muted);">{{ voted_count }} / {{ question.question_voters.count
+            }} voted</span>
         </div>
         <div style="height:6px; background:var(--border); border-radius:3px; overflow:hidden;">
-          <div style="height:100%; width:{{ progressPercentage|floatformat:0 }}%; background:var(--green); border-radius:3px; transition:width 0.3s;"></div>
+          <div
+            style="height:100%; width:{{ progressPercentage|floatformat:0 }}%; background:var(--green); border-radius:3px; transition:width 0.3s;">
+          </div>
         </div>
         <div style="display:flex; gap:16px; margin-top:8px;">
           <span style="font-size:11px; color:var(--status-active);">{{ voted_count }} voted</span>
@@ -442,8 +716,10 @@ function updateTiesStyle() {
       <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Access &amp; QR</h3>
 
       <!-- QR code -->
-      <div style="background:var(--bg); border-radius:10px; padding:16px; border:1px solid var(--border); margin-bottom:20px;">
-        <div style="font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:10px;">QR Code &amp; Link</div>
+      <div
+        style="background:var(--bg); border-radius:10px; padding:16px; border:1px solid var(--border); margin-bottom:20px;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:10px;">QR Code &amp; Link
+        </div>
         <div style="display:flex; gap:16px; align-items:flex-start;">
           <div>
             {% url 'allocation:detail' question.id as detail_url %}
@@ -451,7 +727,8 @@ function updateTiesStyle() {
           </div>
           <div style="flex:1;">
             <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Voting link</div>
-            <div id="QRLink" style="padding:8px 11px; background:var(--surface); border:1px solid var(--border); border-radius:7px; font-size:12px; color:var(--text-sub); font-family:monospace; word-break:break-all;">
+            <div id="QRLink"
+              style="padding:8px 11px; background:var(--surface); border:1px solid var(--border); border-radius:7px; font-size:12px; color:var(--text-sub); font-family:monospace; word-break:break-all;">
               {{ request.scheme }}://{{ request.get_host }}{{ detail_url }}
             </div>
           </div>
@@ -459,19 +736,26 @@ function updateTiesStyle() {
       </div>
 
       <!-- Poll type (open/invite/users-only) -->
-      <div style="padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:20px;">
+      <div
+        style="padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:20px;">
         <div style="font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:10px;">Access Type</div>
         <form class="form-group" method="post" action="{% url 'allocation:changeType' question.id %}">
           {% csrf_token %}
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.open == 1 %}var(--green){% else %}var(--border){% endif %}; background:{% if question.open == 1 %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;">
-              <input type="radio" name="openpoll" value="anon" {% if question.open == 1 %}checked{% endif %} style="accent-color:var(--green);">Anonymous
+            <label class="access-chip {% if question.open == 1 %}access-chip-active{% endif %}">
+              <input type="radio" name="openpoll" value="anon"
+                {% if question.open == 1 %}checked{% endif %}
+                style="accent-color:var(--green);">Anonymous
             </label>
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.open == 0 %}var(--green){% else %}var(--border){% endif %}; background:{% if question.open == 0 %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;">
-              <input type="radio" name="openpoll" value="invite" {% if question.open == 0 %}checked{% endif %} style="accent-color:var(--green);">Invited
+            <label class="access-chip {% if question.open == 0 %}access-chip-active{% endif %}">
+              <input type="radio" name="openpoll" value="invite"
+                {% if question.open == 0 %}checked{% endif %}
+                style="accent-color:var(--green);">Invited
             </label>
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.open == 2 %}var(--green){% else %}var(--border){% endif %}; background:{% if question.open == 2 %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;">
-              <input type="radio" name="openpoll" value="uninvite" {% if question.open == 2 %}checked{% endif %} style="accent-color:var(--green);">Users-Only
+            <label class="access-chip {% if question.open == 2 %}access-chip-active{% endif %}">
+              <input type="radio" name="openpoll" value="uninvite"
+                {% if question.open == 2 %}checked{% endif %}
+                style="accent-color:var(--green);">Users-Only
             </label>
           </div>
           <button type="submit" class="opra-btn opra-btn-primary" style="margin-top:12px;">Save</button>
@@ -500,28 +784,41 @@ function updateTiesStyle() {
     <!-- Danger Zone -->
     <div class="pi-pane opra-card" id="pi-danger" style="padding:24px;">
       <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--red);">Danger Zone</h3>
-      <div style="background:var(--red-light); border:1px solid rgba(191,7,17,0.16); border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:10px;">
+      <div
+        style="background:var(--red-light); border:1px solid rgba(191,7,17,0.16); border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:10px;">
 
         <!-- Duplicate row -->
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(191,7,17,0.10);">
+        <div
+          style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(191,7,17,0.10);">
           <div>
             <div style="font-size:13px; font-weight:600; color:var(--text);">Duplicate Instance</div>
-            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">Create a copy inheriting all settings and alternatives</div>
+            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">Create a copy inheriting all settings
+              and alternatives</div>
           </div>
           <a href="{% url 'allocation:dupallocation' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
             Duplicate
           </a>
         </div>
 
         <!-- Delete row -->
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(191,7,17,0.10);">
+        <div
+          style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(191,7,17,0.10);">
           <div>
             <div style="font-size:13px; font-weight:600; color:var(--text);">Delete Instance</div>
-            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">Permanently remove all votes, settings, and data. Cannot be undone.</div>
+            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">Permanently remove all votes, settings,
+              and data. Cannot be undone.</div>
           </div>
           <button class="opra-btn opra-btn-danger opra-btn-sm" data-toggle="modal" data-target="#confirm-delete">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
             Delete
           </button>
         </div>
@@ -533,28 +830,31 @@ function updateTiesStyle() {
     <!-- Voter: General Info -->
     <div class="pi-pane opra-card active" id="pi-general" style="padding:24px;">
       <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">General Info</h3>
-      <div style="padding:14px 16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:14px;">
-        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">Preference Visibility</div>
+      <div
+        style="padding:14px 16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:14px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">Preference Visibility
+        </div>
         {% if question.display_pref == 1 %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">Everyone can see all preferences.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">Everyone can see all preferences.</p>
         {% elif question.display_pref == 2 %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">Everyone can only see own preference.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">Everyone can only see own preference.</p>
         {% elif question.display_pref == 3 %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">No submitted preferences will be shown.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">No submitted preferences will be shown.</p>
         {% else %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">No visibility was selected.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">No visibility was selected.</p>
         {% endif %}
       </div>
       <div style="padding:14px 16px; background:var(--bg); border:1px solid var(--border); border-radius:10px;">
-        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">User Info Visibility</div>
+        <div style="font-size:12px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">User Info Visibility
+        </div>
         {% if question.display_user_info == 1 %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">Username of users will be shown.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">Username of users will be shown.</p>
         {% elif question.display_user_info == 2 %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">Only numbers of users will be shown.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">Only numbers of users will be shown.</p>
         {% elif question.display_user_info == 3 %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">No user information will be shown.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">No user information will be shown.</p>
         {% else %}
-          <p style="font-size:13px; color:var(--text-sub); margin:0;">No visibility was selected.</p>
+        <p style="font-size:13px; color:var(--text-sub); margin:0;">No visibility was selected.</p>
         {% endif %}
       </div>
     </div>
@@ -568,19 +868,24 @@ function updateTiesStyle() {
     <!-- Voter: Quit -->
     <div class="pi-pane opra-card" id="pi-quit" style="padding:24px; border-color: var(--red) !important;">
       <h3 style="margin:0 0 10px; font-size:15px; font-weight:700; color:var(--red);">Quit Allocation</h3>
-      <p style="font-size:13px; color:var(--text-sub); margin:0 0 18px;">Once you quit, all your preference data will be removed permanently.</p>
-      <button class="opra-btn opra-btn-danger" data-toggle="modal" data-target="#confirm-quit">Quit This Allocation</button>
+      <p style="font-size:13px; color:var(--text-sub); margin:0 0 18px;">Once you quit, all your preference data will be
+        removed permanently.</p>
+      <button class="opra-btn opra-btn-danger" data-toggle="modal" data-target="#confirm-quit">Quit This
+        Allocation</button>
     </div>
 
     <div class="modal fade" id="confirm-quit" tabindex="-1" role="dialog" aria-hidden="true">
-      <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header">Confirm Quit Allocation</div>
-        <div class="modal-body">Are you absolutely sure you want to quit this allocation? All your preference data will be erased permanently.</div>
-        <div class="modal-footer">
-          <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
-          <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-danger">Yes, Quit</a>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">Confirm Quit Allocation</div>
+          <div class="modal-body">Are you absolutely sure you want to quit this allocation? All your preference data
+            will be erased permanently.</div>
+          <div class="modal-footer">
+            <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
+            <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-danger">Yes, Quit</a>
+          </div>
         </div>
-      </div></div>
+      </div>
     </div>
     {% endif %}
 
@@ -589,14 +894,17 @@ function updateTiesStyle() {
 
 <!-- Delete modal -->
 <div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header">Confirm Delete Allocation</div>
-    <div class="modal-body">Are you absolutely sure you want to delete <strong>{{ question.question_text }}</strong>? All preference data, settings, and history will be permanently erased.</div>
-    <div class="modal-footer">
-      <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
-      <a href="{% url 'allocation:delallocation' question.id %}" class="opra-btn opra-btn-danger">Yes, Delete</a>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">Confirm Delete Allocation</div>
+      <div class="modal-body">Are you absolutely sure you want to delete <strong>{{ question.question_text }}</strong>?
+        All preference data, settings, and history will be permanently erased.</div>
+      <div class="modal-footer">
+        <button type="button" class="opra-btn opra-btn-ghost" data-dismiss="modal">Cancel</button>
+        <a href="{% url 'allocation:delallocation' question.id %}" class="opra-btn opra-btn-danger">Yes, Delete</a>
+      </div>
     </div>
-  </div></div>
+  </div>
 </div>
 
 {% endblock %}
@@ -605,20 +913,20 @@ function updateTiesStyle() {
 <script>
   // Map Django session setting values to tab IDs
   var SETTING_TAB_MAP = {
-    '0':  'choices',
-    '1':  'voters',
-    '2':  'algorithm',
-    '4':  'visibility',
-    '5':  'voters',
-    '6':  'historyinfo',
-    '7':  'recycle',
-    '8':  'title',
+    '0': 'choices',
+    '1': 'voters',
+    '2': 'algorithm',
+    '4': 'visibility',
+    '5': 'voters',
+    '6': 'historyinfo',
+    '7': 'recycle',
+    '8': 'title',
     '10': 'visibility',
   };
 
   function activateTab(tabId) {
-    document.querySelectorAll('.pi-tab-link').forEach(function(l) { l.classList.remove('active'); });
-    document.querySelectorAll('.pi-pane').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.pi-tab-link').forEach(function (l) { l.classList.remove('active'); });
+    document.querySelectorAll('.pi-pane').forEach(function (p) { p.classList.remove('active'); });
 
     var pane = document.getElementById('pi-' + tabId);
     if (pane) pane.classList.add('active');
@@ -633,8 +941,8 @@ function updateTiesStyle() {
   activateTab(initialTab);
 
   // Click handler
-  document.querySelectorAll('.pi-tab-link[data-pi]').forEach(function(link) {
-    link.addEventListener('click', function(e) {
+  document.querySelectorAll('.pi-tab-link[data-pi]').forEach(function (link) {
+    link.addEventListener('click', function (e) {
       e.preventDefault();
       activateTab(this.dataset.pi);
     });

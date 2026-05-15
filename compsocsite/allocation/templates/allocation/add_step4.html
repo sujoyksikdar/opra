@@ -1,171 +1,238 @@
-{% extends 'polls/base.html' %}
+{% extends 'allocation/base_new.html' %}
+{% load static %}
+
+{% block title %}Create – Step 4 – OPRA{% endblock %}
+{% block nav_allocation %}active{% endblock %}
 
 {% block content %}
 {% if question.question_owner == request.user %}
-<div class="col-md-10 col-md-offset-1">
-    <h2 align="center">Create a New Allocation</h2>
-    <br/>
-    <div class="steps" align="center">
-        <p class="sameline">1. General <span class="glyphicon glyphicon-chevron-right"></span> 2. Items <span class="glyphicon glyphicon-chevron-right"></span> 3. Invite</p>
-        <p class="sameline" style="color:grey;"><span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
-    </div>
-    <div class="progress">
-        <div class="progress-bar progress-bar-info" role="progressbar" style="width: 100%">
-            <span class="sr-only">100% Complete</span>
-        </div>
-    </div>
-    <br/>
 
-    <form class="form-group" method="post" action="{% url 'allocation:setinitial' question.id %}">
-        {% csrf_token %}
-
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Algorithms:</h4></div>
-            <div class="panel-body">
-                <label for="pollpreferences">Select an allocation method to calculate results</label>
-                <select id="pollpreferences" name="pollpreferences" class="form-control">
-                    {% for item in alloc_methods %}
-                    <option value="{{ forloop.counter }}">{{ item }}</option>
-                    {% endfor %}
-                </select>
-                <br/>
-                <label>Allocation algorithms to show in results</label>
-                <div id="visible">
-                    <label class="checkbox-inline"><input id="vis1"  type="checkbox" value="1"  name="alloc_algorithms"> Round Robin</label>
-                    <label class="checkbox-inline"><input id="vis2"  type="checkbox" value="2"  name="alloc_algorithms"> Max Nash Welfare</label>
-                    <label class="checkbox-inline"><input id="vis4"  type="checkbox" value="4"  name="alloc_algorithms"> Market (EF1)</label>
-                    <label class="checkbox-inline"><input id="vis8"  type="checkbox" value="8"  name="alloc_algorithms"> MarketEq (EQ1)</label>
-                    <label class="checkbox-inline"><input id="vis16" type="checkbox" value="16" name="alloc_algorithms"> Leximin</label>
-                    <label class="checkbox-inline"><input id="vis32" type="checkbox" value="32" name="alloc_algorithms"> MNW Binary</label>
-
-                    <!-- Market EQ1 PO => bit=64 -->
-                    <label class="checkbox-inline"><input id="vis64" type="checkbox" value="64" name="alloc_algorithms"> Market EQ1 PO</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Visibility:</h4></div>
-            <div class="panel-body">
-                <label>Visibility setting for displaying preferences</label>
-                <select name="viewpreferences" class="form-control">
-                    <option value="1">Everyone can see all preferences</option>
-                    <option value="2">Everyone can only see own preference</option>
-                    <option value="3">Nothing</option>
-                </select>
-                <br/>
-                <label>Visibility setting for displaying user info</label>
-                <select name="viewuserinfo" class="form-control">
-                    <option value="1">Username of users will be shown</option>
-                    <option value="2">Only numbers of users will be shown</option>
-                    <option value="3">Nothing</option>
-                </select>
-                <br/>
-                <label>Information visible to the creator</label>
-                <select name="creatorpreferences" class="form-control">
-                    <option value="1" selected>Creator can see everyone's vote</option>
-                    <option value="2">Creator has the same visibility setting as all users</option>
-                </select>
-                <br/>
-                <label>Make results visible after (optional):</label>
-                <input type="datetime-local" name="results_visible_after" class="form-control">
-                <small>Leave empty if you don't want to schedule release by time.</small>
-            </div>
-        </div>
-
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Accessibility:</h4></div>
-            <div class="panel-body">
-                <label>Who can participate? (QR Code can be accessed in settings)</label><br/>
-                <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-default active">
-                        <input type="radio" name="openpoll" value="anon" checked>Anonymous
-                    </label>
-                    <label class="btn btn-default">
-                        <input type="radio" name="openpoll" value="invite">Invited
-                    </label>
-                    <label class="btn btn-default">
-                        <input type="radio" name="openpoll" value="uninvite">Users-Only
-                    </label>
-                </div>
-                <br/><br/>
-                <label>Allow Self Sign Up</label><br/>
-                <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-default active">
-                        <input type="radio" name="selfsignup" value="allow" checked>Allow
-                    </label>
-                    <label class="btn btn-default">
-                        <input type="radio" name="selfsignup" value="notallow">Don't Allow
-                    </label>
-                </div>
-                <br/><br/>
-            </div>
-        </div>
-
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Interfaces to get Preferences:</h4></div>
-            <div class="panel-body">
-                <label>Allowed Interfaces</label>
-                <div>
-                    <label class="checkbox-inline"><input id="twocol_checkbox"   type="checkbox" value="twocol"     name="ui" checked> Two Column</label>
-                    <label class="checkbox-inline"><input id="onecol_checkbox"   type="checkbox" value="onecol"     name="ui"> One Column</label>
-                    <label class="checkbox-inline"><input id="budgetUI_checkbox" type="checkbox" value="BUI_slider" name="ui" checked> Budget UI</label>
-                    <label class="checkbox-inline"><input id="listUI_checkbox"   type="checkbox" value="LUI"        name="ui"> List UI</label>
-                    <label class="checkbox-inline"><input id="ibui_checkbox"     type="checkbox" value="IBUI"       name="ui"> Infinite Budget UI</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Allocation Results:</h4></div>
-            <div class="panel-body">
-                <strong>Preference View Options</strong><br>
-                <label class="checkbox-inline"><input type="checkbox" value="1"  name="alloc_res_tables" checked> My Preferences</label>
-                <label class="checkbox-inline"><input type="checkbox" value="2"  name="alloc_res_tables"> All Preferences</label>
-                <br/><br/>
-                <strong>Allocation View Options</strong><br>
-                <label class="checkbox-inline"><input type="checkbox" value="4"  name="alloc_res_tables" checked> Items Bundle</label>
-                <label class="checkbox-inline"><input type="checkbox" value="8"  name="alloc_res_tables" checked> Allocation Result Table</label>
-                <br/><br/>
-                <strong>Allocation Property View Options</strong><br>
-                <label class="checkbox-inline"><input type="checkbox" value="16"  name="alloc_res_tables" checked> Envy Matrix</label>
-                <label class="checkbox-inline"><input type="checkbox" value="32"  name="alloc_res_tables"> Equitability</label>
-                <label class="checkbox-inline"><input type="checkbox" value="64"  name="alloc_res_tables"> Fractional Share</label>
-                <label class="checkbox-inline"><input type="checkbox" value="128" name="alloc_res_tables"> Welfare</label>
-                <label class="checkbox-inline"><input type="checkbox" value="256" name="alloc_res_tables"> Pareto Optimality</label>
-                <label class="checkbox-inline"><input type="checkbox" value="512" name="alloc_res_tables"> First-choices</label>
-            </div>
-        </div>
-
-        <script>
-        $(document).ready(function() {
-            lockSelectedAlgorithm();
-        });
-        $('#pollpreferences').change(function() {
-            lockSelectedAlgorithm();
-        });
-        function lockSelectedAlgorithm() {
-            // 1) Re-enable all boxes
-            $('input[name="vr"], input[name="alloc_algorithms"]').prop("disabled", false);
-
-            // 2) If there's a valid selection in the dropdown, compute the bit
-            var selectedVal = parseInt($('#pollpreferences option:selected').val());
-            if (!isNaN(selectedVal)) {
-                var changed = Math.pow(2, selectedVal - 1);
-                // check & disable that box
-                $('input[name="vr"][value="' + changed + '"], input[name="alloc_algorithms"][value="' + changed + '"]')
-                    .prop("checked", true)
-                    .prop("disabled", true);
-            }
-        }
-        </script>
-
-        <br/>
-        <div class="col-md-6 col-md-offset-3" align="center">
-            <input type="submit" value="Finish" class="btn btn-primary"/>
-        </div>
-        <br/><br/><br/>
-    </form>
+<div class="opra-topbar">
+  <div>
+    <h1>Create New Allocation</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+  <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
 </div>
+
+<div style="padding:20px 32px 40px; max-width:760px; margin:0 auto;">
+
+  {% include 'allocation/_wizard_steps.html' with current=4 %}
+
+  <form class="form-group" method="post" action="{% url 'allocation:setinitial' question.id %}" onsubmit="javascript:UICheckboxes();">
+    {% csrf_token %}
+
+    <!-- Algorithm -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Algorithm</h3>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Primary Allocation Method</label>
+        <select id="pollpreferences" name="pollpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+          {% for item in alloc_methods %}
+          <option value="{{ forloop.counter }}">{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Also Show Results For</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;" id="visible">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis1" type="checkbox" value="1" name="alloc_algorithms" style="accent-color:var(--green);">Round Robin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis2" type="checkbox" value="2" name="alloc_algorithms" style="accent-color:var(--green);">Max Nash Welfare
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis4" type="checkbox" value="4" name="alloc_algorithms" style="accent-color:var(--green);">Market (EF1)
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis8" type="checkbox" value="8" name="alloc_algorithms" style="accent-color:var(--green);">MarketEq (EQ1)
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis16" type="checkbox" value="16" name="alloc_algorithms" style="accent-color:var(--green);">Leximin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis32" type="checkbox" value="32" name="alloc_algorithms" style="accent-color:var(--green);">MNW Binary
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis64" type="checkbox" value="64" name="alloc_algorithms" style="accent-color:var(--green);">Market EQ1 PO
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visibility -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Visibility</h3>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Preference Visibility</label>
+          <select name="viewpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+            <option value="1">Everyone can see all preferences</option>
+            <option value="2">Everyone can only see own preference</option>
+            <option value="3">Nothing</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">User Info Visibility</label>
+          <select name="viewuserinfo" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+            <option value="1">Show usernames</option>
+            <option value="2">Show only numbers</option>
+            <option value="3">Nothing</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Creator Visibility</label>
+          <select name="creatorpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+            <option value="1" selected>Creator can see everyone's vote</option>
+            <option value="2">Creator has same visibility as all users</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Make Results Visible After (optional)</label>
+          <input type="datetime-local" name="results_visible_after"
+            style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Leave empty to not schedule by time.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Access -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Access Control</h3>
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Who can participate?</label>
+        <div style="display:flex; gap:8px;">
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="openpoll" value="anon" checked style="display:none;">Anonymous
+          </label>
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="openpoll" value="invite" style="display:none;">Invited Only
+          </label>
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="openpoll" value="uninvite" style="display:none;">Users Only
+          </label>
+        </div>
+      </div>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Allow Self Sign Up?</label>
+        <div style="display:flex; gap:8px;">
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="selfsignup" value="allow" checked style="display:none;">Allow
+          </label>
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="selfsignup" value="notallow" style="display:none;">Don't Allow
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voting Interfaces -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Voting Interfaces</h3>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" checked style="accent-color:var(--green);">Two Column
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" style="accent-color:var(--green);">One Column
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input id="budgetUI_checkbox" type="checkbox" value="BUI_slider" name="ui" checked style="accent-color:var(--green);">Budget UI
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input id="listUI_checkbox" type="checkbox" value="LUI" name="ui" style="accent-color:var(--green);">List UI
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input id="ibui_checkbox" type="checkbox" value="IBUI" name="ui" style="accent-color:var(--green);">Infinite Budget UI
+        </label>
+      </div>
+    </div>
+
+    <!-- Allocation Results Display -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Allocation Results Display</h3>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="1" name="alloc_res_tables" checked style="accent-color:var(--green);">My Preferences
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="2" name="alloc_res_tables" style="accent-color:var(--green);">All Preferences
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="4" name="alloc_res_tables" checked style="accent-color:var(--green);">Items Bundle
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="8" name="alloc_res_tables" checked style="accent-color:var(--green);">Allocation Result Table
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="16" name="alloc_res_tables" checked style="accent-color:var(--green);">Envy Matrix
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="32" name="alloc_res_tables" style="accent-color:var(--green);">Equitability
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="64" name="alloc_res_tables" style="accent-color:var(--green);">Fractional Share
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="128" name="alloc_res_tables" style="accent-color:var(--green);">Welfare
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="256" name="alloc_res_tables" style="accent-color:var(--green);">Pareto Optimality
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="512" name="alloc_res_tables" style="accent-color:var(--green);">First-choices
+        </label>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div style="display:flex; justify-content:space-between; margin-top:4px;">
+      <a href="{% url 'allocation:AddStep3' question.id %}" class="opra-btn opra-btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Back
+      </a>
+      <button type="submit" class="opra-btn opra-btn-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Finish &amp; Create
+      </button>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+  $(document).ready(function() { lockSelectedAlgorithm(); });
+  $('#pollpreferences').change(function() { lockSelectedAlgorithm(); });
+
+  function lockSelectedAlgorithm() {
+    $('input[name="alloc_algorithms"]').prop("disabled", false);
+    var selectedVal = parseInt($('#pollpreferences option:selected').val());
+    if (!isNaN(selectedVal)) {
+      var changed = Math.pow(2, selectedVal - 1);
+      $('input[name="alloc_algorithms"][value="' + changed + '"]').prop("checked", true).prop("disabled", true);
+    }
+  }
+
+  document.querySelectorAll('input[type="radio"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+      var group = document.querySelectorAll('input[name="' + this.name + '"]');
+      group.forEach(function(inp) {
+        var lbl = inp.closest('label');
+        lbl.style.borderColor = 'var(--border)';
+        lbl.style.color = 'var(--text-sub)';
+        lbl.style.fontWeight = '400';
+      });
+      var active = this.closest('label');
+      active.style.borderColor = 'var(--green)';
+      active.style.color = 'var(--green)';
+      active.style.fontWeight = '600';
+    });
+  });
+</script>
+
 {% endif %}
 {% endblock %}

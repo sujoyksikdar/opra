@@ -46,22 +46,6 @@
         </select>
     </fieldset>
 
-    {% if question.poll_algorithm == 3 %}
-    <div style="margin-bottom:20px;">
-        <label class="pi-label">Allocation Order</label>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">
-            {% for voter in question.allocationvoter_set.all %}
-            <span style="padding:5px 12px; border-radius:7px; border:1px solid var(--border); background:var(--bg); font-size:12px; color:var(--text-sub); font-family:'DM Sans',sans-serif;">{{ voter.user }}</span>
-            {% endfor %}
-        </div>
-        {% if question.status == 1 or question.status == 2 %}
-        <a href="{% url 'allocation:viewAllocationOrder' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm" style="margin-top:10px; display:inline-flex;">
-            Set Allocation Order
-        </a>
-        {% endif %}
-    </div>
-    {% endif %}
-
     <fieldset style="margin-bottom:20px; border:none; padding:0;">
         <label class="pi-label">Allocation Algorithms to Show in Results</label>
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;">

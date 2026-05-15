@@ -1,50 +1,169 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
+
+{% block title %}Profile Settings – OPRA{% endblock %}
+
+{% block extra_head %}
+<style>
+  .settings-shell {
+    display: flex;
+    gap: 24px;
+    padding: 32px;
+    max-width: 860px;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+  .settings-nav {
+    width: 180px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .settings-nav-header {
+    padding: 13px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-nav a {
+    display: block;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-sub);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s, color 0.15s;
+  }
+  .settings-nav a:last-child { border-bottom: none; }
+  .settings-nav a:hover { background: var(--bg); color: var(--text); }
+  .settings-nav a.active {
+    background: var(--green-light);
+    color: var(--green);
+    font-weight: 700;
+  }
+  .settings-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .settings-card-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .settings-card-body { padding: 24px; }
+  .settings-field { margin-bottom: 18px; }
+  .settings-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    margin-bottom: 6px;
+  }
+  .settings-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .settings-input:focus { border-color: var(--green); background: var(--surface); }
+  .profile-pic-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .profile-pic-row img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border);
+  }
+  .profile-pic-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-sub);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .profile-pic-btn:hover { border-color: var(--green); color: var(--green); }
+</style>
+{% endblock %}
 
 {% block content %}
-<br />
-<div class="row">
-    <div class="col-md-3">
-        <div class="panel panel-default">
-            <div class="panel-heading">Settings</div>
-            <div class="list-group">
-                <a href="{% url 'appauth:settings' %}" class="list-group-item active">Profile</a>
-                <a href="{% url 'appauth:passwordpage' %}" class="list-group-item">Account</a>
-                <a href="{% url 'appauth:globalSettings' %}" class="list-group-item">Global</a>
-            </div>
-        </div>
+<div class="settings-shell">
+
+  <!-- Sidebar nav -->
+  <nav class="settings-nav">
+    <div class="settings-nav-header">Settings</div>
+    <a href="{% url 'appauth:settings' %}" class="active">Profile</a>
+    <a href="{% url 'appauth:passwordpage' %}">Account</a>
+    <a href="{% url 'appauth:globalSettings' %}">Global</a>
+  </nav>
+
+  <!-- Content -->
+  <div class="settings-body">
+    <div class="settings-card">
+      <div class="settings-card-header">Profile Settings</div>
+      <div class="settings-card-body">
+        <form method="post" action="{% url 'appauth:updateSettings' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <div class="profile-pic-row">
+            <img src="/{{ request.user.userprofile.profile_pic }}" alt="Profile picture">
+            <label for="profile_pic" class="profile-pic-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              Change Photo
+            </label>
+            <input style="display:none" id="profile_pic" type="file" name="profile_pic">
+          </div>
+
+          <div class="settings-field">
+            <label class="settings-label" for="first_name">First Name <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+            <input class="settings-input" type="text" id="first_name" name="first_name" value="{{ request.user.first_name }}">
+          </div>
+
+          <div class="settings-field">
+            <label class="settings-label" for="last_name">Last Name <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+            <input class="settings-input" type="text" id="last_name" name="last_name" value="{{ request.user.last_name }}">
+          </div>
+
+          <button type="submit" class="opra-btn opra-btn-primary">Save Changes</button>
+        </form>
+      </div>
     </div>
-    <div class="col-md-9">
-        <div class="panel panel-default">
-            <div class="panel-heading">Profile Settings</div>
-            <div class="panel-body">
-            <form method="post" action="{% url 'appauth:updateSettings' %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                
-                <div class="col-xs-1">
-                <img src='/{{ request.user.userprofile.profile_pic  }}' width="40px"/>
-                </div>
-               
-                <fieldset class="form-group">
-                    <label for="profile_pic">Profile Picture</label>
-                    <label for="profile_pic" class="btn btn-default"><span class="glyphicon glyphicon-camera"></span></label> 
-                    <input style="display:none" id="profile_pic" type="file" name="profile_pic" >
-                </fieldset>
-                <fieldset class="form-group">
-                    <label for="first_name">First Name (Optional)</label>
-                    <input type="text" class="form-control" id="first_name" name="first_name" value="{{ request.user.first_name }}">
-                </fieldset>
-                <fieldset class="form-group">
-                    <label for="last_name">Last Name (Optional)</label>
-                    <input type="text" class="form-control" id="last_name" name="last_name" value="{{ request.user.last_name }}">
-                </fieldset>
-                <!-- <fieldset class="form-group">
-                    <label for="email">Email</label>
-                    <input type="text" class="form-control" id="email" name="email" value="{{ request.user.email }}">
-                </fieldset> -->
-                <input type="submit" class="btn btn-success" value="Save Changes">
-            </form>
-            </div>
-        </div>
-    </div>
+  </div>
+
 </div>
 {% endblock %}
