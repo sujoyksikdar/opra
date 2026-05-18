@@ -1,59 +1,103 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
+{% block title %}{{ group.name }} – OPRA{% endblock %}
+{% block nav_groups %}active{% endblock %}
 
 {% block content %}
-<h3>{{group.name}} members</h3>
-<div class="row">
-<div class="col-md-6">
-    <form action="{% url 'groups:removemember' group.id %}" method="post">
-    {% csrf_token %}
-    <select id="removemembers" name="removemembers" class="form-control" multiple>
-    {% for user in group.members.all %}
-        <option value="{{ user.username }}">{{ user.username }}</option>
-    {% endfor %}
-    </select>
-    <p></p>
-    <input type="submit" class="btn btn-danger" value="Remove">
-    </form>
+
+<div class="opra-topbar">
+  <div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+      <a href="{% url 'groups:index' %}" style="color:var(--text-muted); font-size:12px; text-decoration:none; display:flex; align-items:center; gap:4px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Groups
+      </a>
+    </div>
+    <h1>{{ group.name }}</h1>
+    <p>{{ group.members.count }} member{{ group.members.count|pluralize }}</p>
+  </div>
 </div>
 
-<div class="col-md-6">
-    <form action="{% url 'groups:addmember' group.id %}" method="post">
-        {% csrf_token %}
-        <select id="newmembers" name="newmembers" class="form-control multiple-select" multiple>
-        {% for user in users %}
+<div style="padding:0 32px 40px; max-width:760px;">
+  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+
+    <!-- Current members -->
+    <div style="flex:1; min-width:260px;">
+      <div class="opra-card" style="padding:24px;">
+        <h3 style="margin:0 0 14px; font-size:14px; font-weight:700; color:var(--text);">Current Members</h3>
+        <form action="{% url 'groups:removemember' group.id %}" method="post">
+          {% csrf_token %}
+          <select id="removemembers" name="removemembers" multiple
+            style="width:100%; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--bg); font-family:'DM Sans',sans-serif; min-height:140px; padding:6px;">
+            {% for user in group.members.all %}
+            <option value="{{ user.username }}">{{ user.username }}</option>
+            {% endfor %}
+          </select>
+          <div style="font-size:11px; color:var(--text-muted); margin:6px 0 10px;">Select one or more to remove</div>
+          <button type="submit" class="opra-btn opra-btn-sm"
+            style="border:1px solid var(--red); color:var(--red); background:transparent; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s;"
+            onmouseover="this.style.background='var(--red)';this.style.color='#fff';"
+            onmouseout="this.style.background='transparent';this.style.color='var(--red)';">
+            Remove Selected
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add members -->
+    <div style="flex:1; min-width:260px;">
+      <div class="opra-card" style="padding:24px;">
+        <h3 style="margin:0 0 14px; font-size:14px; font-weight:700; color:var(--text);">Add Members</h3>
+        <form action="{% url 'groups:addmember' group.id %}" method="post">
+          {% csrf_token %}
+          <select id="newmembers" name="newmembers" class="multiple-select" multiple
+            style="width:100%; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--bg); font-family:'DM Sans',sans-serif; min-height:140px; padding:6px;">
+            {% for user in users %}
             {% if user not in group.members.all %}
-                 <option value="{{ user.username }}">{{ user.username }}</option>
+            <option value="{{ user.username }}">{{ user.username }}</option>
             {% endif %}
-        {% endfor %}
-        </select>
-        <p></p>
-        <input type="submit" class="btn btn-success" value="Add">
-    </form>      
-</div>
+            {% endfor %}
+          </select>
+          <div style="font-size:11px; color:var(--text-muted); margin:6px 0 10px;">Select users to add</div>
+          <button type="submit" class="opra-btn opra-btn-primary opra-btn-sm">Add Selected</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Danger zone -->
+  <div class="opra-card" style="padding:20px 24px; margin-top:20px; border-color:#fecaca;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:13px; font-weight:700; color:var(--red);">Delete Group</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">This action cannot be undone.</div>
+      </div>
+      <button class="opra-btn opra-btn-sm" data-toggle="modal" data-target="#confirm-delete"
+        style="border:1px solid var(--red); color:var(--red); background:transparent; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;">
+        Delete Group
+      </button>
+    </div>
+  </div>
 </div>
 
-<div class="panel panel-danger">
-    <div class="panel-heading">Danger Zone</div>
-    <div class="panel-body">
-        <span class="btn btn-danger" data-toggle="modal" data-target="#confirm-delete"><span class="glyphicon glyphicon-trash"></span> Delete this group</span>
+<!-- Delete modal -->
+<div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content" style="border-radius:12px; border:1px solid var(--border);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border); padding:14px 20px; font-size:15px; font-weight:700; color:var(--text);">
+        Confirm Delete Group
+      </div>
+      <div class="modal-body" style="padding:16px 20px; font-size:13px; color:var(--text-sub);">
+        Are you sure you want to delete <strong>{{ group.name }}</strong>? This cannot be undone.
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border); padding:12px 20px; display:flex; gap:8px; justify-content:flex-end;">
+        <button type="button" class="opra-btn opra-btn-ghost opra-btn-sm" data-dismiss="modal">Cancel</button>
+        <a href="{% url 'groups:deletegroup' group.id %}" class="opra-btn opra-btn-sm"
+          style="border:1px solid var(--red); color:var(--red); background:transparent; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; text-decoration:none;">
+          Delete
+        </a>
+      </div>
     </div>
-    
-    <div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                Confirm Delete Group
-            </div>
-            <div class="modal-body">
-                Do you want to delete this group? Once deleted, the group cannot be restored.
-            </div>
-            <div class="modal-footer">
-                <a class="btn btn-danger btn-ok" href="{% url 'groups:deletegroup' group.id %}">Yes</a>
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
-</div>
-
 {% endblock %}

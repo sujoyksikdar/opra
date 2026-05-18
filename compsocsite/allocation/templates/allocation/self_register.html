@@ -1,35 +1,50 @@
-{% extends 'polls/base.html' %}
+{% extends 'allocation/base_new.html' %}
 {% load static %}
+{% block title %}Self Registration – OPRA{% endblock %}
+{% block nav_allocation %}active{% endblock %}
 
 {% block content %}
-<br/>
-{% if request.user.username == "" %}
-    <div class="w3-panel w3-center" style="padding:170px 16px;">
-        <h1 class="w3-xlarge">
-            Please
-            <a data-toggle="modal" data-target="#loginmodal" class="w3-border w3-button rpi-red"><span class="fa fa-sign-in"></span> Login</a>
-            <br/>
-            <br/>
-        </h1>
+
+<div class="opra-topbar">
+  <div>
+    <h1>Self Registration</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+</div>
+
+<div style="padding:0 32px 40px; max-width:560px;">
+
+  {% if request.user.username == "" %}
+  <div class="opra-card" style="padding:40px; text-align:center;">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:14px; opacity:0.5;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+    <p style="font-size:14px; color:var(--text-muted); margin:0 0 20px;">You need to log in to register for this allocation.</p>
+    <a href="{% url 'appauth:login' %}" class="opra-btn opra-btn-primary">Log In</a>
+  </div>
+
+  {% elif submitted %}
+  <div class="opra-card" style="padding:32px; text-align:center;">
+    <div style="width:48px; height:48px; background:var(--green-light); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
     </div>
-{% else %}
+    <h3 style="font-size:16px; font-weight:700; color:var(--text); margin:0 0 8px;">Registration Submitted</h3>
+    <p style="font-size:13px; color:var(--text-muted); margin:0;">You have already registered. Please wait for approval from the allocation owner.</p>
+  </div>
 
-<h3>Self Registration for {{ question.question_text }}</h3>
+  {% else %}
+  <div class="opra-card" style="padding:28px 32px;">
+    <h3 style="font-size:15px; font-weight:700; color:var(--text); margin:0 0 18px;">Register for this Allocation</h3>
+    <form action="{% url 'allocation:selfsignup' question.id %}" method="post">
+      {% csrf_token %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Your Name / Identifier</label>
+        <input type="text" name="item_name"
+          style="width:100%; padding:10px 13px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--bg); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;"
+          placeholder="Enter your name or identifier">
+      </div>
+      <button type="submit" class="opra-btn opra-btn-primary">Submit for Approval</button>
+    </form>
+  </div>
+  {% endif %}
 
-{% if submitted %}
-
-<p>You have already registered. Please wait for approval.</p>
-
-{% else %}
-
-<form action="{% url 'allocation:selfsignup' question.id %}" method="post">
-    {% csrf_token %}
-    <input type="text" class="form-control" name="item_name" size="50" value=""/>
-    <br/>
-    <button type="submit" class="btn btn-primary">Submit for Approval</button>
-</form>
-
-{% endif %}
-
-{% endif %}
+</div>
 {% endblock %}

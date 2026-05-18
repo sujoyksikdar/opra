@@ -1,19 +1,301 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
 
-{% block extra_head %}
-<style>
-    p.sameline{
-        display:inline-block;
-    }
-</style>
-{% endblock %}
+{% block title %}Create – Step 4 – OPRA{% endblock %}
+{% block nav_polls %}active{% endblock %}
 
 {% block content %}
 {% if question.question_owner == request.user %}
-<div class="col-md-10 col-md-offset-1">
-    <h2  align="center">Create a New {% if request.session.questionType == 1 %} Poll {% elif request.session.questionType == 2 %} Allocation {% endif %}</h2>
-    <br/>
-    {% include 'polls/_add_step4.html' %}
+
+<div class="opra-topbar">
+  <div>
+    <h1>Create New {% if request.session.questionType == 1 %}Poll{% elif request.session.questionType == 2 %}Allocation{% endif %}</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+  <a href="{% url 'polls:regular_polls' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
 </div>
+
+<div style="padding:20px 32px 40px; max-width:760px; margin:0 auto;">
+
+  {% include 'polls/_wizard_steps.html' with current=4 %}
+
+  <form class="form-group" method="post" action="{% url 'polls:setinitial' question.id %}" onsubmit="javascript:UICheckboxes();">
+    {% csrf_token %}
+
+    <!-- Algorithms -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Algorithm</h3>
+
+      {% if question.question_type == 1 %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">
+          Primary Voting Rule
+          <button type="button" class="opra-btn opra-btn-ghost opra-btn-sm" data-toggle="modal" data-target=".algo-info-modal" style="margin-left:8px; font-size:11px;">?</button>
+        </label>
+        <select id="pollpreferences" name="pollpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+          {% for item in poll_algorithms %}
+          <option value="{{ forloop.counter }}">{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Also Show Results For</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;" id="visible">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis1" type="checkbox" value="1" name="vr" checked disabled style="accent-color:var(--green);">Plurality
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis2" type="checkbox" value="2" name="vr" checked style="accent-color:var(--green);">Borda
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis4" type="checkbox" value="4" name="vr" checked style="accent-color:var(--green);">Veto
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis8" type="checkbox" value="8" name="vr" checked style="accent-color:var(--green);">K-Approval (K=3)
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis16" type="checkbox" value="16" name="vr" checked style="accent-color:var(--green);">Simplified Bucklin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis32" type="checkbox" value="32" name="vr" checked style="accent-color:var(--green);">Copeland
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis64" type="checkbox" value="64" name="vr" checked style="accent-color:var(--green);">Maximin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis128" type="checkbox" value="128" name="vr" checked style="accent-color:var(--green);">STV
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis256" type="checkbox" value="256" name="vr" checked style="accent-color:var(--green);">Baldwin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis512" type="checkbox" value="512" name="vr" checked style="accent-color:var(--green);">Coombs
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis1024" type="checkbox" value="1024" name="vr" checked style="accent-color:var(--green);">Black
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis2048" type="checkbox" value="2048" name="vr" checked style="accent-color:var(--green);">Ranked Pairs
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis4096" type="checkbox" value="4096" name="vr" checked style="accent-color:var(--green);">Plurality With Runoff
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis8192" type="checkbox" value="8192" name="vr" checked style="accent-color:var(--green);">Borda Mean
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis16384" type="checkbox" value="16384" name="vr" checked style="accent-color:var(--green);">Simulated Approval
+          </label>
+        </div>
+      </div>
+
+      {% elif question.question_type == 2 %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Allocation Method</label>
+        <select id="pollpreferences" name="pollpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+          {% for item in alloc_methods %}
+          <option value="{{ forloop.counter }}" {% if question.poll_algorithm == forloop.counter %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Also Show Results For</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;" id="visible">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis1" type="checkbox" value="1" name="alloc_algorithms" style="accent-color:var(--green);">Round Robin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis2" type="checkbox" value="2" name="alloc_algorithms" style="accent-color:var(--green);">Max Nash Welfare
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis4" type="checkbox" value="4" name="alloc_algorithms" style="accent-color:var(--green);">Market (EF1)
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis8" type="checkbox" value="8" name="alloc_algorithms" style="accent-color:var(--green);">MarketEq (EQ1)
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis16" type="checkbox" value="16" name="alloc_algorithms" style="accent-color:var(--green);">Leximin
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+            <input id="vis32" type="checkbox" value="32" name="alloc_algorithms" style="accent-color:var(--green);">MNW Binary
+          </label>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Visibility -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Visibility</h3>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Preference Visibility</label>
+          <select name="viewpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+            <option value="1" {% if question.display_pref == 1 %}selected{% endif %}>Everyone can see all preferences</option>
+            <option value="2" {% if question.display_pref == 2 %}selected{% endif %}>Everyone can only see own preference</option>
+            <option value="3" {% if question.display_pref == 3 %}selected{% endif %}>Nothing</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">User Info Visibility</label>
+          <select name="viewuserinfo" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+            <option value="1" {% if question.display_user_info == 1 %}selected{% endif %}>Show usernames</option>
+            <option value="2" {% if question.display_user_info == 2 %}selected{% endif %}>Show only numbers</option>
+            <option value="3" {% if question.display_user_info == 3 %}selected{% endif %}>Nothing</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Creator Visibility</label>
+          <select name="creatorpreferences" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+            <option value="1" selected>Creator can see everyone's vote</option>
+            <option value="2">Creator has same visibility as all users</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">Make Results Visible After (optional)</label>
+          <input type="datetime-local" name="results_visible_after" value="{{ question.results_visible_after|date:'Y-m-d\\TH:i' }}"
+            style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Leave empty to not schedule by time.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Access -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Access Control</h3>
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Who can participate?</label>
+        <div style="display:flex; gap:8px;">
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="openpoll" value="anon" checked style="display:none;">Anonymous
+          </label>
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="openpoll" value="invite" style="display:none;">Invited Only
+          </label>
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="openpoll" value="uninvite" style="display:none;">Users Only
+          </label>
+        </div>
+      </div>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Allow Self Sign Up?</label>
+        <div style="display:flex; gap:8px;">
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="selfsignup" value="allow" checked style="display:none;">Allow
+          </label>
+          <label style="flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12px; color:var(--text-sub);">
+            <input type="radio" name="selfsignup" value="notallow" style="display:none;">Don't Allow
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voting Interfaces -->
+    <div class="opra-card" style="padding:24px; margin-bottom:14px;">
+      <h3 style="margin:0 0 16px; font-size:15px; font-weight:700; color:var(--text);">Voting Interfaces</h3>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        {% if question.question_type == 1 %}
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="twocol" name="ui" checked style="accent-color:var(--green);">Two Column
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="onecol" name="ui" checked style="accent-color:var(--green);">One Column
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="slider" name="ui" checked style="accent-color:var(--green);">Slider
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="star" name="ui" style="accent-color:var(--green);">Star Rating
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="yesno" name="ui" checked style="accent-color:var(--green);">Yes/No
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="yesno2" name="ui" style="accent-color:var(--green);">Yes/No Grid
+        </label>
+        {% elif question.question_type == 2 %}
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="twocol" name="ui" checked style="accent-color:var(--green);">Two Column
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="onecol" name="ui" style="accent-color:var(--green);">One Column
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="BUI_slider" name="ui" checked style="accent-color:var(--green);">Budget UI
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="LUI" name="ui" style="accent-color:var(--green);">List UI
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub);">
+          <input type="checkbox" value="IBUI" name="ui" style="accent-color:var(--green);">Infinite Budget UI
+        </label>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div style="display:flex; justify-content:space-between; margin-top:4px;">
+      <a href="{% url 'polls:AddStep3' question.id %}" class="opra-btn opra-btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Back
+      </a>
+      <button type="submit" class="opra-btn opra-btn-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Finish &amp; Create
+      </button>
+    </div>
+
+  </form>
+
+  <!-- Algorithm info modal -->
+  <div class="modal fade algo-info-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
+          Voting Algorithms
+        </div>
+        <div class="modal-body" style="font-size:13px; color:var(--text-sub); line-height:1.7;">
+          <p><strong>Plurality:</strong> Selects the candidate with the most first-place votes. Simple and fast.</p>
+          <p><strong>Borda:</strong> Awards points based on rank position. Winner has the highest total score.</p>
+          <p><strong>Veto:</strong> Like plurality but each voter eliminates their last choice instead of voting for first.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  $(document).ready(function(){ lockSelectedAlgorithm(); });
+  $('#pollpreferences').change(function(){ lockSelectedAlgorithm(); });
+
+  function lockSelectedAlgorithm() {
+    $("#visible input[type=checkbox]").prop("disabled", false).prop("checked", false);
+    var sel = parseInt($('#pollpreferences option:selected').val());
+    if (!isNaN(sel)) {
+      var bit = Math.pow(2, sel - 1);
+      $('#vis' + bit).prop("checked", true).prop("disabled", true);
+    }
+  }
+
+  document.querySelectorAll('input[type="radio"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+      var group = document.querySelectorAll('input[name="' + this.name + '"]');
+      group.forEach(function(inp) {
+        var lbl = inp.closest('label');
+        lbl.style.borderColor = 'var(--border)';
+        lbl.style.color = 'var(--text-sub)';
+        lbl.style.fontWeight = '400';
+      });
+      var active = this.closest('label');
+      active.style.borderColor = 'var(--green)';
+      active.style.color = 'var(--green)';
+      active.style.fontWeight = '600';
+    });
+  });
+</script>
+
 {% endif %}
 {% endblock %}

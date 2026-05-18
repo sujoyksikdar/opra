@@ -6,7 +6,9 @@
 
 {% block extra_head %}
 <style>
-  ul.ui-autocomplete { z-index: 1100; }
+  ul.ui-autocomplete {
+    z-index: 1100;
+  }
 </style>
 {% endblock %}
 
@@ -20,7 +22,8 @@
   </div>
   <div class="opra-topbar-actions">
     <a href="{% url 'allocation:AddStep1' %}" class="opra-btn opra-btn-primary">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </svg>
@@ -34,7 +37,8 @@
 
   <div class="opra-card opra-stat-card">
     <div class="opra-stat-icon" style="background: #e8f4f0;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="9 11 12 14 22 4"></polyline>
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
       </svg>
@@ -47,7 +51,8 @@
 
   <div class="opra-card opra-stat-card">
     <div class="opra-stat-icon" style="background: #ecfdf5;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-active)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-active)" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polygon points="5 3 19 12 5 21 5 3"></polygon>
       </svg>
     </div>
@@ -59,7 +64,8 @@
 
   <div class="opra-card opra-stat-card">
     <div class="opra-stat-icon" style="background: #f3f4f6;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-draft)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-draft)" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </svg>
@@ -72,7 +78,8 @@
 
   <div class="opra-card opra-stat-card">
     <div class="opra-stat-icon" style="background: #fef2f2;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-ended)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-ended)" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
       </svg>
     </div>
@@ -99,7 +106,8 @@
 
   <!-- Search -->
   <div class="opra-search">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
       <circle cx="11" cy="11" r="8"></circle>
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
@@ -121,16 +129,16 @@
 <div class="opra-poll-grid" id="grid-created">
 
   {% for question in polls_created %}
-  <div class="opra-card opra-poll-card poll-card-item"
-       data-title="{{ question.question_text|lower }}"
-       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
+  <div class="opra-card opra-poll-card poll-card-item" data-title="{{ question.question_text|lower }}"
+    data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
 
     <!-- Header: voter count + status badge -->
     <div class="opra-poll-card-header">
       <div>
         <div class="opra-poll-meta">
           <span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text-muted);">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -139,7 +147,8 @@
             {{ question.question_voters.count }} voter{{ question.question_voters.count|pluralize }}
           </span>
         </div>
-        <a href="{% url 'allocation:allocationinfo' question.id %}" class="opra-poll-title" style="display:block; color: var(--text);">
+        <a href="{% url 'allocation:allocationinfo' question.id %}" class="opra-poll-title"
+          style="display:block; color: var(--text);">
           {{ question.question_text }}
         </a>
         <div class="opra-poll-desc">
@@ -149,13 +158,13 @@
 
       <!-- Status badge -->
       {% if question.status == 1 %}
-        <span class="opra-badge opra-badge-draft">Draft</span>
+      <span class="opra-badge opra-badge-draft">Draft</span>
       {% elif question.status == 2 %}
-        <span class="opra-badge opra-badge-active">Active</span>
+      <span class="opra-badge opra-badge-active">Active</span>
       {% elif question.status == 3 %}
-        <span class="opra-badge opra-badge-ended">Ended</span>
+      <span class="opra-badge opra-badge-ended">Ended</span>
       {% elif question.status == 4 %}
-        <span class="opra-badge opra-badge-paused">Paused</span>
+      <span class="opra-badge opra-badge-paused">Paused</span>
       {% endif %}
     </div>
 
@@ -165,52 +174,57 @@
       <div class="opra-poll-actions">
 
         <!-- Settings always available for creator -->
-        <a href="{% url 'allocation:allocationinfo' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">Settings</a>
+        <a href="{% url 'allocation:allocationinfo' question.id %}"
+          class="opra-btn opra-btn-ghost opra-btn-sm">Settings</a>
 
         {% if question.status == 1 %}
-          <!-- Draft: start button -->
-          <button class="opra-btn opra-btn-primary opra-btn-sm"
-                  data-toggle="modal" data-target="#confirm-start{{ question.id }}">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            Start
-          </button>
+        <!-- Draft: start button -->
+        <button class="opra-btn opra-btn-primary opra-btn-sm" data-toggle="modal"
+          data-target="#confirm-start{{ question.id }}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Start
+        </button>
 
         {% elif question.status == 2 %}
-          <!-- Active: vote + stop/pause -->
-          {% if request.user in question.question_voters.all %}
-          <a href="{% url 'allocation:detail' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Enter Preferences</a>
-          {% endif %}
-          <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">Results</a>
-          <a href="{% url 'allocation:pause' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-              <rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>
-            </svg>
-            Pause
-          </a>
-          <button class="opra-btn opra-btn-danger opra-btn-sm"
-                  data-toggle="modal" data-target="#confirm-stop{{ question.id }}">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-            </svg>
-            Stop
-          </button>
+        <!-- Active: vote + stop/pause -->
+        {% if request.user in question.question_voters.all %}
+        <a href="{% url 'allocation:detail' question.id %}"
+          class="opra-btn opra-btn-primary opra-btn-sm">Preferences</a>
+        {% endif %}
+        <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm"
+          target="_blank">Results</a>
+        <a href="{% url 'allocation:pause' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
+          </svg>
+          Pause
+        </a>
+        <button class="opra-btn opra-btn-danger opra-btn-sm" data-toggle="modal"
+          data-target="#confirm-stop{{ question.id }}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          </svg>
+          Stop
+        </button>
 
         {% elif question.status == 3 %}
-          <!-- Ended -->
-          <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">
-            View Results
-          </a>
+        <!-- Ended -->
+        <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm"
+          target="_blank">
+          View Results
+        </a>
 
         {% elif question.status == 4 %}
-          <!-- Paused: resume -->
-          <a href="{% url 'allocation:resume' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            Resume
-          </a>
+        <!-- Paused: resume -->
+        <a href="{% url 'allocation:resume' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Resume
+        </a>
         {% endif %}
 
       </div>
@@ -257,7 +271,8 @@
 
   {% empty %}
   <div class="opra-empty" id="empty-created">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round">
       <polyline points="9 11 12 14 22 4"></polyline>
       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
     </svg>
@@ -268,7 +283,8 @@
   <!-- Create new card -->
   <a href="{% url 'allocation:AddStep1' %}" class="opra-card opra-create-card" id="create-card">
     <div>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </svg>
@@ -278,7 +294,8 @@
 
   <!-- No results state (shown by JS filter) -->
   <div class="opra-empty" id="no-results-msg" style="display:none;">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round">
       <circle cx="11" cy="11" r="8"></circle>
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
@@ -291,15 +308,15 @@
 <div class="opra-poll-grid" id="grid-participated" style="display:none;">
 
   {% for question in polls_participated %}
-  <div class="opra-card opra-poll-card poll-card-item-p"
-       data-title="{{ question.question_text|lower }}"
-       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
+  <div class="opra-card opra-poll-card poll-card-item-p" data-title="{{ question.question_text|lower }}"
+    data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
 
     <div class="opra-poll-card-header">
       <div>
         <div class="opra-poll-meta">
           <span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text-muted);">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -308,7 +325,8 @@
             {{ question.question_voters.count }} voter{{ question.question_voters.count|pluralize }}
           </span>
         </div>
-        <a href="{% url 'allocation:allocationinfo' question.id %}" class="opra-poll-title" style="display:block; color: var(--text);">
+        <a href="{% url 'allocation:allocationinfo' question.id %}" class="opra-poll-title"
+          style="display:block; color: var(--text);">
           {{ question.question_text }}
         </a>
         <div class="opra-poll-desc">
@@ -317,13 +335,13 @@
       </div>
 
       {% if question.status == 1 %}
-        <span class="opra-badge opra-badge-draft">Draft</span>
+      <span class="opra-badge opra-badge-draft">Draft</span>
       {% elif question.status == 2 %}
-        <span class="opra-badge opra-badge-active">Active</span>
+      <span class="opra-badge opra-badge-active">Active</span>
       {% elif question.status == 3 %}
-        <span class="opra-badge opra-badge-ended">Ended</span>
+      <span class="opra-badge opra-badge-ended">Ended</span>
       {% elif question.status == 4 %}
-        <span class="opra-badge opra-badge-paused">Paused</span>
+      <span class="opra-badge opra-badge-paused">Paused</span>
       {% endif %}
     </div>
 
@@ -331,25 +349,29 @@
       <div></div>
       <div class="opra-poll-actions">
         {% if question.status == 2 %}
-          <a href="{% url 'allocation:detail' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Enter Preferences</a>
-          <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">Results</a>
+        <a href="{% url 'allocation:detail' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Enter
+          Preferences</a>
+        <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm"
+          target="_blank">Results</a>
         {% endif %}
         {% if question.status == 3 %}
-          <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">View Results</a>
+        <a href="{% url 'allocation:allocate_results' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm"
+          target="_blank">View Results</a>
         {% endif %}
         {% if question.status == 1 %}
-          <span style="font-size:12px; color: var(--text-muted);">Not started yet</span>
+        <span style="font-size:12px; color: var(--text-muted);">Not started yet</span>
         {% elif question.status == 3 %}
-          <span style="font-size:12px; color: var(--text-muted);">Allocation Complete</span>
+        <span style="font-size:12px; color: var(--text-muted);">Allocation Complete</span>
         {% elif question.status == 4 %}
-          <span style="font-size:12px; color: var(--text-muted);">Paused</span>
+        <span style="font-size:12px; color: var(--text-muted);">Paused</span>
         {% endif %}
       </div>
     </div>
   </div>
   {% empty %}
   <div class="opra-empty">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
       <circle cx="9" cy="7" r="4"></circle>
     </svg>
@@ -358,7 +380,8 @@
   {% endfor %}
 
   <div class="opra-empty" id="no-results-msg-p" style="display:none;">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round">
       <circle cx="11" cy="11" r="8"></circle>
       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
@@ -371,14 +394,14 @@
 
 {% block extra_js %}
 <script>
-  var currentTab    = 'created';
+  var currentTab = 'created';
   var currentFilter = 'all';
 
   function switchTab(tab) {
     currentTab = tab;
-    document.getElementById('grid-created').style.display      = (tab === 'created')      ? 'grid' : 'none';
+    document.getElementById('grid-created').style.display = (tab === 'created') ? 'grid' : 'none';
     document.getElementById('grid-participated').style.display = (tab === 'participated') ? 'grid' : 'none';
-    document.getElementById('tab-created').classList.toggle('active',      tab === 'created');
+    document.getElementById('tab-created').classList.toggle('active', tab === 'created');
     document.getElementById('tab-participated').classList.toggle('active', tab === 'participated');
     // hide create-card in participated tab
     var cc = document.getElementById('create-card');
@@ -388,7 +411,7 @@
 
   function setFilter(status, btn) {
     currentFilter = status;
-    document.querySelectorAll('#status-pills .opra-pill').forEach(function(p) {
+    document.querySelectorAll('#status-pills .opra-pill').forEach(function (p) {
       p.classList.remove('active');
     });
     btn.classList.add('active');
@@ -396,14 +419,14 @@
   }
 
   function filterCards() {
-    var query   = document.getElementById('poll-filter-input').value.toLowerCase();
-    var sel     = currentTab === 'created' ? '.poll-card-item' : '.poll-card-item-p';
+    var query = document.getElementById('poll-filter-input').value.toLowerCase();
+    var sel = currentTab === 'created' ? '.poll-card-item' : '.poll-card-item-p';
     var noResId = currentTab === 'created' ? 'no-results-msg' : 'no-results-msg-p';
-    var cards   = document.querySelectorAll(sel);
+    var cards = document.querySelectorAll(sel);
     var visible = 0;
 
-    cards.forEach(function(card) {
-      var titleMatch  = card.dataset.title.includes(query);
+    cards.forEach(function (card) {
+      var titleMatch = card.dataset.title.includes(query);
       var statusMatch = (currentFilter === 'all') || (card.dataset.status === currentFilter);
       var show = titleMatch && statusMatch;
       card.style.display = show ? '' : 'none';

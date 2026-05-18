@@ -1,22 +1,27 @@
-{% extends 'polls/base.html' %}
+{% extends 'base_auth.html' %}
+{% block title %}Log in with Code – OPRA{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 500px; padding: 40px 20px;">
-  <h3 class="text-center">Log in with Code</h3>
+<div class="auth-card">
+  <h1 class="auth-title">Log in with code</h1>
+  <p class="auth-subtitle">Enter the access code you received</p>
 
-   {% if error %}
-    <div class="alert alert-danger" role="alert" style="margin-top: 10px;">
-      {{ error }}
-    </div>
-    {% endif %}
+  {% if error %}
+  <div class="auth-alert-danger">{{ error }}</div>
+  {% endif %}
 
   <form method="post" action="{% url 'appauth:login_with_code' %}">
     {% csrf_token %}
-    <div class="form-group" style="margin-top: 16px;">
-      <label for="code">Enter your code</label>
-      <input id="code" name="code" type="text" class="form-control" placeholder="Login Code">
+    <div class="auth-field">
+      <label class="auth-label" for="code">Access Code</label>
+      <input class="auth-input" id="code" name="code" type="text" placeholder="Enter your code" autofocus
+        style="letter-spacing:0.1em;">
     </div>
-    <button type="submit" class="btn btn-primary">Log in</button>
+    <button type="submit" class="auth-btn">Log in</button>
   </form>
+</div>
+
+<div class="auth-link">
+  <a href="{% url 'appauth:login' %}">Back to log in</a>
 </div>
 {% endblock %}
