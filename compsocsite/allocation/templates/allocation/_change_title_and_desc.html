@@ -1,18 +1,17 @@
 <form action="{% url 'allocation:editBasicInfo' question.id %}" method="post">
-    {% csrf_token %}
+  {% csrf_token %}
 
-    <fieldset class="form-group">
-        <label for="title">Title</label>
-        <input type="text" class="form-control" style="width:70%;" name="title" maxlength="50" size="50"
-            value="{{ question.question_text }}" {% if question.status !=1 %} disabled {% endif %} />
-    </fieldset>
+  <div style="margin-bottom:14px;">
+    <label class="pi-label" for="alloc-title">Title</label>
+    <input type="text" class="pi-input" id="alloc-title" name="title" maxlength="50"
+      value="{{ question.question_text }}" {% if question.status != 1 %}disabled{% endif %} />
+  </div>
 
-    <fieldset class="form-group">
-        <label for="description">Description</label>
-        <textarea class="form-control" style="width:70%;" name="desc"
-            maxlength="1000">{% if question.question_desc %}{{ question.question_desc }}{% else %}No description{% endif %}</textarea>
-    </fieldset>
+  <div style="margin-bottom:16px;">
+    <label class="pi-label" for="alloc-desc">Description</label>
+    <textarea class="pi-input" id="alloc-desc" name="desc" maxlength="1000"
+      rows="3" style="resize:vertical;">{% if question.question_desc %}{{ question.question_desc }}{% endif %}</textarea>
+  </div>
 
-    <br />
-    <input type="submit" class="btn btn-primary" value="Save Changes" />
+  <button type="submit" class="opra-btn opra-btn-primary opra-btn-sm">Save Changes</button>
 </form>

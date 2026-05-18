@@ -320,6 +320,7 @@
     transition: border-color 0.15s, background 0.15s;
     user-select: none;
   }
+
   .access-chip-active {
     border-color: var(--green);
     background: var(--green-light);
@@ -425,19 +426,6 @@
   </div>
 </div>
 
-{% if messages %}
-<div style="padding:0 32px 8px;">
-  {% for message in messages %}
-  <div {% if message.tags %}class="alert alert-{{ message.tags }}" {% endif %} style="font-size:13px;">
-    {{ message }}
-    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-      <span aria-hidden="true">&times;</span>
-    </button>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
 <!-- ── Two-column layout ─────────────────────────────────────────────────── -->
 <div class="pi-shell">
 
@@ -519,7 +507,7 @@
       </svg>
       User Records
     </a>
-    <a class="pi-tab-link" href="{% url 'allocation:viewAllocationOrder' question.id %}">
+    <!-- <a class="pi-tab-link" href="{% url 'allocation:viewAllocationOrder' question.id %}">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -530,7 +518,7 @@
         <line x1="3" y1="18" x2="3.01" y2="18"></line>
       </svg>
       Allocation Order
-    </a>
+    </a> -->
     <div style="margin: 6px 0; border-top: 1px solid var(--border);"></div>
     <a class="pi-tab-link danger" href="#" data-pi="danger">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -634,14 +622,12 @@
               <label
                 style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;"
                 id="ties-enabled-label">
-                <input type="radio" name="allowties" value="1" {% if question.allowties %}checked{% endif %}
-                  style="accent-color:var(--green);" onchange="updateTiesStyle()">Enabled
+                <input type="radio" name="allowties" value="1" {% if question.allowties %}checked{% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Enabled
               </label>
               <label
                 style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; padding:6px 14px; border-radius:8px; border:1.5px solid {% if not question.allowties %}var(--green){% else %}var(--border){% endif %}; background:{% if not question.allowties %}var(--green-light){% else %}var(--surface){% endif %}; font-family:'DM Sans',sans-serif; color:var(--text); transition:all 0.15s;"
                 id="ties-disabled-label">
-                <input type="radio" name="allowties" value="2" {% if not question.allowties %}checked{% endif %}
-                  style="accent-color:var(--green);" onchange="updateTiesStyle()">Disabled
+                <input type="radio" name="allowties" value="2" {% if not question.allowties %}checked{% endif %} style="accent-color:var(--green);" onchange="updateTiesStyle()">Disabled
               </label>
             </div>
           </fieldset>
@@ -650,20 +636,15 @@
             <label class="pi-label">Allowed Interfaces</label>
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
               <label class="pi-ui-chip">
-                <input id="twocol_checkbox" type="checkbox" value="twocol" name="ui"
-                  {% if question.twocol_enabled %}checked{% endif %}>Two Column</label>
+                <input id="twocol_checkbox" type="checkbox" value="twocol" name="ui" {% if question.twocol_enabled %}checked{% endif %}>Two Column</label>
               <label class="pi-ui-chip">
-                <input id="onecol_checkbox" type="checkbox" value="onecol" name="ui"
-                  {% if question.onecol_enabled %}checked{% endif %}>One Column</label>
+                <input id="onecol_checkbox" type="checkbox" value="onecol" name="ui" {% if question.onecol_enabled %}checked{% endif %}>One Column</label>
               <label class="pi-ui-chip">
-                <input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui"
-                  {% if question.budgetUI_enabled %}checked{% endif %}>Budget UI</label>
+                <input id="budgetUI_slider_checkbox" type="checkbox" value="BUI_slider" name="ui" {% if question.budgetUI_enabled %}checked{% endif %}>Budget UI</label>
               <label class="pi-ui-chip">
-                <input id="listUI_checkbox" type="checkbox" value="LUI" name="ui"
-                  {% if question.ListUI_enabled %}checked{% endif %}>List UI</label>
+                <input id="listUI_checkbox" type="checkbox" value="LUI" name="ui" {% if question.ListUI_enabled %}checked{% endif %}>List UI</label>
               <label class="pi-ui-chip">
-                <input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui"
-                  {% if question.infiniteBudgetUI_enabled %}checked{% endif %}>Infinite Budget UI</label>
+                <input id="InfiniteBudgetUI_checkbox" type="checkbox" value="IBUI" name="ui" {% if question.infiniteBudgetUI_enabled %}checked{% endif %}>Infinite Budget UI</label>
             </div>
           </fieldset>
 
@@ -743,18 +724,15 @@
           {% csrf_token %}
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <label class="access-chip {% if question.open == 1 %}access-chip-active{% endif %}">
-              <input type="radio" name="openpoll" value="anon"
-                {% if question.open == 1 %}checked{% endif %}
+              <input type="radio" name="openpoll" value="anon" {% if question.open == 1 %}checked{% endif %}
                 style="accent-color:var(--green);">Anonymous
             </label>
             <label class="access-chip {% if question.open == 0 %}access-chip-active{% endif %}">
-              <input type="radio" name="openpoll" value="invite"
-                {% if question.open == 0 %}checked{% endif %}
+              <input type="radio" name="openpoll" value="invite" {% if question.open == 0 %}checked{% endif %}
                 style="accent-color:var(--green);">Invited
             </label>
             <label class="access-chip {% if question.open == 2 %}access-chip-active{% endif %}">
-              <input type="radio" name="openpoll" value="uninvite"
-                {% if question.open == 2 %}checked{% endif %}
+              <input type="radio" name="openpoll" value="uninvite" {% if question.open == 2 %}checked{% endif %}
                 style="accent-color:var(--green);">Users-Only
             </label>
           </div>

@@ -186,22 +186,16 @@ Item D,                       , image4.png</pre>
     <li class="list-group-item">
         <form action="{% url 'polls:addchoice' question.id %}" method="post" enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="row">
-            <div class="col-xs-6 form-group">
-                <input type="text" class="form-control input-sm" name="choice" placeholder="Add new item..." autofocus/>
-            </div>
-
-            <div class="col-xs-4 form-group">
-                <input type="hidden" class="form-control" name="imageURL" value="" size="50" placeholder="Paste Image URL"/>
-            </div>
-            <div class="col-xs-2 form-group">
-            <label for="image" class="btn btn-default"><span class="glyphicon glyphicon-camera"></span></label>
-            <input style="display:none" id="image" type="file" name="docfile" accept="image/*">
-
-            <button type="submit" class="btn btn-primary">
-                <span class="glyphicon glyphicon-plus"></span>
-            </button>
-            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <input type="text" class="form-control input-sm" name="choice" placeholder="Add new item..." autofocus style="flex:1;"/>
+                <input type="hidden" name="imageURL" value=""/>
+                <input style="display:none" id="image" type="file" name="docfile" accept="image/*">
+                <label for="image" class="btn btn-default btn-sm" style="margin:0; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;">
+                    <span class="glyphicon glyphicon-camera"></span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-sm" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;">
+                    <span class="glyphicon glyphicon-plus"></span>
+                </button>
             </div>
         </form>
     </li>

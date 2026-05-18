@@ -737,8 +737,12 @@ class AllocationPollInfoView(views.generic.DetailView):
         ctx['latest_deleted_resps'] = addPreferenceValueToRespAlloc(getSelectionListAlloc(latest_del))
         ctx['previous_deleted_resps'] = addPreferenceValueToRespAlloc(getSelectionListAlloc(prev_del))
 
-        if curr_question.question_voters.all().count() > 0:
-            ctx['progressPercentage'] = (len(latest) / curr_question.question_voters.all().count()) * 100
+        voted_count = len(latest)
+        total_voters = curr_question.question_voters.all().count()
+        ctx['voted_count'] = voted_count
+        ctx['pending_count'] = max(total_voters - voted_count, 0)
+        if total_voters > 0:
+            ctx['progressPercentage'] = (voted_count / total_voters) * 100
 
         ctx['selected_alloc_res_tables_sum'] = curr_question.alloc_res_tables
         ctx['recentCSVText'] = curr_question.recentCSVText

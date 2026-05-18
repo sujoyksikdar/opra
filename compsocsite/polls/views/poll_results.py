@@ -461,10 +461,12 @@ class PollInfoView(views.generic.DetailView):
             ctx['latest_deleted_resps'] = addPreferenceValueToResp(ctx['latest_deleted_resps'])
             ctx['previous_deleted_resps'] = addPreferenceValueToResp(ctx['previous_deleted_resps'])
 
-        if self.object.question_voters.all().count() > 0:
-            progressPercentage = len(latest_responses) / self.object.question_voters.all().count()
-            progressPercentage = progressPercentage * 100
-            ctx['progressPercentage'] = progressPercentage
+        voted_count = len(latest_responses)
+        total_voters = self.object.question_voters.all().count()
+        if total_voters > 0:
+            ctx['progressPercentage'] = (voted_count / total_voters) * 100
+        ctx['voted_count'] = voted_count
+        ctx['pending_count'] = max(total_voters - voted_count, 0)
         ctx['request_list'] = self.object.signuprequest_set.filter(status=1)
 
         # alloc_res_tables contains display options for results of an allocation

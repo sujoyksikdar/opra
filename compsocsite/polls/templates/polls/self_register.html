@@ -1,41 +1,68 @@
-{% extends 'polls/base.html' %}
-{% load mathfilters %}
-{% load static%}
-{% block extra_head %}
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
 
-{% endblock %}
+{% block title %}Self Registration – OPRA{% endblock %}
+{% block nav_polls %}active{% endblock %}
 
 {% block content %}
-<br/>
-{% if request.user.username == "" %}
-	<div class="w3-panel w3-center" style="padding:170px 16px;">
-		  <h1 class="w3-xlarge">
-		      Please
-		      <a data-toggle="modal" data-target="#loginmodal" class="w3-border w3-button rpi-red"><span class="fa fa-sign-in"></span> Login</a>
-		      <br/>
-		      <br/>
 
-		  </h1>
+<div class="opra-topbar">
+  <div>
+    <h1>Self Registration</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+</div>
 
-	</div>
-{% else %}
+<div style="padding:0 32px 40px; max-width:560px;">
 
-<h3>Self Registration for {{question.question_text}}</h3>
+  {% if not request.user.is_authenticated %}
 
-{% if submitted %}
+  <div class="opra-card" style="padding:40px; text-align:center;">
+    <div style="width:52px; height:52px; background:var(--green-light); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    </div>
+    <h2 style="font-size:17px; font-weight:700; color:var(--text); margin:0 0 10px;">Login Required</h2>
+    <p style="font-size:13px; color:var(--text-muted); margin:0 0 22px;">You must be logged in to register for this poll.</p>
+    <a href="{% url 'appauth:login' %}?next={{ request.path }}" class="opra-btn opra-btn-primary">Log In</a>
+  </div>
 
-<p>You have already registered. Please wait for approval.</p>
+  {% elif submitted %}
 
-{% else %}
-	
-<form action="{% url 'polls:selfsignup' question.id %}" method="post">
-	{% csrf_token %}
-	<input type="text" class="form-control" name="item_name" size="50" value=""/>
-	<br/>
-	<button type="submit" class="btn btn-primary">Submit for Approval</button>
-</form>
+  <div class="opra-card" style="padding:32px; text-align:center;">
+    <div style="width:48px; height:48px; background:#eff6ff; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+    <h2 style="font-size:16px; font-weight:700; color:var(--text); margin:0 0 8px;">Registration Submitted</h2>
+    <p style="font-size:13px; color:var(--text-muted); margin:0;">You have already registered. Please wait for the poll creator to approve your request.</p>
+  </div>
 
-{% endif %}
+  {% else %}
 
-{% endif %}
+  <div class="opra-card" style="padding:28px 32px;">
+    <h3 style="margin:0 0 18px; font-size:15px; font-weight:700; color:var(--text);">Register to Participate</h3>
+    <p style="font-size:13px; color:var(--text-muted); margin:0 0 20px;">Submit your name or identifier. The poll creator will review your request.</p>
+
+    <form action="{% url 'polls:selfsignup' question.id %}" method="post">
+      {% csrf_token %}
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">
+          Your Name / Identifier <span style="color:var(--red);">*</span>
+        </label>
+        <input type="text" name="item_name" autofocus
+          style="width:100%; padding:10px 13px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--bg); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
+      </div>
+      <button type="submit" class="opra-btn opra-btn-primary">Submit for Approval</button>
+    </form>
+  </div>
+
+  {% endif %}
+</div>
+
 {% endblock %}
