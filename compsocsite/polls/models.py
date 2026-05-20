@@ -8,6 +8,10 @@ from six import python_2_unicode_compatible
 from django.contrib.auth.models import User
 import os
 from django.conf import settings
+from core.models import (
+    VotingQuestion, BaseItem, BaseResponse, BaseLoginCode,
+    BaseDictionary, BaseKeyValuePair,
+)
 import logging
 logger = logging.getLogger(__name__)
 
@@ -23,77 +27,15 @@ class Classes(models.Model):
     students = models.ManyToManyField(User, related_name='students')
 
 # question that will receive responses
-@python_2_unicode_compatible
-class Question(models.Model):
-    question_text = models.CharField(max_length=200)
-    question_desc = models.TextField(null=True, blank=True)
-    image = models.ImageField(upload_to='static/img/items/', blank=True, null=True)
-    imageURL = models.CharField(max_length=500, blank=True, null=True)
-    pub_date = models.DateTimeField('date published')
-    follow_up = models.OneToOneField('Question', on_delete=models.CASCADE, null = True, blank = True)
-    question_owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+class Question(VotingQuestion):
     question_voters = models.ManyToManyField(User, related_name='poll_participated')
-    recentCSVText = models.TextField(null=True, blank=True, default=None)
-    status = models.IntegerField(default=1)
-    display_pref = models.IntegerField(default=1)
-    display_user_info = models.IntegerField(default=1)
-    creator_pref = models.IntegerField(default=1)
-    emailInviteCSV = models.BooleanField(default=False)
-    emailInvite = models.BooleanField(default=False)
-    emailDelete = models.BooleanField(default=False)
-    emailStart = models.BooleanField(default=False)
-    emailStop = models.BooleanField(default=False)
-    poll_algorithm = models.IntegerField(default=1)
-    question_type = models.IntegerField(default=1)
-    winner = models.CharField(max_length=200,default="")
-    mixtures_pl1 = models.TextField(default="")
-    mixtures_pl2 = models.TextField(default="")
-    mixtures_pl3 = models.TextField(default="")
-    m_poll = models.BooleanField(default=False)
-    next = models.IntegerField(default=-1)
-    first = models.IntegerField(default=-1)
-    open = models.IntegerField(default=0)
-    new_vote = models.BooleanField(default=False)
-    twocol_enabled = models.BooleanField(default=True)
-    onecol_enabled = models.BooleanField(default=True)
-    slider_enabled = models.BooleanField(default=True)
-    star_enabled = models.BooleanField(default=True)
-    yesno_enabled = models.BooleanField(default=True)
-    yesno2_enabled = models.BooleanField(default=False)
-    single_enabled = models.BooleanField(default=False)
-    budgetUI_enabled = models.BooleanField(default=False) 
-    ListUI_enabled = models.BooleanField(default=False) 
-    infiniteBudgetUI_enabled = models.BooleanField(default=False) 
-    allowties = models.BooleanField(default=True)
-    initial_ui = models.IntegerField(default=1)
-    ui_number = models.IntegerField(default=6)
-    vote_rule = models.IntegerField(default=4095)
-    alloc_res_tables = models.IntegerField(default=6)
-    alloc_algorithms = models.IntegerField(default=0)
-    first_tier = models.IntegerField(default=0)
-    utility_model = models.IntegerField(default=0)
-    results_visible_after = models.DateTimeField(null=True, blank=True)
-
+    follow_up = models.OneToOneField('Question', on_delete=models.CASCADE, null=True, blank=True)
     related_class = models.ForeignKey(Classes, null=True, on_delete=models.CASCADE)
-    correct_answer = models.TextField(default="")
-    allow_self_sign_up = models.IntegerField(default=0)
-    def __str__(self):
-        return self.question_text
-    def was_published_recently(self):
-        now = timezone.now()
-        return now - datetime.timedelta(days=1) <= self.pub_date <= now
-    def get_voters(self):
-        return ",".join([str(voter) for voter in self.question_voters.all()])
 
-@python_2_unicode_compatible
-class LoginCode(models.Model):
-    question   = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='login_codes')
-    code       = models.CharField(max_length=64, unique=True, db_index=True)
-    user       = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='login_codes')  # NEW
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.code
+class LoginCode(BaseLoginCode):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='login_codes')
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='login_codes')
 
 class UnregisteredUser(models.Model):
     email = models.EmailField(unique=True)
@@ -124,43 +66,13 @@ def get_image_path(instance, filename):
     return 'static/img/items/'
 
 # item to rank in a question
-@python_2_unicode_compatible
-class Item(models.Model):
+class Item(BaseItem):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    item_text = models.CharField(max_length=200)
-    item_description = models.CharField(max_length=1000, blank=True, null=True)
-    image = models.ImageField(upload_to='static/img/items/', blank=True, null=True)
-    imageURL = models.CharField(max_length=500, blank=True, null=True)
-    imageReference = models.CharField(max_length=500, blank=True, null=True)
-    timestamp = models.DateTimeField('item timestamp')
-    recently_added = models.BooleanField(default=False)
-    utility = models.FloatField(default=0.0)
-    self_sign_up_user_id = models.TextField(default="")
-    def __str__(self):
-        return self.item_text
-    class Meta:
-        ordering = ['timestamp']
 
 # all information pertaining to a response that a student made to a question
-@python_2_unicode_compatible
-class Response(models.Model):
+class Response(BaseResponse):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True)
-    resp_str = models.CharField(max_length=1000, null=True, blank=True)
-    user = models.ForeignKey(User, null = True, blank = True, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField('response timestamp')
-    allocation = models.ForeignKey(Item, default=None, null = True, blank = True, on_delete=models.CASCADE) # assigned by algorithm function
-    anonymous_voter = models.CharField(max_length=50,blank=True,null=True)
-    anonymous_id = models.IntegerField(default = 0)
-    comment = models.CharField(max_length=1000, blank=True, null=True)
-    active = models.IntegerField(default=1)
-    behavior_data = models.TextField(default="")
-    def __str__(self):
-        if self.user:
-            return "Response of user " + self.user.username + "\nfor question " + self.question.question_text + "\nat timestamp " + self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            return "Response of user " + self.anonymous_voter + "\nfor question " + self.question.question_text + "\nat timestamp " + self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-    class Meta:
-        ordering = ['timestamp']
+    allocation = models.ForeignKey(Item, default=None, null=True, blank=True, on_delete=models.CASCADE)  # assigned by algorithm function
 
 # all information pertaining to a response that a student made to a question
 @python_2_unicode_compatible
@@ -179,140 +91,14 @@ class OldWinner(models.Model):
     def __str__(self):
         return (str(self.response.timestamp.time()))
 
-# Dictionary Helper Models - from https://djangosnippets.org/snippets/2451/
-# Models include modifications to be used specifically for holding student preferences - these changes are marked with comments
-
 # collection of a student's preferences within a single response (to a single question)
-class Dictionary(models.Model):
-    """A model that represents a dictionary. This model implements most of the dictionary interface,
-    allowing it to be used like a python dictionary.
-    """
-    name = models.CharField(max_length=255)
-    response = models.ForeignKey(Response, default=None, on_delete=models.CASCADE) # added to original model
-    @staticmethod
-    def getDict(name):
-        """Get the Dictionary of the given name.
-        """
-        df = Dictionary.objects.select_related().get(name=name)
-        return df
-
-    def __getitem__(self, key):
-        """Returns the value of the selected key.
-        """
-        return self.keyvaluepair_set.get(key=key).value
-
-    def __setitem__(self, key, value):
-        """Sets the value of the given key in the Dictionary.
-        """
-        try:
-            kvp = self.keyvaluepair_set.get(key=key)
-        except KeyValuePair.DoesNotExist:
-            KeyValuePair.objects.create(container=self, key=key, value=value)
-        else:
-            kvp.value = value
-            kvp.save()
-
-    def __delitem__(self, key):
-        """Removed the given key from the Dictionary.
-        """
-        try:
-            kvp = self.keyvaluepair_set.get(key=key)
-        except KeyValuePair.DoesNotExist:
-            raise KeyError
-        else:
-            kvp.delete()
-
-    def __len__(self):
-        """Returns the length of this Dictionary.
-        """
-        return self.keyvaluepair_set.count()
-
-    def iterkeys(self):
-        """Returns an iterator for the keys of this Dictionary.
-        """
-        return iter(kvp.key for kvp in self.keyvaluepair_set.all())
-
-    def itervalues(self):
-        """Returns an iterator for the values of this Dictionary.
-        """
-        return iter(kvp.value for kvp in self.keyvaluepair_set.all())
-
-    __iter__ = iterkeys
-
-    def iteritems(self):
-        """Returns an iterator over the tuples of this Dictionary.
-        """
-        return iter((kvp.key, kvp.value) for kvp in self.keyvaluepair_set.all())
-
-    def keys(self):
-        """Returns all keys in this Dictionary as a list.
-        """
-        return [kvp.key for kvp in self.keyvaluepair_set.all()]
-
-    def values(self):
-        """Returns all values in this Dictionary as a list.
-        """
-        return [kvp.value for kvp in self.keyvaluepair_set.all()]
-
-    def sorted_values(self):
-        """Sorts the Dictionary by value"""
-        return list(sorted(self.items(), key=lambda kv: (kv[1], str(kv[0]))))
-
-    def items(self):
-        """Get a list of tuples of key, value for the items in this Dictionary.
-        This is modeled after dict.items().
-        """
-        return [(kvp.key, kvp.value) for kvp in self.keyvaluepair_set.all()]
-
-    def get(self, key, default=None):
-        """Gets the given key from the Dictionary. If the key does not exist, it
-        returns default.
-        """
-        try:
-            return self[key]
-        except KeyError:
-            return default
-
-    def has_key(self, key):
-        """Returns true if the Dictionary has the given key, false if not.
-        """
-        return self.contains(key)
-
-    def contains(self, key):
-        """Returns true if the Dictionary has the given key, false if not.
-        """
-        try:
-            self.keyvaluepair_set.get(key=key)
-            return True
-        except KeyValuePair.DoesNotExist:
-            return False
-
-    def clear(self):
-        """Deletes all keys in the Dictionary.
-        """
-        self.keyvaluepair_set.all().delete()
-
-    def __unicode__(self):
-        """Returns a unicode representation of the Dictionary.
-        """
-        return unicode(self.asPyDict())
-
-    def asPyDict(self):
-        """Get a python dictionary that represents this Dictionary object.
-        This object is read-only.
-        """
-        fieldDict = dict()
-        for kvp in self.keyvaluepair_set.all():
-            fieldDict[kvp.key] = kvp.value
-        return fieldDict
+class Dictionary(BaseDictionary):
+    response = models.ForeignKey(Response, default=None, on_delete=models.CASCADE)
 
 # key-value pair of an item and the ranking a student gave it in their response
-class KeyValuePair(models.Model):
-    """A Key-Value pair with a pointer to the Dictionary that owns it.
-    """
-    container = models.ForeignKey(Dictionary, db_index=True, on_delete=models.CASCADE)
-    key = models.ForeignKey(Item, default=None, on_delete=models.CASCADE, db_index=True) # changed from original model
-    value = models.IntegerField(default=0, db_index=True) # changed from original model
+class KeyValuePair(BaseKeyValuePair):
+    container = models.ForeignKey(Dictionary, db_index=True, on_delete=models.CASCADE, related_name='pairs')
+    key = models.ForeignKey(Item, default=None, on_delete=models.CASCADE, db_index=True)
     
 class FinalResult(models.Model):
     question = models.OneToOneField(Question, on_delete=models.CASCADE)
