@@ -53,6 +53,7 @@ SECURE_BROWSER_XSS_FILTER = eval(env('SECURE_BROWSER_XSS_FILTER'))
 # Application definition
 
 INSTALLED_APPS = [
+    'core.apps.CoreConfig',
     'polls.apps.PollsConfig',
     'allocation.apps.AllocationConfig',
     'mock_election.apps.MockElectionConfig',
