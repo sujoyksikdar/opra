@@ -112,6 +112,16 @@ body.opra-new ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10
   text-decoration: none;
 }
 
+.sidebar-logo-img {
+  max-width: 140px;
+  height: auto;
+  display: block;
+}
+
+.opra-sidebar.collapsed .sidebar-logo-img {
+  display: none;
+}
+
 .sidebar-logo-text {
   color: #fff;
   font-weight: 700;
@@ -125,17 +135,31 @@ body.opra-new ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10
 .opra-sidebar.collapsed .sidebar-user-info,
 .opra-sidebar.collapsed .sidebar-collapse-btn { display: none; }
 
-.sidebar-collapse-btn {
+.sidebar-collapse-btn,
+.sidebar-expand-btn {
   cursor: pointer;
   color: var(--sidebar-text);
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px;
+  border-radius: 6px;
   display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
-  background: none;
+  background: transparent;
   line-height: 1;
+  transition: background 0.15s, color 0.15s;
 }
-.sidebar-collapse-btn:hover { color: #fff; }
+.sidebar-collapse-btn:hover,
+.sidebar-expand-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+}
+
+.sidebar-expand-btn { display: none; }
+.opra-sidebar.collapsed .sidebar-expand-btn {
+  display: flex;
+  margin: 4px auto 8px;
+}
 
 .sidebar-nav {
   flex: 1;
