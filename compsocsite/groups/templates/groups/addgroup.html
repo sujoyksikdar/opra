@@ -1,30 +1,47 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
+{% block title %}Add Group – OPRA{% endblock %}
+{% block nav_groups %}active{% endblock %}
 
 {% block content %}
-<p>
-    <h1>Add Group</h1>
+
+<div class="opra-topbar">
+  <div>
+    <h1>Create Group</h1>
+    <p>Set up a new voter group for bulk invitations</p>
+  </div>
+  <a href="{% url 'groups:index' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
+</div>
+
+<div style="padding:0 32px 40px; max-width:600px;">
+  <div class="opra-card" style="padding:28px 32px;">
 
     <form action="{% url 'groups:addgroupfunc' %}" id="addgroupfunc" method="post">
-        {% csrf_token %}
-        <label for="groupName">Group Name: </label><br />
-        <input type="text" name="groupName" class="form-control" value="" size="100" autofocus/>
-        <br />
-        
-        <fieldset>
-        <label for="groupName">Search members by username: </label> <br />
-        <select name="voters" class="form-control multiple-select" multiple>
-        {% for user in users %}
-            <option value="{{ user.username }}">{{ user.username }}</option>
-        {% endfor %}
+      {% csrf_token %}
+
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">
+          Group Name <span style="color:var(--red);">*</span>
+        </label>
+        <input type="text" name="groupName" autofocus
+          style="width:100%; padding:10px 13px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--bg); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;"
+          placeholder="e.g. Spring 2026 Students">
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;">
+          Add Members <span style="font-size:11px; font-weight:400;">(search by username)</span>
+        </label>
+        <select name="voters" class="multiple-select" multiple
+          style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--bg); font-family:'DM Sans',sans-serif; min-height:120px;">
+          {% for user in users %}
+          <option value="{{ user.username }}">{{ user.username }}</option>
+          {% endfor %}
         </select>
-        </fieldset>
-        <br />
-        
-        <input type="submit" value="Submit" class="btn btn-primary">
+      </div>
+
+      <button type="submit" class="opra-btn opra-btn-primary">Create Group</button>
     </form>
-</p>
 
-
-
-
+  </div>
+</div>
 {% endblock %}

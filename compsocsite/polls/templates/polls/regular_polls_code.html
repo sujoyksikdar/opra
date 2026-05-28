@@ -1,43 +1,69 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
 {% load poll_extra %}
 
+{% block title %}Polls – OPRA{% endblock %}
+{% block nav_polls %}active{% endblock %}
 
 {% block content %}
-<div class="container">
-  <div class="panel panel-default">
-    <div class="panel-body">
-      <table class="table">
-        <thead>
-          <tr><th>Participated in ({{ polls_participated|length }})</th><th></th><th></th></tr>
-        </thead>
-        {% for question in polls_participated %}
-          <tr>
-            <td>
-              <a href="{% url 'polls:pollinfo' question.id %}">{{ question.question_text }}</a>
-            </td>
-            <td>
-              {% if question.status == 2 %}
-                <a href="{% url 'polls:detail' question.id %}" class="btn btn-dark">Vote</a>
-              {% endif %}
-					    {% if question.question_type == 1 and question.status != 1 and question.status != 3 and question.response_set.all.count > 0 and question|can_show_results%}
-                <a href="{% url 'polls:voteresults' question.id %}" target="_blank" class="btn btn-dark">Current Winners</a>
-              {% endif %}
-            </td>
-            <td>
-              {% if question.status == 1 %}Poll not started
-              {% elif question.status == 2 %}In session
-              {% elif question.status == 3 %}
-                {% if question.question_type == 1 %}
-                  <a href="{% url 'polls:voteresults' question.id %}" style="float:right;margin:10px">{{ question.winner }} wins</a>
-                {% endif %}
-              {% endif %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="3"><em>No poll available for this code.</em></td></tr>
-        {% endfor %}
-      </table>
-    </div>
+
+<div class="opra-topbar">
+  <div>
+    <h1>Polls</h1>
+    <p>Polls you've been invited to participate in</p>
   </div>
+</div>
+
+<div style="padding:0 32px 40px;">
+
+  <div style="font-size:11px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px;">
+    Participated in ({{ polls_participated|length }})
+  </div>
+
+  {% if polls_participated %}
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    {% for question in polls_participated %}
+    <div class="opra-card" style="padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div style="flex:1; min-width:0;">
+        <a href="{% url 'polls:pollinfo' question.id %}" class="opra-poll-title" style="display:block; font-size:14px; font-weight:600; color:var(--text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          {{ question.question_text }}
+        </a>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+          {% if question.status == 1 %}Not started yet
+          {% elif question.status == 2 %}In session
+          {% elif question.status == 3 %}Ended
+          {% elif question.status == 4 %}Paused
+          {% endif %}
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        {% if question.status == 1 %}
+          <span class="opra-badge opra-badge-draft">Draft</span>
+        {% elif question.status == 2 %}
+          <span class="opra-badge opra-badge-active">Active</span>
+          <a href="{% url 'polls:detail' question.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Vote</a>
+        {% elif question.status == 3 %}
+          <span class="opra-badge opra-badge-ended">Ended</span>
+          {% if question.question_type == 1 and question.response_set.all.count > 0 and question|can_show_results %}
+          <a href="{% url 'polls:voteresults' question.id %}" class="opra-btn opra-btn-outline opra-btn-sm" target="_blank">Results</a>
+          {% endif %}
+        {% elif question.status == 4 %}
+          <span class="opra-badge opra-badge-paused">Paused</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="opra-card" style="padding:40px; text-align:center; color:var(--text-muted); font-size:13px;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px; display:block; margin-left:auto; margin-right:auto;" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="9" y1="9" x2="15" y2="9"></line>
+      <line x1="9" y1="12" x2="15" y2="12"></line>
+      <line x1="9" y1="15" x2="13" y2="15"></line>
+    </svg>
+    No poll available for this code.
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

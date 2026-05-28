@@ -52,7 +52,7 @@ def AddStep1View(request):
     if request.method == 'POST':
         questionString = request.POST['questionTitle']
         questionDesc = request.POST['desc']
-        questionType = request.POST['questiontype']
+        questionType = 1
         imageURL = request.POST['imageURL']
         tie=False
         t = request.POST.getlist('allowties')

@@ -1,76 +1,84 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
+{% block title %}Groups – OPRA{% endblock %}
+{% block nav_groups %}active{% endblock %}
 
 {% block content %}
-{% if user.is_authenticated %}
-<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2">
-	<p>
-		{% if messages %}
-		<ul class="messages">
-			{% for message in messages %}
-			<div {% if message.tags %} class="alert alert-{{ message.tags }}"{% endif %}>
-				{{ message }} 
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-			</div>
-			{% endfor %}
-		</ul>
-		{% endif %}
-	</p>
+
+<div class="opra-topbar">
+  <div>
+    <h1>Groups</h1>
+    <p>Manage voter groups for bulk invitations</p>
+  </div>
+  <a href="{% url 'groups:addgroup' %}" class="opra-btn opra-btn-primary">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    New Group
+  </a>
 </div>
-    <div class="container">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <b>Groups created</b>
-                <a href="{% url 'groups:addgroup' %}" style="font-size:60%; float:right;" class="btn btn-yellow"><span class="glyphicon glyphicon-plus" ></span></a>
-            </div>
-            <div class="panel-body">
-                <table class="table">
-                {% if groups %}
-                    <tbody>
-                    {% for group in groups %}
-                        {% if request.user == group.owner %}
-                            <tr>
-                                <td>{{ group.name }}</td>
-                                <td><a href="{% url 'groups:members' group.id %}">View/Change members</a></td>
-								<td>
-								{% if group.open == 0 %}
-									<a href="{% url 'groups:open' group.id%}" class="btn btn-primary">Open</a>
-								{% else %}
-									<a href="{% url 'groups:close' group.id%}" class="btn btn-primary">Close</a>
-								{% endif %}
-								</td>
-                            </tr>
-                        {% endif %}
-                    {% endfor %}
-                    </tbody>
-                {% else %}
-                    <tr><td>No groups present. <a href="{% url 'groups:addgroup' %}"><span class="btn btn-primary">Add Group</span></a></td></tr>
-                {% endif %}
-                </table>
-            </div>
-        </div>
-		<div class="panel panel-default">
-            <div class="panel-heading">
-                <b>Groups you can join</b>
-            </div>
-            <div class="panel-body">
-                <table class="table">
-                {% if opengroups %}
-                    <tbody>
-                    {% for group in opengroups %}
-                        {% if request.user != group.owner and request.user not in group.members.all %}
-                            <tr>
-                                <td>{{ group.name }}</td>
-                                <td><a href="{% url 'groups:join' group.id %}" class="btn btn-primary">Join</a></td>
-                            </tr>
-                        {% endif %}
-                    {% endfor %}
-                    </tbody>
-                {% endif %}
-                </table>
-            </div>
-        </div>
+
+<div style="padding:0 32px 40px;">
+
+  {% if user.is_authenticated %}
+
+  {% if messages %}
+  {% for message in messages %}
+  <div style="padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:13px;
+    {% if message.tags == 'success' %}background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d;
+    {% elif message.tags == 'error' or message.tags == 'danger' %}background:#fef2f2; border:1px solid #fecaca; color:#b91c1c;
+    {% else %}background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8;{% endif %}">
+    {{ message }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- Your groups -->
+  <div style="margin-bottom:28px;">
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px;">
+      Your Groups ({{ groups|length }})
     </div>
-{% endif %}
+    {% if groups %}
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for group in groups %}
+      {% if request.user == group.owner %}
+      <div class="opra-card" style="padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="font-size:14px; font-weight:600; color:var(--text);">{{ group.name }}</div>
+        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <a href="{% url 'groups:members' group.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">View Members</a>
+          {% if group.open == 0 %}
+          <a href="{% url 'groups:open' group.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">Open</a>
+          {% else %}
+          <a href="{% url 'groups:close' group.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">Close</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="opra-card" style="padding:32px; text-align:center; color:var(--text-muted); font-size:13px;">
+      No groups yet. <a href="{% url 'groups:addgroup' %}" style="color:var(--green); font-weight:600;">Create one</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Groups you can join -->
+  {% if opengroups %}
+  <div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px;">
+      Groups You Can Join
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for group in opengroups %}
+      {% if request.user != group.owner and request.user not in group.members.all %}
+      <div class="opra-card" style="padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="font-size:14px; font-weight:600; color:var(--text);">{{ group.name }}</div>
+        <a href="{% url 'groups:join' group.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Join</a>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
 {% endblock %}

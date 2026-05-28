@@ -1,20 +1,25 @@
-{% extends 'polls/base.html' %}
+{% extends 'base_auth.html' %}
+{% block title %}Password Reset – OPRA{% endblock %}
 
 {% block content %}
-<br />
+<div class="auth-card" style="text-align:center;">
+  <div style="width:52px; height:52px; background:var(--green-light); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  </div>
+  <h2 style="font-size:18px; font-weight:700; color:var(--text); margin:0 0 8px;">Password Reset!</h2>
+  <p style="font-size:13px; color:var(--text-muted); margin:0 0 24px;">
+    Your password was reset successfully. Redirecting in <span id="countdown" style="font-weight:700; color:var(--green);">5</span> seconds…
+  </p>
+  <a href="/polls/main" class="opra-btn opra-btn-primary" style="display:inline-flex;">Go to Home</a>
+</div>
 
-<p>Your password was reset successfully.</p>
-<p>Wait <span id="countdown"></span> seconds or <a href="/polls/main">click here</a> to return to homepage.</p>
-<script> var link = "/polls/main"; </script>
 <script>
-	var count = 5;
-	setInterval(function(){
-		count = count - 1;
-		if(count <= 0){
-			window.location = link;
-		}else{
-			$('#countdown').html(count);
-		}
-	}, 1000);
+var count = 5;
+var timer = setInterval(function() {
+  count--;
+  var el = document.getElementById('countdown');
+  if (el) el.textContent = count;
+  if (count <= 0) { clearInterval(timer); window.location = '/polls/main'; }
+}, 1000);
 </script>
 {% endblock %}

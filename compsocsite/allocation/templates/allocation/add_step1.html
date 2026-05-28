@@ -1,53 +1,84 @@
-{% extends 'polls/base.html' %}
-{% block extra_head %}
-<script>
-function validateForm() {
-    var x = document.forms["add_step1"]["questionTitle"].value;
-    if (x == null || x == "") {
-        alert("The title must be filled out");
-        return false;
-    }
-}
-</script>
-{% endblock %}
+{% extends 'allocation/base_new.html' %}
+{% load static %}
+
+{% block title %}Create – Step 1 – OPRA{% endblock %}
+{% block nav_allocation %}active{% endblock %}
+
+{% block extra_head %}{% endblock %}
 
 {% block content %}
-<div class="col-md-10 col-md-offset-1">
-    <h2 align="center">Create a New Allocation</h2>
-    <br/>
-    <div class="steps" align="center">
-        <p class="sameline" style="color:grey;">1. General <span class="glyphicon glyphicon-chevron-right"></span></p>
-        <p class="sameline">2. Items <span class="glyphicon glyphicon-chevron-right"></span> 3. Invite <span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
-    </div>
-    <div class="progress">
-        <div class="progress-bar progress-bar-info" style="width: 25%"></div>
-    </div>
-    <br/>
-    <form id="add_step1" method="post" action="{% url 'allocation:AddStep1' %}" name="add_step1" onsubmit="return validateForm()" enctype="multipart/form-data">
-        {% csrf_token %}
-        <label for="questionTitle">Title:</label> <small class="text-muted">*</small><br/>
-        <input type="text" class="form-control" id="questionTitle" name="questionTitle" maxlength="80" autofocus/><br/>
 
-        <label for="desc">Description:</label><br/>
-        <textarea class="form-control" id="desc" name="desc"></textarea><br/>
-
-        <label for="allowties">Allow Ties: </label><br/>
-        <div class="btn-group" data-toggle="buttons">
-            <label class="btn btn-default active">
-                <input type="radio" name="allowties" value="1" checked>Yes
-            </label>
-            <label class="btn btn-default">
-                <input type="radio" name="allowties" value="2">No
-            </label>
-        </div>
-        <br/><br/>
-
-        <input type="hidden" name="imageURL" value=""/>
-
-        <div class="col-md-6 col-md-offset-3" align="center">
-            <input type="submit" value="Next" class="btn btn-primary"/>
-        </div>
-    </form>
+<div class="opra-topbar">
+  <div>
+    <h1>Create New Allocation</h1>
+    <p>Set up a new allocation instance</p>
+  </div>
+  <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
 </div>
-<br><br>
+
+<div style="padding: 20px 32px 40px; max-width: 760px; margin: 0 auto;">
+
+  {% include 'allocation/_wizard_steps.html' with current=1 %}
+
+  <div class="opra-card" style="padding:28px 32px; margin-bottom:16px;">
+    <h3 style="margin:0 0 20px; font-size:15px; font-weight:700; color:var(--text);">Type &amp; Title</h3>
+
+    <form id="add_step1" method="post" action="{% url 'allocation:AddStep1' %}" name="add_step1"
+          onsubmit="return validateForm()" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="imageURL" value="">
+
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;" for="questionTitle">
+          Question Title <span style="color:var(--red);">*</span>
+        </label>
+        <input type="text" id="questionTitle" name="questionTitle" maxlength="80" autofocus
+          placeholder="e.g. Course Allocation Spring 2026"
+          style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;" for="desc">
+          Description <span style="font-size:11px; font-weight:400;">(optional)</span>
+        </label>
+        <textarea id="desc" name="desc" rows="3" placeholder="Add context for your voters…"
+          style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; resize:vertical; box-sizing:border-box;"></textarea>
+      </div>
+
+      <div style="margin-bottom:4px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Allow Ties</label>
+        <div style="display:flex; gap:8px;">
+          <label style="display:flex; align-items:center; gap:8px; padding:8px 16px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:13px; color:var(--text-sub);">
+            <input type="radio" name="allowties" value="1" checked style="accent-color:var(--green);"> Yes
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; padding:8px 16px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:13px; color:var(--text-sub);">
+            <input type="radio" name="allowties" value="2" style="accent-color:var(--green);"> No
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:24px;">
+        <button type="submit" class="opra-btn opra-btn-primary">
+          Next
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function validateForm() {
+    var x = document.forms["add_step1"]["questionTitle"].value;
+    if (!x || x.trim() === "") {
+      alert("The question title must be filled out");
+      return false;
+    }
+  }
+</script>
 {% endblock %}

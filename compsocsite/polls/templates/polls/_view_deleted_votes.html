@@ -1,43 +1,49 @@
-<h3 class="page-header">Deleted preferences of {{ question.question_text }} </h3>
-
 {% if latest_deleted_resps|length > 0 %}
-	{% for response, currentSelection in latest_deleted_resps %}
-		<!-- display name -->
-		<a class="btn btn-primary" href="{% url 'polls:resuservotes' response.id %}">Restore</a>
-		{% if response.user %}
-			{% if response.user.first_name == "" %}
-				<b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br />
-			{% else %}
-				{{ response.user.first_name }} {{ response.user.last_name }} (<a href="mailto:{{ response.user.email }}">{{ response.user.email }}</a>)
-				(last voted on {{ response.timestamp }}) <br />
-			{% endif %}
-		{% else %}
-			<b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
-		{% endif %}
-		
-		{% include 'polls/_display_vote.html' %}
-	{% endfor %} <!-- for response-->
-	<br />
-	<br />
-	{% if previous_deleted_resps %}
-		<button data-toggle="collapse" data-target="#history2" class="btn btn-info" >Show/Hide More History</button>
-		<div id="history2" class="collapse">
-			<div class="well">
-			{% for response, currentSelection in previous_deleted_resps %}
-				<div class="btn-group">
-					<!-- display name -->
-					{% if response.user %}
-						<b>{{ response.user.username }}</b> (last voted on {{ response.timestamp }}) <br />
-					{% else %}
-						<b>(Anonymous) {{ response.anonymous_voter }}</b> (last voted on {{ response.timestamp }}) <br />
-					{% endif %} 
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    {% for response, currentSelection in latest_deleted_resps %}
+    <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <div>
+          {% if response.user %}
+            {% if response.user.first_name == "" %}
+              <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+            {% else %}
+              <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.first_name }} {{ response.user.last_name }}</span>
+              <a href="mailto:{{ response.user.email }}" style="font-size:11px; color:var(--green); margin-left:6px;">{{ response.user.email }}</a>
+            {% endif %}
+          {% else %}
+            <span style="font-size:12px; font-weight:600; color:var(--text);">(Anonymous) {{ response.anonymous_voter }}</span>
+          {% endif %}
+          <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+        </div>
+        <a href="{% url 'polls:resuservotes' response.id %}" class="opra-btn opra-btn-primary opra-btn-sm">Restore</a>
+      </div>
+      {% include 'polls/_display_vote.html' %}
+    </div>
+    {% endfor %}
+  </div>
 
-					{% include 'polls/_display_vote.html' %}
-				</div>
-			{% endfor %}
-			</div>
-		</div>
-	{% endif %} <!--previous responses-->
-{% else %} 
-	<p>No preferences are deleted.</p>
-{% endif %} <!-- no response-->
+  {% if previous_deleted_resps %}
+  <div style="margin-top:12px;">
+    <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';" class="opra-btn opra-btn-ghost opra-btn-sm">Show / Hide More History</button>
+    <div style="display:none; margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+      {% for response, currentSelection in previous_deleted_resps %}
+      <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:9px;">
+        <div style="margin-bottom:8px;">
+          {% if response.user %}
+            <span style="font-size:12px; font-weight:600; color:var(--text);">{{ response.user.username }}</span>
+          {% else %}
+            <span style="font-size:12px; font-weight:600; color:var(--text);">(Anonymous) {{ response.anonymous_voter }}</span>
+          {% endif %}
+          <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">{{ response.timestamp }}</span>
+        </div>
+        {% include 'polls/_display_vote.html' %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+{% else %}
+  <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No preferences have been deleted.</div>
+{% endif %}

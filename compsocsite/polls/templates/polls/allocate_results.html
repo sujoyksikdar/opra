@@ -1,6 +1,9 @@
-{% extends 'polls/base.html' %}
+{% extends 'mock_election/base_new.html' %}
 {% load poll_extra %}
 {% load static%}
+
+{% block title %}Allocation Results – OPRA{% endblock %}
+{% block nav_polls %}active{% endblock %}
 
 {% block content %}
 <style>

@@ -1,27 +1,27 @@
 {% load poll_extra %}
-<form class="form-group" method="post" action="{% url 'polls:setPollingSettings' question.id %}" align="center">
+<form method="post" action="{% url 'polls:setPollingSettings' question.id %}">
     {% csrf_token %}
 
-    <!-- for question_type=1 (regular poll) -->
     {% if question.question_type == 1 %}
-    <label for="pollpreferences">select an algorithm</label>
-    <select id="pollpreferences" name="pollpreferences" class="form-control"
-        {% if question.status != 1 %} disabled {% endif %}>
-        {% for item in poll_algorithms %}
-        <option value="{{ forloop.counter }}"
-            {% if question.poll_algorithm == forloop.counter %} selected {% endif %}>
-            {{ item }}
-        </option>
-        {% endfor %}
-    </select>
-    <br />
+    <!-- Regular poll -->
+    <fieldset style="margin-bottom:20px; border:none; padding:0;">
+        <label class="pi-label" for="pollpreferences">Algorithm</label>
+        <select id="pollpreferences" name="pollpreferences" class="pi-input" style="max-width:340px;"
+            {% if question.status != 1 %} disabled {% endif %}>
+            {% for item in poll_algorithms %}
+            <option value="{{ forloop.counter }}"
+                {% if question.poll_algorithm == forloop.counter %} selected {% endif %}>
+                {{ item }}
+            </option>
+            {% endfor %}
+        </select>
+    </fieldset>
 
-    <!-- visible algorithms (checkboxes) -->
-    <fieldset class="form-group">
-        <label>visible algorithms</label>
-        <div id="visible">
+    <fieldset style="margin-bottom:20px; border:none; padding:0;">
+        <label class="pi-label">Visible Algorithms</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;" id="visible">
             {% for rule in poll_algorithms %}
-            <label class="checkbox-inline">
+            <label class="pi-ui-chip">
                 <input type="checkbox" name="vr"
                     {% if question.poll_algorithm == forloop.counter %} disabled {% endif %}>
                 {{ rule }}
@@ -31,154 +31,143 @@
     </fieldset>
 
     {% elif question.question_type == 2 %}
-    <!-- for question_type=2 (allocation) -->
-    <label for="pollpreferences">select an allocation method to calculate result</label>
-    <select id="pollpreferences" name="pollpreferences" class="form-control"
-        {% if question.status != 1 %} disabled {% endif %}>
-        {% for item in alloc_methods %}
-        <option value="{{ forloop.counter }}"
-            {% if question.poll_algorithm == forloop.counter %} selected {% endif %}>
-            {{ item }}
-        </option>
-        {% endfor %}
-    </select>
-    <br />
+    <!-- Allocation -->
+    <fieldset style="margin-bottom:20px; border:none; padding:0;">
+        <label class="pi-label" for="pollpreferences">Allocation Method</label>
+        <select id="pollpreferences" name="pollpreferences" class="pi-input" style="max-width:340px;"
+            {% if question.status != 1 %} disabled {% endif %}>
+            {% for item in alloc_methods %}
+            <option value="{{ forloop.counter }}"
+                {% if question.poll_algorithm == forloop.counter %} selected {% endif %}>
+                {{ item }}
+            </option>
+            {% endfor %}
+        </select>
+    </fieldset>
 
-    <!-- optional: if poll_algorithm == 3 => show manual order link, etc. -->
-    {% if question.poll_algorithm == 3 %}
-    <span class="btn btn-group">
-        {% for voter in question.allocationvoter_set.all %}
-        <span class="btn btn-default">{{ voter.user }}</span>
-        {% endfor %}
-    </span>
-    {% if question.status == 1 or question.status == 2 %}
-        <a href="{% url 'allocation:viewAllocationOrder' question.id %}" class="btn btn-dark" role="button">
-            set allocation order
-        </a>
-        <br />
-    {% endif %}
-    {% endif %}
-
-    <!-- checkboxes for each algorithm -->
-    <fieldset class="form-group">
-        <label>allocation algorithms to show results</label>
-        <div id="visible">
-            <!-- round robin => bit=1, always checked & disabled -->
-            <label class="checkbox-inline">
-                <input id="round_robin_alloc" type="checkbox" value="1" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:1 != 0 %} checked {% endif %} {% if question.poll_algorithm == 1 %} disabled {% endif %}>
-                round robin
+    <fieldset style="margin-bottom:20px; border:none; padding:0;">
+        <label class="pi-label">Allocation Algorithms to Show in Results</label>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;">
+            <label class="pi-ui-chip">
+                <input id="round_robin_alloc" type="checkbox" value="1" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:1 != 0 %} checked {% endif %} disabled>
+                Round Robin
             </label>
-
-            <!-- max nash welfare => bit=2 -->
-            <label class="checkbox-inline">
-                <input id="mnw_alloc" type="checkbox" value="2" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:2 != 0 %} checked {% endif %} {% if question.poll_algorithm == 2 %} disabled {% endif %}>
-                max nash welfare
+            <label class="pi-ui-chip">
+                <input id="mnw_alloc" type="checkbox" value="2" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:2 != 0 %} checked {% endif %}>
+                Max Nash Welfare
             </label>
-
-            <!-- market => bit=4 -->
-            <label class="checkbox-inline">
-                <input id="market_alloc" type="checkbox" value="4" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:4 != 0 %} checked {% endif %} {% if question.poll_algorithm == 3 %} disabled {% endif %}>
-                market (ef1)
+            <label class="pi-ui-chip">
+                <input id="market_alloc" type="checkbox" value="4" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:4 != 0 %} checked {% endif %}>
+                Market (EF1)
             </label>
-
-            <!-- marketeq => bit=8 -->
-            <label class="checkbox-inline">
-                <input id="market_eq_alloc" type="checkbox" value="8" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:8 != 0 %} checked {% endif %} {% if question.poll_algorithm == 4 %} disabled {% endif %}>
-                marketeq (eq1)
+            <label class="pi-ui-chip">
+                <input id="market_eq_alloc" type="checkbox" value="8" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:8 != 0 %} checked {% endif %}>
+                MarketEQ (EQ1)
             </label>
-
-            <!-- leximin => bit=16 -->
-            <label class="checkbox-inline">
-                <input id="leximin_alloc" type="checkbox" value="16" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:16 != 0 %} checked {% endif %} {% if question.poll_algorithm == 5 %} disabled {% endif %}>
-                leximin
+            <label class="pi-ui-chip">
+                <input id="leximin_alloc" type="checkbox" value="16" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:16 != 0 %} checked {% endif %}>
+                Leximin
             </label>
-
-            <!-- mnw binary => bit=32 -->
-            <label class="checkbox-inline">
-                <input id="mnw_bin_alloc" type="checkbox" value="32" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:32 != 0 %} checked {% endif %} {% if question.poll_algorithm == 6 %} disabled {% endif %}>
-                mnw binary
+            <label class="pi-ui-chip">
+                <input id="mnw_bin_alloc" type="checkbox" value="32" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:32 != 0 %} checked {% endif %}>
+                MNW Binary
             </label>
-
-            <!-- market eq1 po => bit=64 -->
-            <label class="checkbox-inline">
-                <input id="market_eq1_po_alloc" type="checkbox" value="64" name="alloc_algorithms" {% if question.alloc_algorithms|bitwise_and:64 != 0 %} checked {% endif %} {% if question.poll_algorithm == 7 %} disabled {% endif %}>
+            <label class="pi-ui-chip">
+                <input id="market_eq1_po_alloc" type="checkbox" value="64" name="alloc_algorithms"
+                    {% if question.alloc_algorithms|bitwise_and:64 != 0 %} checked {% endif %}>
                 Market EQ1 PO
             </label>
         </div>
     </fieldset>
-    <br><br>
-    <label>information to show in allocation results page</label>
-        <!-- Preference View Options -->
-        <div id="visible">
-            <strong>Preference View Options</strong><br>
-            <label class="checkbox-inline">
-            <input id="my_pref_table" type="checkbox" value="1" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:1 != 0 %} checked {% endif %}> My Preferences
-            </label>
-            <label class="checkbox-inline">
-                <input type="checkbox" value="2" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0 %} checked {% endif %}> All Preferences
-            </label>
+
+    <fieldset style="margin-bottom:20px; border:none; padding:0;">
+        <label class="pi-label">Information to Show in Results Page</label>
+
+        <div style="margin-bottom:12px;">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">Preference View</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <label class="pi-ui-chip">
+                    <input id="my_pref_table" type="checkbox" value="1" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:1 != 0 %} checked {% endif %}>
+                    My Preferences
+                </label>
+                <label class="pi-ui-chip">
+                    <input type="checkbox" value="2" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:2 != 0 %} checked {% endif %}>
+                    All Preferences
+                </label>
+            </div>
         </div>
 
-        <!-- Allocation View Options -->
-        <div id="visible">
-            <strong>Allocation View Options</strong><br>
-            <label class="checkbox-inline">
-            <input id="alloc_items_bundle_table" type="checkbox" value="4" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %} checked {% endif %}> Items Bundle
-            </label>
-            <label class="checkbox-inline">
-                <input id="alloc_res_table" type="checkbox" value="8" name="alloc_res_tables"
-                    {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %} checked {% endif %}> Allocation Result Table
-            </label>
+        <div style="margin-bottom:12px;">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">Allocation View</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <label class="pi-ui-chip">
+                    <input id="alloc_items_bundle_table" type="checkbox" value="4" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:4 != 0 %} checked {% endif %}>
+                    Items Bundle
+                </label>
+                <label class="pi-ui-chip">
+                    <input id="alloc_res_table" type="checkbox" value="8" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:8 != 0 %} checked {% endif %}>
+                    Allocation Result Table
+                </label>
+            </div>
         </div>
 
-        <!-- Allocation Property View Options -->
-        <div id="visible">
-            <strong>Allocation Property View Options</strong><br>
-            <label class="checkbox-inline">
-                <input id="EF1_matrix" type="checkbox" value="16" name="alloc_res_tables"
-                    {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0 %} checked {% endif %}> Envy Matrix
-            </label>
-            <label class="checkbox-inline">
-                <input type="checkbox" value="32" name="alloc_res_tables" 
-                {% if selected_alloc_res_tables_sum|bitwise_and:32 != 0 %} checked {% endif %}> Equitability
-            </label>
-            <label class="checkbox-inline">
-                <input type="checkbox" value="64" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:64 != 0 %} checked {% endif %}> Fractional Share
-            </label>
-            <label class="checkbox-inline">
-                <input type="checkbox" value="128" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %} checked {% endif %}> Welfare
-            </label>
-            <label class="checkbox-inline">
-                <input type="checkbox" value="256" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:256 != 0 %} checked {% endif %}> Pareto Optimality
-            </label>
-            <label class="checkbox-inline">
-                <input type="checkbox" value="512" name="alloc_res_tables"
-                {% if selected_alloc_res_tables_sum|bitwise_and:512 != 0 %} checked {% endif %}> First-choices
-            </label>
+        <div>
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">Allocation Properties</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <label class="pi-ui-chip">
+                    <input id="EF1_matrix" type="checkbox" value="16" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:16 != 0 %} checked {% endif %}>
+                    Envy Matrix
+                </label>
+                <label class="pi-ui-chip">
+                    <input type="checkbox" value="32" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:32 != 0 %} checked {% endif %}>
+                    Equitability
+                </label>
+                <label class="pi-ui-chip">
+                    <input type="checkbox" value="64" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:64 != 0 %} checked {% endif %}>
+                    Fractional Share
+                </label>
+                <label class="pi-ui-chip">
+                    <input type="checkbox" value="128" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:128 != 0 %} checked {% endif %}>
+                    Welfare
+                </label>
+                <label class="pi-ui-chip">
+                    <input type="checkbox" value="256" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:256 != 0 %} checked {% endif %}>
+                    Pareto Optimality
+                </label>
+                <label class="pi-ui-chip">
+                    <input type="checkbox" value="512" name="alloc_res_tables"
+                        {% if selected_alloc_res_tables_sum|bitwise_and:512 != 0 %} checked {% endif %}>
+                    First-choices
+                </label>
+            </div>
         </div>
-
+    </fieldset>
     {% endif %}
 
-    <!-- script: bit-based logic -->
-<script>
+    <script>
     $(document).ready(function() {
         {% if question.question_type == 1 %}
         var val = 0;
-        // Fallback to 0 prevents a JS syntax error if {{ bools }} is empty
         var bools = {{ bools|default:"0" }};
 
         $("input[name='vr']").each(function () {
-            // Update both property and attribute so CSS selectors work later
             var bitValue = Math.pow(2, val);
             $(this).val(bitValue).attr('value', bitValue);
-            
-            // Check odd/even and force integer division to prevent float bugs
             if (bools % 2 !== 0) {
                 $(this).prop("checked", true);
             }
@@ -188,15 +177,10 @@
         {% endif %}
 
         $('#pollpreferences').change(function () {
-            // re-enable all elements 
             $('input[name="vr"], input[name="alloc_algorithms"]').prop("disabled", false);
-            
             var selectedVal = parseInt($('#pollpreferences option:selected').val(), 10);
-            
             if (!isNaN(selectedVal)) {
                 var changed = Math.pow(2, selectedVal - 1).toString();
-                
-                // Use .filter() to accurately match properties
                 $('input[name="vr"], input[name="alloc_algorithms"]')
                     .filter(function() { return $(this).val() === changed; })
                     .prop("checked", true)
@@ -204,13 +188,11 @@
             }
         });
 
-        // Re-enable disabled inputs right before submit so the browser actually sends the locked data to the server.
         $('form').on('submit', function() {
             $('input[name="vr"], input[name="alloc_algorithms"]').prop("disabled", false);
         });
     });
-</script>
+    </script>
 
-<br />
-<input type="submit" value="submit" class="btn btn-success">
+    <button type="submit" class="opra-btn opra-btn-primary">Save</button>
 </form>

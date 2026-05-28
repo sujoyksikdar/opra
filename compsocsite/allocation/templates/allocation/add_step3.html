@@ -1,31 +1,233 @@
-{% extends 'polls/base.html' %}
+{% extends 'allocation/base_new.html' %}
+{% load static %}
+
+{% block title %}Create – Step 3 – OPRA{% endblock %}
+{% block nav_allocation %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  .voters-shell .panel { border:none; box-shadow:none; background:transparent; margin-bottom:16px; }
+  .voters-shell .panel-heading { display:none; }
+  .voters-shell .panel-body { padding:0; }
+
+  .voters-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .voters-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 14px 0;
+  }
+
+  .voters-shell .tab-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-sub);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    margin-right: 6px;
+    margin-bottom: 10px;
+  }
+  .voters-shell .tab-btn:hover,
+  .voters-shell .tab-btn.active-tab { background: var(--green-light); color: var(--green); border-color: var(--green); }
+
+  .voters-shell .form-control {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .voters-shell .form-control:focus { border-color: var(--green); }
+
+  .voters-shell .btn-success {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: var(--green); color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-top: 10px;
+  }
+  .voters-shell .btn-success:hover { background: var(--green-mid); }
+
+  .voters-shell .btn-danger {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: 1px solid var(--red); background: transparent; color: var(--red); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.15s; margin-top: 10px; margin-left: 6px;
+  }
+  .voters-shell .btn-danger:hover { background: var(--red); color: #fff; }
+
+  .voters-shell .btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: var(--green); color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-top: 10px;
+  }
+  .voters-shell .btn-primary:hover { background: var(--green-mid); }
+
+  .voters-shell .btn-info {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: #0891b2; color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s;
+  }
+  .voters-shell .btn-info:hover { background: #0e7490; }
+
+  .voters-shell .btn-warning {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; border-radius: 8px;
+    border: none; background: var(--status-paused); color: #fff; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-left: 6px; margin-top: 10px;
+    text-decoration: none;
+  }
+  .voters-shell .btn-warning:hover { background: #b45309; text-decoration: none; }
+
+  #userListBox {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--bg);
+    margin-top: 8px;
+  }
+
+  .user-item {
+    padding: 5px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .user-item:last-child { border-bottom: none; }
+  .user-item input[type="checkbox"] { accent-color: var(--green); }
+
+  .voters-shell .alert-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    color: #1d4ed8;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  trix-editor {
+    min-height: 140px;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+  }
+  trix-toolbar .trix-button-group--file-tools { display: none; }
+
+  .voters-shell hr { border-color: var(--border); margin: 16px 0; }
+
+  .recipients-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .recipients-group label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: 20px;
+    font-size: 12px; font-weight: 600; color: var(--text-sub); cursor: pointer; transition: all 0.15s;
+  }
+  .recipients-group input[type="radio"] { accent-color: var(--green); }
+  .recipients-group label:has(input:checked) { background: var(--green-light); color: var(--green); border-color: var(--green); }
+
+  .ui-autocomplete {
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+    background: var(--surface) !important;
+    padding: 4px 0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    z-index: 9999 !important;
+  }
+  .ui-autocomplete .ui-menu-item-wrapper { padding: 8px 14px !important; color: var(--text) !important; }
+  .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+    background: var(--green-light) !important; color: var(--green) !important;
+    border: none !important; font-weight: 600 !important;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 {% if question.question_owner == request.user %}
-<div class="col-md-10 col-md-offset-1">
-    <h2 align="center">Create a New Allocation</h2>
-    <br/>
-    <div class="steps" align="center">
-        <p class="sameline">1. General <span class="glyphicon glyphicon-chevron-right"></span> 2. Items</p>
-        <p class="sameline" style="color:grey;"><span class="glyphicon glyphicon-chevron-right"></span> 3. Invite</p>
-        <p class="sameline"><span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
-    </div>
-    <div class="progress">
-        <div class="progress-bar progress-bar-info" role="progressbar" style="width: 75%">
-            <span class="sr-only">75% Complete</span>
-        </div>
-    </div>
-    <br/>
 
-    <h3>Users</h3>
-    {% include 'allocation/_invite_voters_new_ui.html' %}
+<div class="opra-topbar">
+  <div>
+    <h1>Create New Allocation</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+  <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
+</div>
 
-    <br/><br/>
-    <div class="col-md-6 col-md-offset-3" align="center">
-        <a href="{% url 'allocation:AddStep4' question.id %}">
-            <input type="submit" value="Next" class="btn btn-primary"/>
-        </a>
+<div style="padding:20px 32px 40px; max-width:760px; margin:0 auto;">
+
+  {% include 'allocation/_wizard_steps.html' with current=3 %}
+
+  <div class="voters-shell">
+    <div class="voters-section">
+      <div class="voters-section-title">Add Voters</div>
+      {% include 'allocation/_invite_voters_new_ui.html' %}
     </div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; margin-top:4px;">
+    <a href="{% url 'allocation:AddStep2' question.id %}" class="opra-btn opra-btn-ghost">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      Back
+    </a>
+    <a href="{% url 'allocation:AddStep4' question.id %}" class="opra-btn opra-btn-primary">
+      Next
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+  </div>
+
 </div>
 {% endif %}
+
+{% block extra_js %}
+<script>
+  function highlightTab(btn) {
+    btn.closest('.voters-shell').querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.remove('active-tab');
+    });
+    btn.classList.add('active-tab');
+  }
+
+  document.querySelectorAll('[onclick^="switchAddTab"]').forEach(function(btn) {
+    btn.addEventListener('click', function() { highlightTab(this); });
+  });
+  document.querySelectorAll('[onclick^="switchViewTab"]').forEach(function(btn) {
+    btn.addEventListener('click', function() { highlightTab(this); });
+  });
+
+  var firstAddBtn = document.querySelector('[onclick^="switchAddTab"]');
+  if (firstAddBtn) firstAddBtn.classList.add('active-tab');
+  var firstViewBtn = document.querySelector('[onclick^="switchViewTab"]');
+  if (firstViewBtn) firstViewBtn.classList.add('active-tab');
+</script>
+{% endblock %}
+
 {% endblock %}

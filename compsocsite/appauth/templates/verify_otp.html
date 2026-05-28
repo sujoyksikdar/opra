@@ -1,27 +1,33 @@
-{% extends 'polls/base.html' %}
+{% extends 'base_auth.html' %}
+{% block title %}Verify Email – OPRA{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 420px; padding: 40px 20px;">
-  <h3 class="text-center">Verify your email</h3>
+<div class="auth-card">
+  <h1 class="auth-title">Verify your email</h1>
+  <p class="auth-subtitle">Enter the 6-digit code sent to your email</p>
 
   {% if error %}
-    <div class="alert alert-danger" style="margin-top: 10px;">{{ error }}</div>
+  <div class="auth-alert-danger">{{ error }}</div>
   {% endif %}
 
   <form method="post" action="/auth/verify-otp/">
     {% csrf_token %}
     <input type="hidden" name="uid" value="{{ uid }}">
-    <div class="form-group" style="margin-top: 16px;">
-      <label for="code">6-digit code</label>
-      <input id="code" name="code" type="text" class="form-control" placeholder="Enter code">
+    <div class="auth-field">
+      <label class="auth-label" for="code">Verification Code</label>
+      <input class="auth-input" id="code" name="code" type="text" maxlength="6"
+        placeholder="000000" autofocus
+        style="letter-spacing:0.2em; font-size:20px; text-align:center; font-weight:700;">
     </div>
-    <button type="submit" class="btn btn-primary" style="margin-top:10px;">Verify</button>
+    <button type="submit" class="auth-btn">Verify</button>
   </form>
 
-  <form method="post" action="/auth/resend-otp/" style="margin-top:12px;">
+  <form method="post" action="/auth/resend-otp/" style="margin-top:14px; text-align:center;">
     {% csrf_token %}
     <input type="hidden" name="uid" value="{{ uid }}">
-    <button type="submit" class="btn btn-link">Resend code</button>
+    <button type="submit" style="background:none; border:none; font-size:12px; color:var(--green); cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:600;">
+      Resend code
+    </button>
   </form>
 </div>
 {% endblock %}

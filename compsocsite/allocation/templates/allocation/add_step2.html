@@ -1,28 +1,243 @@
-{% extends 'polls/base.html' %}
+{% extends 'allocation/base_new.html' %}
 {% load static %}
+
+{% block title %}Create – Step 2 – OPRA{% endblock %}
+{% block nav_allocation %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  #choicesetting {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #choicesetting > li:first-child,
+  #choicesetting > li:nth-child(2) {
+    background: none;
+    border: none;
+    padding: 0 0 12px 0;
+  }
+
+  #choicesetting .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--red);
+    background: transparent;
+    color: var(--red);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    margin-right: 6px;
+  }
+  #choicesetting .btn-danger:hover { background: var(--red); color: #fff; }
+
+  #choicesetting .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    background: var(--green);
+    color: #fff;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s;
+  }
+  #choicesetting .btn-primary:hover { background: var(--green-mid); }
+
+  #choicesetting form#choiceform > li.list-group-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+    list-style: none;
+  }
+
+  #choicesetting form#choiceform > li .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .item-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--green);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  #choicesetting .input-sm.form-control[name^="item"] {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+  #choicesetting .input-sm.form-control[name^="item"]:focus {
+    border-color: var(--green);
+    background: var(--surface);
+  }
+
+  #choicesetting .btn-default {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text-sub);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  #choicesetting .btn-default:hover { border-color: var(--green); color: var(--green); }
+
+  .caret { color: var(--text-muted) !important; }
+
+  .accordian-body textarea.form-control {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    width: 100%;
+    resize: vertical;
+  }
+  .accordian-body textarea.form-control:focus { border-color: var(--green); }
+
+  #choicesetting > li:last-child {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: transparent;
+    padding: 10px 14px;
+    list-style: none;
+    transition: border-color 0.2s;
+  }
+  #choicesetting > li:last-child:hover { border-color: var(--green); }
+
+  #choicesetting > li:last-child input[type="text"] {
+    border: none;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: transparent;
+    outline: none;
+    width: 100%;
+  }
+  #choicesetting > li:last-child input[type="text"]::placeholder { color: var(--text-muted); }
+
+  #choicesetting > li:last-child .btn-primary { padding: 6px 12px; border-radius: 8px; }
+
+  .modal-content { border-radius: 12px; border: 1px solid var(--border); }
+  .modal-header { border-bottom: 1px solid var(--border); padding: 14px 20px; font-size: 15px; font-weight: 700; color: var(--text); }
+  .modal-body { padding: 16px 20px; font-size: 13px; color: var(--text-sub); }
+  .modal-footer { border-top: 1px solid var(--border); padding: 12px 20px; }
+
+  .modal .btn-group .btn {
+    font-size: 12px;
+    border-radius: 6px !important;
+    border: 1px solid var(--border);
+    padding: 5px 14px;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .modal .btn-group .btn.active,
+  .modal .btn-group .btn:active { background: var(--green); border-color: var(--green); color: #fff; }
+
+  .modal .well { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 12px; color: var(--text-sub); }
+  .modal .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1d4ed8; padding: 10px 14px; font-size: 12px; }
+
+  .modal input[type="file"],
+  .modal input[type="text"].form-control {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .modal .btn-primary[type="submit"] {
+    background: var(--green);
+    border: none;
+    border-radius: 8px;
+    padding: 7px 16px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 {% if question.question_owner == request.user %}
-<div class="col-md-10 col-md-offset-1">
-    <h2 align="center">Create a New Allocation</h2>
-    <br/>
-    <div class="steps" align="center">
-        <p class="sameline">1. General <span class="glyphicon glyphicon-chevron-right"></span></p>
-        <p class="sameline" style="color:grey;">2. Items <span class="glyphicon glyphicon-chevron-right"></span></p>
-        <p class="sameline">3. Invite <span class="glyphicon glyphicon-chevron-right"></span> 4. Settings</p>
+
+<div class="opra-topbar">
+  <div>
+    <h1>Create New Allocation</h1>
+    <p>{{ question.question_text }}</p>
+  </div>
+  <a href="{% url 'allocation:allocation_tab' %}" class="opra-btn opra-btn-ghost opra-btn-sm">Cancel</a>
+</div>
+
+<div style="padding:20px 32px 40px; max-width:760px; margin:0 auto;">
+
+  {% include 'allocation/_wizard_steps.html' with current=2 %}
+
+  <div class="opra-card" style="padding:24px 28px; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+      <div>
+        <h3 style="margin:0 0 3px; font-size:15px; font-weight:700; color:var(--text);">Alternatives</h3>
+        <p style="margin:0; font-size:12px; color:var(--text-muted);">Add the items to be allocated. Minimum 2 required.</p>
+      </div>
+      <span style="font-size:12px; color:var(--text-muted);">{{ items|length }} item{{ items|length|pluralize }}</span>
     </div>
-    <div class="progress">
-        <div class="progress-bar progress-bar-info" role="progressbar" style="width: 50%">
-            <span class="sr-only">50% Complete</span>
-        </div>
-    </div>
-    <br/>
+
     {% include 'allocation/_add_choice.html' %}
-    <div class="col-md-6 col-md-offset-3" align="center">
-        <a href="{% url 'allocation:AddStep3' question.id %}">
-            <input type="submit" value="Next" class="btn btn-primary"/>
-        </a>
-    </div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between;">
+    <a href="{% url 'allocation:AddStep1' %}" class="opra-btn opra-btn-ghost">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      Back
+    </a>
+    <a href="{% url 'allocation:AddStep3' question.id %}" class="opra-btn opra-btn-primary">
+      Next
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+  </div>
+
 </div>
 {% endif %}
 {% endblock %}
