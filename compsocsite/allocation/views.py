@@ -913,12 +913,12 @@ class AllocateResultsView(views.generic.DetailView):
         for i in range(len(allocated_items)):
             for j in range(len(allocated_items[i])):
                 item_obj = allocated_items[i][j]
-            if isinstance(item_obj, str):
-                transformed[i][j] = item_obj[4:]
-            elif hasattr(item_obj, 'item_text'):
-                transformed[i][j] = item_obj.item_text
-            else:
-                transformed[i][j] = str(item_obj)
+                if isinstance(item_obj, str):
+                    transformed[i][j] = item_obj[4:]
+                elif hasattr(item_obj, 'item_text'):
+                    transformed[i][j] = item_obj.item_text
+                else:
+                    transformed[i][j] = str(item_obj)
         return transformed
 
     def getSumOfAllocatedItems(self, allocated_items, submitted_rankings):
