@@ -135,7 +135,6 @@ class RegularPollsView(views.generic.ListView):
         self.request.session['questionType'] = 1
         return ctx
 
-@method_decorator(block_code_users("/mock_election/regular_polls/code"), name="dispatch")
 class CodePollsView(views.generic.ListView):
     """
     Polls view for code-based users.
