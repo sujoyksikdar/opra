@@ -24,7 +24,7 @@
     {% for question in polls_participated %}
     <div class="opra-card" style="padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
       <div style="flex:1; min-width:0;">
-        <a href="{% url 'polls:pollinfo' question.id %}" class="opra-poll-title" style="display:block; font-size:14px; font-weight:600; color:var(--text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        <a href="{% url 'polls:detail' question.id %}" class="opra-poll-title" style="display:block; font-size:14px; font-weight:600; color:var(--text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
           {{ question.question_text }}
         </a>
         <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
