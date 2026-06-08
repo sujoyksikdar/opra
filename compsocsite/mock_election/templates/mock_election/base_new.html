@@ -130,13 +130,23 @@
             </svg>
             <span class="sidebar-label">Allocation</span>
           </a>
-          {% else %}
+          {% elif request.user.userprofile.code_source == "mock_election" %}
           <a href="{% url 'mock_election:regular_polls_code' %}" class="sidebar-nav-item active">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="9 11 12 14 22 4"></polyline>
               <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
             </svg>
             <span class="sidebar-label">Mock Election</span>
+          </a>
+          {% else %}
+          <a href="{% url 'polls:regular_polls_code' %}" class="sidebar-nav-item active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="9" x2="15" y2="9"></line>
+              <line x1="9" y1="12" x2="15" y2="12"></line>
+              <line x1="9" y1="15" x2="13" y2="15"></line>
+            </svg>
+            <span class="sidebar-label">Polls</span>
           </a>
           {% endif %}
         {% endif %}
