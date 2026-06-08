@@ -468,18 +468,23 @@ def socialSignup(request):
 def login_with_code(request):
     if request.method == "POST":
         from allocation.models import AllocationLoginCode
+        from mock_election.models import MockElectionLoginCode
         code = (request.POST.get("code") or "").strip()
 
-        # Check allocation codes first, then polls codes
+        # Check allocation, mock_election, then polls codes
         alloc_code = None
+        mock_code = None
         poll_code = None
         try:
             alloc_code = AllocationLoginCode.objects.select_related('user', 'question').get(code=code)
         except AllocationLoginCode.DoesNotExist:
             try:
-                poll_code = LoginCode.objects.select_related('user', 'question').get(code=code)
-            except LoginCode.DoesNotExist:
-                return render(request, "login_with_code.html", {"error": "Invalid code"})
+                mock_code = MockElectionLoginCode.objects.select_related('user', 'question').get(code=code)
+            except MockElectionLoginCode.DoesNotExist:
+                try:
+                    poll_code = LoginCode.objects.select_related('user', 'question').get(code=code)
+                except LoginCode.DoesNotExist:
+                    return render(request, "login_with_code.html", {"error": "Invalid code"})
 
         if alloc_code is not None:
             login_code = alloc_code
@@ -501,6 +506,28 @@ def login_with_code(request):
             request.session["is_code_user"] = True
             request.session["code_question_id"] = login_code.question_id
             return HttpResponseRedirect("/allocations/allocation_tab/code")
+
+        elif mock_code is not None:
+            login_code = mock_code
+            if not login_code.user:
+                uname = f"mcode_{login_code.question_id}_{secrets.token_hex(4)}"
+                u = User(username=uname, email="")
+                u.set_unusable_password()
+                u.is_active = True
+                u.save()
+                if not hasattr(u, 'userprofile'):
+                    UserProfile.objects.create(
+                        user=u, displayPref=1, time_creation=timezone.now(), salt="",
+                        is_code_user=True, code_source='mock_election'
+                    )
+                login_code.user = u
+                login_code.save(update_fields=['user'])
+                login_code.question.question_voters.add(u)
+            login(request, login_code.user, backend="appauth.custom_backends.CustomUserModelBackend")
+            request.session["is_code_user"] = True
+            request.session["code_question_id"] = login_code.question_id
+            return HttpResponseRedirect("/mock_election/regular_polls/code")
+
         else:
             login_code = poll_code
             if not login_code.user:
