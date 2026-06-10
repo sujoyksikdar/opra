@@ -31,6 +31,12 @@
             {% elif question.status == 4 %}Paused
             {% endif %}
           </div>
+          {% if question.state %}
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:4px;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            {% if question.district %}{{ question.district }}, {% endif %}{{ question.state }}
+          </div>
+          {% endif %}
         </div>
         <div style="flex-shrink:0; display:flex; gap:8px; align-items:center;">
           {% if question.status == 1 %}

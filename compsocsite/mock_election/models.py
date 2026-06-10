@@ -71,6 +71,8 @@ class MockElectionQuestion(models.Model):
     results_visible_after = models.DateTimeField(null=True, blank=True)
     correct_answer = models.TextField(default="")
     allow_self_sign_up = models.IntegerField(default=0)
+    state = models.CharField(max_length=100, blank=True, default="")
+    district = models.CharField(max_length=100, blank=True, default="")
 
     def __str__(self):
         return self.question_text

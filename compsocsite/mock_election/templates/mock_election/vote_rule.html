@@ -8,6 +8,11 @@
 {% block extra_head %}
 <script src="/static/js/cytoscape.min.js"></script>
 <script src='/static/js/colorPicker.js'></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="{% static 'css/leaflet.css' %}"/>
+<script src="{% static 'js/leaflet.js' %}"></script>
+<!-- Chart.js -->
+<script src="{% static 'js/chart.umd.min.js' %}"></script>
 
 <style>
   .results-shell {
@@ -263,9 +268,179 @@
         </a>
       </div>
       <h1>Poll Results</h1>
+      {% if question.state %}
+      <p style="display:flex; align-items:center; gap:4px; font-size:13px; color:var(--text-muted);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        {% if question.district %}{{ question.district }}, {% endif %}{{ question.state }}
+      </p>
+      {% endif %}
       {% if time %}<p>Last calculated {{ time }}</p>{% endif %}
     </div>
   </div>
+
+  {% if question.state %}
+  <!-- ── Map dashboard ── -->
+  <div class="opra-card" style="padding:0; margin-bottom:16px; border-radius:12px; overflow:hidden;">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
+      Results Map – {{ question.state }}
+    </div>
+    <div style="display:flex; height:420px;">
+
+      <!-- Districts sidebar -->
+      <div id="districts-sidebar" style="width:170px; flex-shrink:0; border-right:1px solid var(--border); padding:12px; overflow-y:auto; background:var(--surface);">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Districts</div>
+        <div id="district-checkboxes"></div>
+      </div>
+
+      <!-- Map -->
+      <div id="results-map" style="flex:1; height:420px;"></div>
+
+      <!-- Vote distribution -->
+      <div style="width:250px; flex-shrink:0; border-left:1px solid var(--border); padding:14px; display:flex; flex-direction:column; gap:12px; background:var(--surface); overflow-y:auto;">
+        <div>
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Vote Distribution</div>
+          <div style="position:relative; height:150px;">
+            <canvas id="vote-pie-chart"></canvas>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Candidate Breakdown</div>
+          <div id="candidate-breakdown"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    var firstChoiceCounts = {{ first_choice_counts_json|default:"{}"|safe }};
+    var stateName = "{{ question.state|escapejs }}";
+    var districtName = "{{ question.district|escapejs }}";
+    var COLORS = ['#4CAF50','#2196F3','#FF5722','#9C27B0','#FF9800','#00BCD4','#E91E63','#795548'];
+    var candidates = Object.keys(firstChoiceCounts);
+    var totalVotes = candidates.reduce(function(s,c){ return s + firstChoiceCounts[c]; }, 0);
+
+    // ── Pie chart ──────────────────────────────────────────────────────────────
+    var breakdownEl = document.getElementById('candidate-breakdown');
+    candidates.forEach(function(name, i) {
+      var color = COLORS[i % COLORS.length];
+      var count = firstChoiceCounts[name];
+      var pct = totalVotes > 0 ? Math.round(100 * count / totalVotes) : 0;
+      var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';margin-right:6px;flex-shrink:0;vertical-align:middle;"></span>';
+      breakdownEl.innerHTML +=
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+        + dot
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+        + '<div style="font-size:11px;color:var(--text-muted);">' + count + ' vote' + (count!==1?'s':'') + ' · ' + pct + '%</div>'
+        + '</div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + pct + '%</div>'
+        + '</div>';
+    });
+
+    if (candidates.length > 0 && totalVotes > 0) {
+      new Chart(document.getElementById('vote-pie-chart'), {
+        type: 'pie',
+        data: {
+          labels: candidates,
+          datasets: [{ data: candidates.map(function(c){ return firstChoiceCounts[c]; }),
+            backgroundColor: candidates.map(function(_,i){ return COLORS[i%COLORS.length]; }),
+            borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+      });
+    }
+
+    // ── Map ────────────────────────────────────────────────────────────────────
+    var map = L.map('results-map', { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(map);
+
+    var districtLayers = {};   // districtName → L.GeoJSON layer
+    var checkboxEls = {};      // districtName → checkbox element
+    var sidebarEl = document.getElementById('district-checkboxes');
+
+    var geoJsonUrl = "{% static 'js/districts/' %}" + stateName.replace(/ /g,'_') + '.json';
+    var districtLayers = {};  // NAMELSAD → layer
+
+    fetch(geoJsonUrl)
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+
+        // Sort features by district number
+        data.features.sort(function(a, b) {
+          return parseInt(a.properties.CD116FP) - parseInt(b.properties.CD116FP);
+        });
+
+        // ── GeoJSON polygons ──────────────────────────────────────────────────
+        var geoLayer = L.geoJSON(data, {
+          style: function(feature) {
+            var name = feature.properties.NAMELSAD.replace('Congressional ', '');
+            var isSelected = (name === districtName);
+            return {
+              color: '#fff',
+              weight: 1.5,
+              fillColor: isSelected ? COLORS[0] : '#6c8ebf',
+              fillOpacity: isSelected ? 0.75 : 0.3
+            };
+          },
+          onEachFeature: function(feature, layer) {
+            var fullName = feature.properties.NAMELSAD;
+            var name = fullName.replace('Congressional ', '');
+            var isSelected = (name === districtName);
+            districtLayers[name] = layer;
+
+            var tip = '<b>' + name + '</b>';
+            if (isSelected && candidates.length > 0 && totalVotes > 0) {
+              tip += '<br>';
+              candidates.forEach(function(c, ci) {
+                var pct = Math.round(100 * firstChoiceCounts[c] / totalVotes);
+                tip += '<span style="color:' + COLORS[ci%COLORS.length] + '">&#9632;</span> ' + c + ': ' + pct + '%<br>';
+              });
+            }
+            layer.bindTooltip(tip, { sticky: true });
+
+            layer.on('mouseover', function() {
+              layer.setStyle({ fillOpacity: 0.85, weight: 2.5 });
+            });
+            layer.on('mouseout', function() {
+              geoLayer.resetStyle(layer);
+            });
+
+            // ── Sidebar checkbox ──────────────────────────────────────────────
+            var label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer;';
+            label.style.color = isSelected ? 'var(--green)' : 'var(--text)';
+            if (isSelected) label.style.fontWeight = '700';
+
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = true;
+            cb.style.accentColor = 'var(--green)';
+            cb.addEventListener('change', function() {
+              if (this.checked) {
+                layer.addTo(map);
+              } else {
+                map.removeLayer(layer);
+              }
+            });
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(name));
+            sidebarEl.appendChild(label);
+          }
+        }).addTo(map);
+
+        map.fitBounds(geoLayer.getBounds());
+        setTimeout(function(){ map.invalidateSize(); }, 100);
+      })
+      .catch(function(e){ console.error('Map load error:', e); });
+
+  })();
+  </script>
+  {% endif %}
 
   {% if no_results %}
   <!-- ── No results state ── -->

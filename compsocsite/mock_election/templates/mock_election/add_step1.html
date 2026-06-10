@@ -51,6 +51,17 @@
           style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; resize:vertical; box-sizing:border-box;"></textarea>
       </div>
 
+      <!-- State -->
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;" for="state">
+          State <span style="color:var(--red);">*</span>
+        </label>
+        <select id="state" name="state"
+          style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
+          <option value="">Select a state…</option>
+        </select>
+      </div>
+
       <!-- Allow ties -->
       <div style="margin-bottom:4px;">
         <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:8px;">Allow Ties</label>
@@ -81,10 +92,31 @@
 
 {% block extra_js %}
 <script>
+  var stateSelect = document.getElementById('state');
+
+  var states = ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+    "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas",
+    "Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota",
+    "Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey",
+    "New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon",
+    "Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah",
+    "Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"];
+
+  states.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    stateSelect.appendChild(opt);
+  });
+
   function validateForm() {
     var x = document.forms["add_step1"]["questionTitle"].value;
     if (!x || x.trim() === "") {
       alert("The question title must be filled out");
+      return false;
+    }
+    if (!document.getElementById('state').value) {
+      alert("Please select a state.");
       return false;
     }
   }

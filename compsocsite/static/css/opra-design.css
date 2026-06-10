@@ -1,0 +1,679 @@
+/* ─── OPRA Design System ──────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+
+:root {
+  --green:              #005D40;
+  --green-light:        #e8f4f0;
+  --green-mid:          #007a54;
+  --red:                #BF0711;
+  --red-light:          #fdf0f1;
+  --bg:                 #f7f8fa;
+  --surface:            #ffffff;
+  --border:             #e4e7ec;
+  --text:               #111827;
+  --text-sub:           #4b5563;
+  --text-muted:         #9ca3af;
+  --status-active:      #059669;
+  --status-active-bg:   #ecfdf5;
+  --status-draft:       #6b7280;
+  --status-draft-bg:    #f3f4f6;
+  --status-ended:       #dc2626;
+  --status-ended-bg:    #fef2f2;
+  --status-paused:      #d97706;
+  --status-paused-bg:   #fffbeb;
+  --sidebar-bg:         #0a2e22;
+  --sidebar-text:       #a7c4b9;
+  --sidebar-active:     #ffffff;
+  --sidebar-active-bg:  rgba(255,255,255,0.12);
+  --sidebar-hover:      rgba(255,255,255,0.07);
+  --shadow:             0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:          0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg:          0 8px 30px rgba(0,0,0,0.14);
+  --radius:             12px;
+  --sidebar-width:      214px;
+}
+
+/* ─── Reset & Base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body.opra-new {
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+}
+
+body.opra-new ::-webkit-scrollbar { width: 5px; height: 5px; }
+body.opra-new ::-webkit-scrollbar-track { background: transparent; }
+body.opra-new ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* ─── Layout Shell ───────────────────────────────────────────────────────── */
+.opra-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.opra-main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+  min-width: 0;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+.opra-sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  transition: width 0.22s, min-width 0.22s;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.opra-sidebar.collapsed {
+  width: 54px;
+  min-width: 54px;
+}
+
+.sidebar-logo {
+  padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 6px;
+}
+
+.opra-sidebar.collapsed .sidebar-logo {
+  padding: 14px 0;
+  justify-content: center;
+}
+
+.sidebar-logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.sidebar-logo-text {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.sidebar-logo-img {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
+}
+.opra-sidebar.collapsed .sidebar-label,
+.opra-sidebar.collapsed .sidebar-user-info { display: none; }
+
+/* When collapsed: hide the logo-row toggle, rotate the nav-top toggle arrow */
+.opra-sidebar.collapsed .sidebar-collapse-btn { display: none; }
+.opra-sidebar.collapsed .sidebar-expand-btn { display: flex; }
+.opra-sidebar.collapsed .sidebar-expand-btn svg { transform: rotate(180deg); }
+
+.sidebar-collapse-btn {
+  cursor: pointer;
+  color: var(--sidebar-text);
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  border: none;
+  background: none;
+  line-height: 1;
+}
+.sidebar-collapse-btn:hover { color: #fff; }
+
+.sidebar-expand-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 0;
+  cursor: pointer;
+  color: var(--sidebar-text);
+  border: none;
+  background: none;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.sidebar-expand-btn:hover { color: #fff; }
+
+.sidebar-nav {
+  flex: 1;
+  padding: 0 7px;
+  overflow-y: auto;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  margin: 1px 0;
+  color: var(--sidebar-text);
+  font-weight: 400;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.opra-sidebar.collapsed .sidebar-nav-item {
+  padding: 10px 0;
+  justify-content: center;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-active);
+  text-decoration: none;
+}
+
+.sidebar-nav-item.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active);
+  font-weight: 600;
+}
+
+.sidebar-nav-item svg { flex-shrink: 0; }
+
+.sidebar-bottom {
+  padding: 7px 7px 14px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 0;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--green-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.sidebar-user-info { min-width: 0; }
+
+.sidebar-user-name {
+  color: var(--sidebar-active);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-email {
+  color: var(--sidebar-text);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Top Bar ────────────────────────────────────────────────────────────── */
+.opra-topbar {
+  padding: 24px 32px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.opra-topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.opra-topbar p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.opra-topbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── Cards ──────────────────────────────────────────────────────────────── */
+.opra-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s;
+}
+
+.opra-card:hover { box-shadow: var(--shadow-md); }
+
+/* ─── Stat Cards ─────────────────────────────────────────────────────────── */
+.opra-stats {
+  padding: 20px 32px 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.opra-stat-card {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.opra-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.opra-stat-value {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.opra-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Toolbar (tabs + search + filters) ─────────────────────────────────── */
+.opra-toolbar {
+  padding: 20px 32px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.opra-tab-group {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.opra-tab {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+  background: transparent;
+  color: var(--text-sub);
+}
+
+.opra-tab.active {
+  background: var(--green);
+  color: #fff;
+}
+
+.opra-search {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+.opra-search svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.opra-search input {
+  width: 100%;
+  padding: 7px 12px 7px 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.15s;
+}
+
+.opra-search input:focus { border-color: var(--green); }
+
+.opra-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.opra-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--surface);
+  color: var(--text-sub);
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.opra-pill:hover, .opra-pill.active {
+  background: var(--green-light);
+  color: var(--green);
+  border-color: var(--green);
+  text-decoration: none;
+}
+
+/* ─── Poll Grid ──────────────────────────────────────────────────────────── */
+.opra-poll-grid {
+  padding: 16px 32px 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.opra-poll-card {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.opra-poll-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opra-poll-card-header > *:first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.opra-poll-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+
+.opra-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.opra-type-poll   { color: var(--green); background: var(--green-light); }
+.opra-type-alloc  { color: var(--red);   background: var(--red-light); }
+
+.opra-poll-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opra-poll-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opra-poll-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.opra-poll-voters {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.opra-poll-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Create card */
+.opra-create-card {
+  padding: 18px 20px;
+  cursor: pointer;
+  border: 2px dashed var(--border) !important;
+  background: transparent !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  text-align: center;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.opra-create-card:hover {
+  border-color: var(--green) !important;
+  color: var(--green);
+  text-decoration: none;
+}
+
+.opra-create-card svg { margin-bottom: 6px; }
+.opra-create-card span { font-size: 13px; font-weight: 600; display: block; }
+
+/* ─── Status Badges ──────────────────────────────────────────────────────── */
+.opra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.opra-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.opra-badge-active { color: var(--status-active); background: var(--status-active-bg); }
+.opra-badge-draft  { color: var(--status-draft);  background: var(--status-draft-bg);  }
+.opra-badge-ended  { color: var(--status-ended);  background: var(--status-ended-bg);  }
+.opra-badge-paused { color: var(--status-paused); background: var(--status-paused-bg); }
+
+/* ─── Buttons ────────────────────────────────────────────────────────────── */
+.opra-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.opra-btn-sm { padding: 5px 11px; font-size: 12px; }
+.opra-btn-lg { padding: 11px 22px; font-size: 15px; }
+
+.opra-btn-primary { background: var(--green); color: #fff; }
+.opra-btn-primary:hover { background: var(--green-mid); color: #fff; text-decoration: none; }
+
+.opra-btn-danger { background: var(--red); color: #fff; }
+.opra-btn-danger:hover { background: #a00610; color: #fff; text-decoration: none; }
+
+.opra-btn-ghost { background: transparent; color: var(--text-sub); border: 1px solid var(--border); }
+.opra-btn-ghost:hover { background: var(--border); color: var(--text); text-decoration: none; }
+
+.opra-btn-outline { background: transparent; color: var(--green); border: 1.5px solid var(--green); }
+.opra-btn-outline:hover { background: var(--green-light); text-decoration: none; }
+
+/* ─── Global form helpers ────────────────────────────────────────────────── */
+.pi-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+.pi-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.pi-input:focus { border-color: var(--green); }
+
+/* ─── Modal overrides ────────────────────────────────────────────────────── */
+body.opra-new .modal-content {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+body.opra-new .modal-header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+body.opra-new .modal-body {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--text-sub);
+  line-height: 1.6;
+}
+
+body.opra-new .modal-footer {
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ─── Empty state ────────────────────────────────────────────────────────── */
+.opra-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 0;
+  color: var(--text-muted);
+}
+
+.opra-empty svg { opacity: 0.3; margin-bottom: 12px; }
+.opra-empty p { font-size: 14px; margin: 0; }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .opra-sidebar { width: 54px; min-width: 54px; }
+  .opra-sidebar .sidebar-logo-text,
+  .opra-sidebar .sidebar-label,
+  .opra-sidebar .sidebar-user-info,
+  .opra-sidebar .sidebar-collapse-btn { display: none; }
+  .opra-sidebar .sidebar-nav-item { padding: 10px 0; justify-content: center; }
+  .opra-sidebar .sidebar-logo { padding: 14px 0; justify-content: center; }
+
+  .opra-topbar { padding: 16px 16px 0; }
+  .opra-stats { padding: 16px 16px 0; grid-template-columns: repeat(2, 1fr); }
+  .opra-toolbar { padding: 16px 16px 0; }
+  .opra-poll-grid { padding: 12px 16px 24px; grid-template-columns: 1fr; }
+}

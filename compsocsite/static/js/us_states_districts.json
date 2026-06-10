@@ -1,0 +1,589 @@
+{
+  "Alabama": {
+    "bounds": [[30.1, -88.5], [35.0, -84.9]],
+    "center": [32.8, -86.8],
+    "districts": [
+      {"name": "Birmingham", "lat": 33.5186, "lng": -86.8104},
+      {"name": "Montgomery", "lat": 32.3617, "lng": -86.2792},
+      {"name": "Huntsville", "lat": 34.7304, "lng": -86.5861},
+      {"name": "Mobile", "lat": 30.6954, "lng": -88.0399},
+      {"name": "Tuscaloosa", "lat": 33.2098, "lng": -87.5692}
+    ]
+  },
+  "Alaska": {
+    "bounds": [[54.0, -168.0], [71.5, -130.0]],
+    "center": [64.2, -153.4],
+    "districts": [
+      {"name": "Anchorage", "lat": 61.2181, "lng": -149.9003},
+      {"name": "Fairbanks", "lat": 64.8378, "lng": -147.7164},
+      {"name": "Juneau", "lat": 58.3005, "lng": -134.4197},
+      {"name": "Sitka", "lat": 57.0531, "lng": -135.3300},
+      {"name": "Ketchikan", "lat": 55.3422, "lng": -131.6461}
+    ]
+  },
+  "Arizona": {
+    "bounds": [[31.3, -114.8], [37.0, -109.0]],
+    "center": [34.3, -111.1],
+    "districts": [
+      {"name": "Phoenix", "lat": 33.4484, "lng": -112.0740},
+      {"name": "Tucson", "lat": 32.2226, "lng": -110.9747},
+      {"name": "Mesa", "lat": 33.4152, "lng": -111.8315},
+      {"name": "Chandler", "lat": 33.3062, "lng": -111.8413},
+      {"name": "Scottsdale", "lat": 33.4942, "lng": -111.9261},
+      {"name": "Tempe", "lat": 33.4255, "lng": -111.9400},
+      {"name": "Gilbert", "lat": 33.3528, "lng": -111.7890}
+    ]
+  },
+  "Arkansas": {
+    "bounds": [[33.0, -94.6], [36.5, -89.6]],
+    "center": [34.8, -92.2],
+    "districts": [
+      {"name": "Little Rock", "lat": 34.7465, "lng": -92.2896},
+      {"name": "Fort Smith", "lat": 35.3859, "lng": -94.3985},
+      {"name": "Fayetteville", "lat": 36.0626, "lng": -94.1574},
+      {"name": "Springdale", "lat": 36.1867, "lng": -94.1288},
+      {"name": "Jonesboro", "lat": 35.8423, "lng": -90.7043}
+    ]
+  },
+  "California": {
+    "bounds": [[32.5, -124.4], [42.0, -114.1]],
+    "center": [37.2, -119.4],
+    "districts": [
+      {"name": "Los Angeles", "lat": 34.0522, "lng": -118.2437},
+      {"name": "San Francisco", "lat": 37.7749, "lng": -122.4194},
+      {"name": "San Diego", "lat": 32.7157, "lng": -117.1611},
+      {"name": "San Jose", "lat": 37.3382, "lng": -121.8863},
+      {"name": "Sacramento", "lat": 38.5816, "lng": -121.4944},
+      {"name": "Oakland", "lat": 37.8044, "lng": -122.2712},
+      {"name": "Long Beach", "lat": 33.7701, "lng": -118.1937},
+      {"name": "Fresno", "lat": 36.7378, "lng": -119.7871},
+      {"name": "Bakersfield", "lat": 35.3733, "lng": -119.0187},
+      {"name": "Anaheim", "lat": 33.8366, "lng": -117.9143}
+    ]
+  },
+  "Colorado": {
+    "bounds": [[37.0, -109.1], [41.0, -102.0]],
+    "center": [39.0, -105.5],
+    "districts": [
+      {"name": "Denver", "lat": 39.7392, "lng": -104.9903},
+      {"name": "Colorado Springs", "lat": 38.8339, "lng": -104.8214},
+      {"name": "Aurora", "lat": 39.7294, "lng": -104.8319},
+      {"name": "Fort Collins", "lat": 40.5853, "lng": -105.0844},
+      {"name": "Lakewood", "lat": 39.7047, "lng": -105.0814},
+      {"name": "Pueblo", "lat": 38.2544, "lng": -104.6091}
+    ]
+  },
+  "Connecticut": {
+    "bounds": [[40.9, -73.7], [42.1, -71.8]],
+    "center": [41.6, -72.7],
+    "districts": [
+      {"name": "Bridgeport", "lat": 41.1865, "lng": -73.1952},
+      {"name": "New Haven", "lat": 41.3083, "lng": -72.9279},
+      {"name": "Hartford", "lat": 41.7658, "lng": -72.6851},
+      {"name": "Stamford", "lat": 41.0534, "lng": -73.5387},
+      {"name": "Waterbury", "lat": 41.5582, "lng": -73.0515},
+      {"name": "Norwalk", "lat": 41.1177, "lng": -73.4082}
+    ]
+  },
+  "Delaware": {
+    "bounds": [[38.4, -75.8], [39.8, -75.0]],
+    "center": [39.1, -75.5],
+    "districts": [
+      {"name": "Wilmington", "lat": 39.7447, "lng": -75.5484},
+      {"name": "Dover", "lat": 39.1582, "lng": -75.5244},
+      {"name": "Newark", "lat": 39.6837, "lng": -75.7497},
+      {"name": "Middletown", "lat": 39.4496, "lng": -75.7163},
+      {"name": "Smyrna", "lat": 39.2998, "lng": -75.6024}
+    ]
+  },
+  "Florida": {
+    "bounds": [[24.4, -87.6], [31.0, -80.0]],
+    "center": [27.7, -83.5],
+    "districts": [
+      {"name": "Miami", "lat": 25.7617, "lng": -80.1918},
+      {"name": "Orlando", "lat": 28.5383, "lng": -81.3792},
+      {"name": "Tampa", "lat": 27.9506, "lng": -82.4572},
+      {"name": "Jacksonville", "lat": 30.3322, "lng": -81.6557},
+      {"name": "St. Petersburg", "lat": 27.7676, "lng": -82.6403},
+      {"name": "Tallahassee", "lat": 30.4518, "lng": -84.2807},
+      {"name": "Fort Lauderdale", "lat": 26.1224, "lng": -80.1373},
+      {"name": "Hialeah", "lat": 25.8576, "lng": -80.2781}
+    ]
+  },
+  "Georgia": {
+    "bounds": [[30.4, -85.6], [35.0, -80.8]],
+    "center": [32.6, -83.4],
+    "districts": [
+      {"name": "Atlanta", "lat": 33.7490, "lng": -84.3880},
+      {"name": "Augusta", "lat": 33.4735, "lng": -82.0105},
+      {"name": "Columbus", "lat": 32.4610, "lng": -84.9877},
+      {"name": "Savannah", "lat": 32.0835, "lng": -81.0998},
+      {"name": "Athens", "lat": 33.9519, "lng": -83.3576},
+      {"name": "Sandy Springs", "lat": 33.9304, "lng": -84.3733},
+      {"name": "Macon", "lat": 32.8407, "lng": -83.6324}
+    ]
+  },
+  "Hawaii": {
+    "bounds": [[18.9, -160.2], [22.2, -154.8]],
+    "center": [20.5, -157.2],
+    "districts": [
+      {"name": "Honolulu", "lat": 21.3069, "lng": -157.8583},
+      {"name": "Pearl City", "lat": 21.3972, "lng": -157.9755},
+      {"name": "Hilo", "lat": 19.7297, "lng": -155.0900},
+      {"name": "Kailua", "lat": 21.3975, "lng": -157.7396},
+      {"name": "Waipahu", "lat": 21.3866, "lng": -158.0102}
+    ]
+  },
+  "Idaho": {
+    "bounds": [[41.9, -117.2], [49.0, -111.0]],
+    "center": [45.5, -114.0],
+    "districts": [
+      {"name": "Boise", "lat": 43.6150, "lng": -116.2023},
+      {"name": "Meridian", "lat": 43.6121, "lng": -116.3915},
+      {"name": "Nampa", "lat": 43.5407, "lng": -116.5635},
+      {"name": "Idaho Falls", "lat": 43.4917, "lng": -112.0330},
+      {"name": "Pocatello", "lat": 42.8713, "lng": -112.4455}
+    ]
+  },
+  "Illinois": {
+    "bounds": [[36.9, -91.5], [42.5, -87.5]],
+    "center": [40.0, -89.2],
+    "districts": [
+      {"name": "Chicago", "lat": 41.8781, "lng": -87.6298},
+      {"name": "Aurora", "lat": 41.7606, "lng": -88.3201},
+      {"name": "Naperville", "lat": 41.7508, "lng": -88.1535},
+      {"name": "Joliet", "lat": 41.5250, "lng": -88.0817},
+      {"name": "Rockford", "lat": 42.2711, "lng": -89.0937},
+      {"name": "Springfield", "lat": 39.7817, "lng": -89.6501},
+      {"name": "Peoria", "lat": 40.6936, "lng": -89.5890}
+    ]
+  },
+  "Indiana": {
+    "bounds": [[37.8, -88.1], [41.8, -84.8]],
+    "center": [39.9, -86.3],
+    "districts": [
+      {"name": "Indianapolis", "lat": 39.7684, "lng": -86.1581},
+      {"name": "Fort Wayne", "lat": 41.0793, "lng": -85.1394},
+      {"name": "Evansville", "lat": 37.9716, "lng": -87.5711},
+      {"name": "South Bend", "lat": 41.6764, "lng": -86.2520},
+      {"name": "Carmel", "lat": 39.9784, "lng": -86.1180},
+      {"name": "Fishers", "lat": 39.9567, "lng": -86.0158}
+    ]
+  },
+  "Iowa": {
+    "bounds": [[40.4, -96.6], [43.5, -90.1]],
+    "center": [42.0, -93.2],
+    "districts": [
+      {"name": "Des Moines", "lat": 41.5868, "lng": -93.6250},
+      {"name": "Cedar Rapids", "lat": 41.9779, "lng": -91.6656},
+      {"name": "Davenport", "lat": 41.5236, "lng": -90.5776},
+      {"name": "Sioux City", "lat": 42.4999, "lng": -96.4003},
+      {"name": "Iowa City", "lat": 41.6611, "lng": -91.5302}
+    ]
+  },
+  "Kansas": {
+    "bounds": [[36.9, -102.1], [40.0, -94.6]],
+    "center": [38.5, -98.4],
+    "districts": [
+      {"name": "Wichita", "lat": 37.6872, "lng": -97.3301},
+      {"name": "Overland Park", "lat": 38.9822, "lng": -94.6708},
+      {"name": "Kansas City", "lat": 39.1155, "lng": -94.6268},
+      {"name": "Olathe", "lat": 38.8814, "lng": -94.8191},
+      {"name": "Topeka", "lat": 39.0473, "lng": -95.6752}
+    ]
+  },
+  "Kentucky": {
+    "bounds": [[36.5, -89.6], [39.1, -82.0]],
+    "center": [37.6, -85.3],
+    "districts": [
+      {"name": "Louisville", "lat": 38.2527, "lng": -85.7585},
+      {"name": "Lexington", "lat": 38.0406, "lng": -84.5037},
+      {"name": "Bowling Green", "lat": 36.9685, "lng": -86.4808},
+      {"name": "Owensboro", "lat": 37.7719, "lng": -87.1112},
+      {"name": "Covington", "lat": 39.0837, "lng": -84.5086}
+    ]
+  },
+  "Louisiana": {
+    "bounds": [[28.9, -94.0], [33.0, -88.8]],
+    "center": [30.9, -91.6],
+    "districts": [
+      {"name": "New Orleans", "lat": 29.9511, "lng": -90.0715},
+      {"name": "Baton Rouge", "lat": 30.4515, "lng": -91.1871},
+      {"name": "Shreveport", "lat": 32.5252, "lng": -93.7502},
+      {"name": "Metairie", "lat": 29.9977, "lng": -90.1788},
+      {"name": "Lafayette", "lat": 30.2241, "lng": -92.0198}
+    ]
+  },
+  "Maine": {
+    "bounds": [[43.1, -71.1], [47.5, -67.0]],
+    "center": [45.3, -69.0],
+    "districts": [
+      {"name": "Portland", "lat": 43.6591, "lng": -70.2568},
+      {"name": "Lewiston", "lat": 44.1004, "lng": -70.2148},
+      {"name": "Bangor", "lat": 44.8016, "lng": -68.7712},
+      {"name": "South Portland", "lat": 43.6415, "lng": -70.2409},
+      {"name": "Auburn", "lat": 44.0979, "lng": -70.2312}
+    ]
+  },
+  "Maryland": {
+    "bounds": [[37.9, -79.5], [39.7, -75.0]],
+    "center": [38.8, -77.2],
+    "districts": [
+      {"name": "Baltimore", "lat": 39.2904, "lng": -76.6122},
+      {"name": "Frederick", "lat": 39.4143, "lng": -77.4105},
+      {"name": "Rockville", "lat": 39.0840, "lng": -77.1528},
+      {"name": "Gaithersburg", "lat": 39.1434, "lng": -77.2014},
+      {"name": "Bowie", "lat": 38.9421, "lng": -76.7791},
+      {"name": "Annapolis", "lat": 38.9784, "lng": -76.4922}
+    ]
+  },
+  "Massachusetts": {
+    "bounds": [[41.2, -73.5], [42.9, -69.9]],
+    "center": [42.1, -71.6],
+    "districts": [
+      {"name": "Boston", "lat": 42.3601, "lng": -71.0589},
+      {"name": "Worcester", "lat": 42.2626, "lng": -71.8023},
+      {"name": "Springfield", "lat": 42.1015, "lng": -72.5898},
+      {"name": "Lowell", "lat": 42.6334, "lng": -71.3162},
+      {"name": "Cambridge", "lat": 42.3736, "lng": -71.1097},
+      {"name": "New Bedford", "lat": 41.6362, "lng": -70.9342}
+    ]
+  },
+  "Michigan": {
+    "bounds": [[41.7, -90.4], [48.2, -82.4]],
+    "center": [44.2, -85.4],
+    "districts": [
+      {"name": "Detroit", "lat": 42.3314, "lng": -83.0458},
+      {"name": "Grand Rapids", "lat": 42.9634, "lng": -85.6681},
+      {"name": "Warren", "lat": 42.5145, "lng": -83.0146},
+      {"name": "Sterling Heights", "lat": 42.5803, "lng": -83.0302},
+      {"name": "Ann Arbor", "lat": 42.2808, "lng": -83.7430},
+      {"name": "Lansing", "lat": 42.7325, "lng": -84.5555}
+    ]
+  },
+  "Minnesota": {
+    "bounds": [[43.5, -97.2], [49.4, -89.5]],
+    "center": [46.4, -93.2],
+    "districts": [
+      {"name": "Minneapolis", "lat": 44.9778, "lng": -93.2650},
+      {"name": "Saint Paul", "lat": 44.9537, "lng": -93.0900},
+      {"name": "Rochester", "lat": 44.0121, "lng": -92.4802},
+      {"name": "Duluth", "lat": 46.7867, "lng": -92.1005},
+      {"name": "Bloomington", "lat": 44.8408, "lng": -93.3477}
+    ]
+  },
+  "Mississippi": {
+    "bounds": [[30.2, -91.7], [35.0, -88.1]],
+    "center": [32.7, -89.7],
+    "districts": [
+      {"name": "Jackson", "lat": 32.2988, "lng": -90.1848},
+      {"name": "Gulfport", "lat": 30.3674, "lng": -89.0928},
+      {"name": "Southaven", "lat": 34.9890, "lng": -90.0126},
+      {"name": "Hattiesburg", "lat": 31.3271, "lng": -89.2903},
+      {"name": "Biloxi", "lat": 30.3960, "lng": -88.8853}
+    ]
+  },
+  "Missouri": {
+    "bounds": [[35.9, -95.8], [40.6, -89.1]],
+    "center": [38.3, -92.5],
+    "districts": [
+      {"name": "Kansas City", "lat": 39.0997, "lng": -94.5786},
+      {"name": "Saint Louis", "lat": 38.6270, "lng": -90.1994},
+      {"name": "Springfield", "lat": 37.2090, "lng": -93.2923},
+      {"name": "Columbia", "lat": 38.9517, "lng": -92.3341},
+      {"name": "Independence", "lat": 39.0911, "lng": -94.4155}
+    ]
+  },
+  "Montana": {
+    "bounds": [[44.4, -116.0], [49.0, -104.0]],
+    "center": [46.9, -110.4],
+    "districts": [
+      {"name": "Billings", "lat": 45.7833, "lng": -108.5007},
+      {"name": "Missoula", "lat": 46.8721, "lng": -113.9940},
+      {"name": "Great Falls", "lat": 47.5002, "lng": -111.3008},
+      {"name": "Bozeman", "lat": 45.6770, "lng": -111.0429},
+      {"name": "Butte", "lat": 46.0038, "lng": -112.5348}
+    ]
+  },
+  "Nebraska": {
+    "bounds": [[40.0, -104.1], [43.0, -95.3]],
+    "center": [41.5, -99.9],
+    "districts": [
+      {"name": "Omaha", "lat": 41.2565, "lng": -95.9345},
+      {"name": "Lincoln", "lat": 40.8136, "lng": -96.7026},
+      {"name": "Bellevue", "lat": 41.1561, "lng": -95.9145},
+      {"name": "Grand Island", "lat": 40.9264, "lng": -98.3420},
+      {"name": "Kearney", "lat": 40.6993, "lng": -99.0817}
+    ]
+  },
+  "Nevada": {
+    "bounds": [[35.0, -120.0], [42.0, -114.0]],
+    "center": [38.5, -117.1],
+    "districts": [
+      {"name": "Las Vegas", "lat": 36.1699, "lng": -115.1398},
+      {"name": "Henderson", "lat": 36.0395, "lng": -114.9817},
+      {"name": "Reno", "lat": 39.5296, "lng": -119.8138},
+      {"name": "North Las Vegas", "lat": 36.1989, "lng": -115.1175},
+      {"name": "Sparks", "lat": 39.5349, "lng": -119.7527}
+    ]
+  },
+  "New Hampshire": {
+    "bounds": [[42.7, -72.6], [45.3, -70.6]],
+    "center": [43.9, -71.6],
+    "districts": [
+      {"name": "Manchester", "lat": 42.9956, "lng": -71.4548},
+      {"name": "Nashua", "lat": 42.7654, "lng": -71.4676},
+      {"name": "Concord", "lat": 43.2081, "lng": -71.5376},
+      {"name": "Dover", "lat": 43.1979, "lng": -70.8737},
+      {"name": "Rochester", "lat": 43.3042, "lng": -70.9742}
+    ]
+  },
+  "New Jersey": {
+    "bounds": [[38.9, -75.6], [41.4, -73.9]],
+    "center": [40.1, -74.7],
+    "districts": [
+      {"name": "Newark", "lat": 40.7357, "lng": -74.1724},
+      {"name": "Jersey City", "lat": 40.7178, "lng": -74.0431},
+      {"name": "Paterson", "lat": 40.9168, "lng": -74.1718},
+      {"name": "Elizabeth", "lat": 40.6640, "lng": -74.2107},
+      {"name": "Trenton", "lat": 40.2171, "lng": -74.7429},
+      {"name": "Edison", "lat": 40.5187, "lng": -74.4121}
+    ]
+  },
+  "New Mexico": {
+    "bounds": [[31.3, -109.1], [37.0, -103.0]],
+    "center": [34.3, -106.0],
+    "districts": [
+      {"name": "Albuquerque", "lat": 35.0844, "lng": -106.6504},
+      {"name": "Las Cruces", "lat": 32.3199, "lng": -106.7637},
+      {"name": "Rio Rancho", "lat": 35.2328, "lng": -106.6630},
+      {"name": "Santa Fe", "lat": 35.6870, "lng": -105.9378},
+      {"name": "Roswell", "lat": 33.3943, "lng": -104.5230}
+    ]
+  },
+  "New York": {
+    "bounds": [[40.5, -79.8], [45.0, -71.9]],
+    "center": [42.9, -75.6],
+    "districts": [
+      {"name": "New York City", "lat": 40.7128, "lng": -74.0060},
+      {"name": "Buffalo", "lat": 42.8864, "lng": -78.8784},
+      {"name": "Rochester", "lat": 43.1566, "lng": -77.6088},
+      {"name": "Yonkers", "lat": 40.9312, "lng": -73.8988},
+      {"name": "Syracuse", "lat": 43.0481, "lng": -76.1474},
+      {"name": "Albany", "lat": 42.6526, "lng": -73.7562},
+      {"name": "New Rochelle", "lat": 40.9115, "lng": -73.7826},
+      {"name": "Mount Vernon", "lat": 40.9126, "lng": -73.8371},
+      {"name": "Schenectady", "lat": 42.8142, "lng": -73.9396},
+      {"name": "Utica", "lat": 43.1009, "lng": -75.2327}
+    ]
+  },
+  "North Carolina": {
+    "bounds": [[33.8, -84.3], [36.6, -75.5]],
+    "center": [35.5, -79.4],
+    "districts": [
+      {"name": "Charlotte", "lat": 35.2271, "lng": -80.8431},
+      {"name": "Raleigh", "lat": 35.7796, "lng": -78.6382},
+      {"name": "Greensboro", "lat": 36.0726, "lng": -79.7920},
+      {"name": "Durham", "lat": 35.9940, "lng": -78.8986},
+      {"name": "Winston-Salem", "lat": 36.0999, "lng": -80.2442},
+      {"name": "Fayetteville", "lat": 35.0527, "lng": -78.8784}
+    ]
+  },
+  "North Dakota": {
+    "bounds": [[45.9, -104.1], [49.0, -96.6]],
+    "center": [47.5, -100.4],
+    "districts": [
+      {"name": "Fargo", "lat": 46.8772, "lng": -96.7898},
+      {"name": "Bismarck", "lat": 46.8083, "lng": -100.7837},
+      {"name": "Grand Forks", "lat": 47.9253, "lng": -97.0329},
+      {"name": "Minot", "lat": 48.2325, "lng": -101.2963},
+      {"name": "West Fargo", "lat": 46.8752, "lng": -96.9003}
+    ]
+  },
+  "Ohio": {
+    "bounds": [[38.4, -84.8], [42.3, -80.5]],
+    "center": [40.4, -82.8],
+    "districts": [
+      {"name": "Columbus", "lat": 39.9612, "lng": -82.9988},
+      {"name": "Cleveland", "lat": 41.4993, "lng": -81.6944},
+      {"name": "Cincinnati", "lat": 39.1031, "lng": -84.5120},
+      {"name": "Toledo", "lat": 41.6639, "lng": -83.5552},
+      {"name": "Akron", "lat": 41.0814, "lng": -81.5190},
+      {"name": "Dayton", "lat": 39.7589, "lng": -84.1916}
+    ]
+  },
+  "Oklahoma": {
+    "bounds": [[33.6, -103.0], [37.0, -94.4]],
+    "center": [35.3, -98.7],
+    "districts": [
+      {"name": "Oklahoma City", "lat": 35.4676, "lng": -97.5164},
+      {"name": "Tulsa", "lat": 36.1540, "lng": -95.9928},
+      {"name": "Norman", "lat": 35.2226, "lng": -97.4395},
+      {"name": "Broken Arrow", "lat": 36.0526, "lng": -95.7908},
+      {"name": "Edmond", "lat": 35.6528, "lng": -97.4781}
+    ]
+  },
+  "Oregon": {
+    "bounds": [[42.0, -124.6], [46.3, -116.5]],
+    "center": [44.1, -120.5],
+    "districts": [
+      {"name": "Portland", "lat": 45.5051, "lng": -122.6750},
+      {"name": "Salem", "lat": 44.9429, "lng": -123.0351},
+      {"name": "Eugene", "lat": 44.0521, "lng": -123.0868},
+      {"name": "Gresham", "lat": 45.4984, "lng": -122.4304},
+      {"name": "Hillsboro", "lat": 45.5229, "lng": -122.9898}
+    ]
+  },
+  "Pennsylvania": {
+    "bounds": [[39.7, -80.5], [42.3, -74.7]],
+    "center": [41.2, -77.2],
+    "districts": [
+      {"name": "Philadelphia", "lat": 39.9526, "lng": -75.1652},
+      {"name": "Pittsburgh", "lat": 40.4406, "lng": -79.9959},
+      {"name": "Allentown", "lat": 40.6084, "lng": -75.4902},
+      {"name": "Erie", "lat": 42.1292, "lng": -80.0851},
+      {"name": "Reading", "lat": 40.3356, "lng": -75.9269},
+      {"name": "Scranton", "lat": 41.4090, "lng": -75.6624}
+    ]
+  },
+  "Rhode Island": {
+    "bounds": [[41.1, -71.9], [42.0, -71.1]],
+    "center": [41.6, -71.5],
+    "districts": [
+      {"name": "Providence", "lat": 41.8240, "lng": -71.4128},
+      {"name": "Cranston", "lat": 41.7798, "lng": -71.4373},
+      {"name": "Warwick", "lat": 41.7001, "lng": -71.4162},
+      {"name": "Pawtucket", "lat": 41.8787, "lng": -71.3826},
+      {"name": "East Providence", "lat": 41.8137, "lng": -71.3703}
+    ]
+  },
+  "South Carolina": {
+    "bounds": [[32.0, -83.4], [35.2, -78.5]],
+    "center": [33.8, -80.9],
+    "districts": [
+      {"name": "Columbia", "lat": 34.0007, "lng": -81.0348},
+      {"name": "Charleston", "lat": 32.7765, "lng": -79.9311},
+      {"name": "North Charleston", "lat": 32.8546, "lng": -79.9748},
+      {"name": "Mount Pleasant", "lat": 32.8323, "lng": -79.8284},
+      {"name": "Rock Hill", "lat": 34.9249, "lng": -81.0251}
+    ]
+  },
+  "South Dakota": {
+    "bounds": [[42.5, -104.1], [45.9, -96.4]],
+    "center": [44.3, -100.3],
+    "districts": [
+      {"name": "Sioux Falls", "lat": 43.5473, "lng": -96.7283},
+      {"name": "Rapid City", "lat": 44.0805, "lng": -103.2310},
+      {"name": "Aberdeen", "lat": 45.4647, "lng": -98.4865},
+      {"name": "Brookings", "lat": 44.3114, "lng": -96.7984},
+      {"name": "Watertown", "lat": 44.8994, "lng": -97.1148}
+    ]
+  },
+  "Tennessee": {
+    "bounds": [[34.9, -90.3], [36.7, -81.6]],
+    "center": [35.9, -86.3],
+    "districts": [
+      {"name": "Nashville", "lat": 36.1627, "lng": -86.7816},
+      {"name": "Memphis", "lat": 35.1495, "lng": -90.0490},
+      {"name": "Knoxville", "lat": 35.9606, "lng": -83.9207},
+      {"name": "Chattanooga", "lat": 35.0456, "lng": -85.3097},
+      {"name": "Clarksville", "lat": 36.5298, "lng": -87.3595}
+    ]
+  },
+  "Texas": {
+    "bounds": [[25.8, -106.6], [36.5, -93.5]],
+    "center": [31.2, -99.3],
+    "districts": [
+      {"name": "Houston", "lat": 29.7604, "lng": -95.3698},
+      {"name": "San Antonio", "lat": 29.4241, "lng": -98.4936},
+      {"name": "Dallas", "lat": 32.7767, "lng": -96.7970},
+      {"name": "Austin", "lat": 30.2672, "lng": -97.7431},
+      {"name": "Fort Worth", "lat": 32.7555, "lng": -97.3308},
+      {"name": "El Paso", "lat": 31.7619, "lng": -106.4850},
+      {"name": "Arlington", "lat": 32.7357, "lng": -97.1081},
+      {"name": "Corpus Christi", "lat": 27.8006, "lng": -97.3964},
+      {"name": "Plano", "lat": 33.0198, "lng": -96.6989},
+      {"name": "Laredo", "lat": 27.5306, "lng": -99.4803}
+    ]
+  },
+  "Utah": {
+    "bounds": [[37.0, -114.1], [42.0, -109.0]],
+    "center": [39.5, -111.5],
+    "districts": [
+      {"name": "Salt Lake City", "lat": 40.7608, "lng": -111.8910},
+      {"name": "West Valley City", "lat": 40.6916, "lng": -112.0010},
+      {"name": "Provo", "lat": 40.2338, "lng": -111.6585},
+      {"name": "West Jordan", "lat": 40.6097, "lng": -111.9391},
+      {"name": "Orem", "lat": 40.2969, "lng": -111.6946}
+    ]
+  },
+  "Vermont": {
+    "bounds": [[42.7, -73.4], [45.0, -71.5]],
+    "center": [43.9, -72.5],
+    "districts": [
+      {"name": "Burlington", "lat": 44.4759, "lng": -73.2121},
+      {"name": "South Burlington", "lat": 44.4668, "lng": -73.1710},
+      {"name": "Rutland", "lat": 43.6106, "lng": -72.9726},
+      {"name": "Barre", "lat": 44.1970, "lng": -72.5018},
+      {"name": "Montpelier", "lat": 44.2601, "lng": -72.5754}
+    ]
+  },
+  "Virginia": {
+    "bounds": [[36.5, -83.7], [39.5, -75.2]],
+    "center": [37.8, -79.5],
+    "districts": [
+      {"name": "Virginia Beach", "lat": 36.8529, "lng": -75.9780},
+      {"name": "Norfolk", "lat": 36.8508, "lng": -76.2859},
+      {"name": "Chesapeake", "lat": 36.7682, "lng": -76.2875},
+      {"name": "Richmond", "lat": 37.5407, "lng": -77.4360},
+      {"name": "Newport News", "lat": 37.0871, "lng": -76.4730},
+      {"name": "Arlington", "lat": 38.8799, "lng": -77.1067},
+      {"name": "Alexandria", "lat": 38.8048, "lng": -77.0469}
+    ]
+  },
+  "Washington": {
+    "bounds": [[45.5, -124.7], [49.0, -116.9]],
+    "center": [47.4, -120.7],
+    "districts": [
+      {"name": "Seattle", "lat": 47.6062, "lng": -122.3321},
+      {"name": "Spokane", "lat": 47.6588, "lng": -117.4260},
+      {"name": "Tacoma", "lat": 47.2529, "lng": -122.4443},
+      {"name": "Vancouver", "lat": 45.6387, "lng": -122.6615},
+      {"name": "Bellevue", "lat": 47.6101, "lng": -122.2015},
+      {"name": "Kent", "lat": 47.3809, "lng": -122.2348}
+    ]
+  },
+  "West Virginia": {
+    "bounds": [[37.2, -82.6], [40.6, -77.7]],
+    "center": [38.9, -80.5],
+    "districts": [
+      {"name": "Charleston", "lat": 38.3498, "lng": -81.6326},
+      {"name": "Huntington", "lat": 38.4193, "lng": -82.4452},
+      {"name": "Parkersburg", "lat": 39.2667, "lng": -81.5615},
+      {"name": "Morgantown", "lat": 39.6295, "lng": -79.9559},
+      {"name": "Wheeling", "lat": 40.0640, "lng": -80.7209}
+    ]
+  },
+  "Wisconsin": {
+    "bounds": [[42.5, -92.9], [47.1, -86.8]],
+    "center": [44.7, -89.8],
+    "districts": [
+      {"name": "Milwaukee", "lat": 43.0389, "lng": -87.9065},
+      {"name": "Madison", "lat": 43.0731, "lng": -89.4012},
+      {"name": "Green Bay", "lat": 44.5133, "lng": -88.0133},
+      {"name": "Kenosha", "lat": 42.5847, "lng": -87.8212},
+      {"name": "Racine", "lat": 42.7261, "lng": -87.7829}
+    ]
+  },
+  "Wyoming": {
+    "bounds": [[40.9, -111.1], [45.0, -104.1]],
+    "center": [42.9, -107.6],
+    "districts": [
+      {"name": "Cheyenne", "lat": 41.1400, "lng": -104.8202},
+      {"name": "Casper", "lat": 42.8666, "lng": -106.3131},
+      {"name": "Laramie", "lat": 41.3114, "lng": -105.5911},
+      {"name": "Gillette", "lat": 44.2911, "lng": -105.5022},
+      {"name": "Rock Springs", "lat": 41.5875, "lng": -109.2029}
+    ]
+  }
+}

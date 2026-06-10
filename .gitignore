@@ -9,7 +9,7 @@ logs/
 static_root/
 .vscode/
 .env
-compsocsite/static 
+
 compsocsite/media
 compsocsite/compsocsite/coursematch/
 venv/
@@ -18,3 +18,4 @@ Useful_Commands.md
 OPRA Redesign.html
 OPRA Redesign Standalone.html
 staticfiles/
+Progress-report-6-Sutej YadavanahalliManjunath - Sutej Yadavanahalli Manjunath.pdf

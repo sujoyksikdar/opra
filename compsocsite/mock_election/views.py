@@ -527,6 +527,7 @@ def AddStep1View(request):
         questionDesc = request.POST['desc']
         questionType = request.POST.get('questiontype', '1')
         imageURL = request.POST['imageURL']
+        state = request.POST.get('state', '').strip()
 
         tie=False
         t = request.POST.getlist('allowties')
@@ -543,7 +544,8 @@ def AddStep1View(request):
                             emailInvite=request.user.userprofile.emailInvite,
                             emailDelete=request.user.userprofile.emailDelete,
                             emailStart=request.user.userprofile.emailStart,
-                            emailStop=request.user.userprofile.emailStop, creator_pref=1,allowties = tie)
+                            emailStop=request.user.userprofile.emailStop, creator_pref=1,allowties=tie,
+                            state=state)
         if request.FILES.get('docfile') != None:
             question.image = request.FILES.get('docfile')
         elif imageURL != '':
@@ -1475,7 +1477,20 @@ class VoteResultsView(views.generic.DetailView):
         ctx['mixtures_pl1'] = mixtures_pl1
         ctx['mixtures_pl2'] = mixtures_pl2
         ctx['mixtures_pl3'] = mixtures_pl3
-        
+
+        # First-choice vote counts for pie chart
+        items = list(self.object.mockelectionitem_set.all())
+        item_id_map = {str(item.id): item.item_text for item in items}
+        first_choice_counts = {}
+        for response in self.object.mockelectionresponse_set.filter(active=1):
+            pref_order = getPrefOrder(response.resp_str, self.object)
+            if pref_order and len(pref_order) > 0 and len(pref_order[0]) > 0:
+                first_item = str(pref_order[0][0])
+                name = item_id_map.get(first_item, first_item)
+                first_choice_counts[name] = first_choice_counts.get(name, 0) + 1
+        ctx['first_choice_counts_json'] = json.dumps(first_choice_counts)
+        ctx['candidates_json'] = json.dumps([item.item_text for item in items])
+
         # Get previous winners for the history table
         previous_results = self.object.mockelectionvoteresult_set.all()
         print(f"  - previous_results count: {len(previous_results)}")
