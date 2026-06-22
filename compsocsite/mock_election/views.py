@@ -1550,11 +1550,6 @@ class AggregatedResultsView(views.generic.TemplateView):
         state = self.kwargs['state']
         algorithms = getListPollAlgorithms()
 
-        # Selected algorithm index (0-based), default Plurality=0
-        alg_index = int(self.request.GET.get('alg', 0))
-        if alg_index < 0 or alg_index >= len(algorithms):
-            alg_index = 0
-
         # All polls in this state owned by this user
         all_polls = MockElectionQuestion.objects.filter(
             state=state,
@@ -1636,22 +1631,47 @@ class AggregatedResultsView(views.generic.TemplateView):
                 if name in poll_item_names:
                     statewide_first_choice[name] = statewide_first_choice.get(name, 0) + 1
 
-        # Statewide algorithm table — use first poll's responses + cand_map
-        all_responses = list(first_poll.mockelectionresponse_set.filter(active=1))
-        if all_responses:
-            results = getVoteResults(all_responses, cand_map)
-            if results:
-                vote_results_list, _, _, _ = results
-                start_alg_links = getListAlgorithmLinks()
+        # Statewide algorithm table — unified profile across all polls
+        unified_profile = buildUnifiedProfile(all_polls, cand_map)
+        if unified_profile and unified_profile.getElecType() in ("soc", "toc"):
+            start_alg_links = getListAlgorithmLinks()
+            try:
+                scoreVectorList = []
+                scoreVectorList.append(MechanismPlurality().getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismBorda().getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismVeto().getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismKApproval(3).getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismSimplifiedBucklin().getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismCopeland(1).getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismMaximin().getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismMaximin().getCandScoresMap(unified_profile))
+                scoreVectorList.append(MechanismMaximin().getCandScoresMap(unified_profile))
+                stv     = MechanismSTV().STVwinners(unified_profile)
+                baldwin = MechanismBaldwin().baldwin_winners(unified_profile)
+                coombs  = MechanismCoombs().coombs_winners(unified_profile)
+                black   = MechanismBlack().black_winner(unified_profile)
+                ranked  = MechanismRankedPairs().ranked_pairs_cowinners(unified_profile)
+                pwro    = MechanismPluralityRunOff().PluRunOff_cowinners(unified_profile)
+                bordamean = MechanismBordaMean().Borda_mean_winners(unified_profile)
+                simapp, _ = MechanismBordaMean().simulated_approval(unified_profile)
+                scoreVectorList.append(translateWinnerList(stv, cand_map))
+                scoreVectorList.append(translateWinnerList(baldwin, cand_map))
+                scoreVectorList.append(translateWinnerList(coombs, cand_map))
+                scoreVectorList.append(translateWinnerList(black, cand_map))
+                scoreVectorList.append(translateWinnerList(ranked, cand_map))
+                scoreVectorList.append(translateWinnerList(pwro, cand_map))
+                scoreVectorList.append(translateBinaryWinnerList(bordamean, cand_map))
+                scoreVectorList.append(translateBinaryWinnerList(simapp, cand_map))
                 for i, alg_name in enumerate(algorithms):
-                    if i < len(vote_results_list):
-                        scores = vote_results_list[i]
+                    if i < len(scoreVectorList):
+                        scores = scoreVectorList[i]
                         statewide_vote_results.append({
                             'algorithm': alg_name,
                             'link': start_alg_links[i] if i < len(start_alg_links) else '',
                             'scores': {cand_map[k].item_text: v for k, v in scores.items()},
-                            'selected': i == alg_index,
                         })
+            except Exception as e:
+                print(f"[AggregatedResultsView] statewide algorithm error: {e}")
 
         total_responses = sum(
             poll.mockelectionresponse_set.filter(active=1).count() for poll in all_polls
@@ -1659,8 +1679,6 @@ class AggregatedResultsView(views.generic.TemplateView):
 
         ctx['state'] = state
         ctx['algorithms'] = algorithms
-        ctx['selected_alg_index'] = alg_index
-        ctx['selected_alg_name'] = algorithms[alg_index]
         ctx['candidate_names'] = candidate_names
         ctx['candidate_colors'] = candidate_colors
         ctx['district_winners_json'] = json.dumps(district_winners)
@@ -1671,7 +1689,7 @@ class AggregatedResultsView(views.generic.TemplateView):
         ctx['statewide_vote_results'] = statewide_vote_results
         ctx['total_responses'] = total_responses
         ctx['total_polls'] = all_polls.count()
-        if not all_responses:
+        if not total_responses:
             ctx['no_results'] = True
         return ctx
 
@@ -1931,6 +1949,68 @@ def translateBinaryWinnerList(winners, cand_map):
         else:
             result[cand] = 0
     return result
+
+def buildUnifiedProfile(all_polls, unified_cand_map):
+    """
+    Builds a prefpy Profile by combining responses from multiple polls.
+    unified_cand_map: {0: item, 1: item, ...} — items from the reference poll.
+    Each response is translated to use unified candidate indices by matching item names.
+    """
+    unified_name_to_index = {item.item_text: idx for idx, item in unified_cand_map.items()}
+    unified_items = list(unified_cand_map.values())
+    pref_list = []
+
+    for poll in all_polls:
+        poll_item_map = {str(item.id): item.item_text for item in poll.mockelectionitem_set.all()}
+        for resp in poll.mockelectionresponse_set.filter(active=1):
+            pref_order = getPrefOrder(resp.resp_str, poll)
+            if not pref_order:
+                continue
+
+            # Build name → rank mapping from this response
+            name_rank = {}
+            for rank, tier in enumerate(pref_order, 1):
+                for entry in tier:
+                    if isinstance(entry, dict):
+                        raw = entry.get('name', '')
+                        name = raw[4:] if raw.startswith('item') else raw
+                    else:
+                        name = poll_item_map.get(str(entry), str(entry))
+                    if name and name not in name_rank:
+                        name_rank[name] = rank
+
+            if not name_rank:
+                continue
+
+            # Fill missing candidates with worst rank + 1
+            max_rank = max(name_rank.values())
+            for item in unified_items:
+                if item.item_text not in name_rank:
+                    name_rank[item.item_text] = max_rank + 1
+
+            # Build preference graph using unified indices
+            pref_graph = {}
+            for i, item_i in unified_cand_map.items():
+                temp = {}
+                for j, item_j in unified_cand_map.items():
+                    if i == j:
+                        continue
+                    rank_i = name_rank.get(item_i.item_text, 9999)
+                    rank_j = name_rank.get(item_j.item_text, 9999)
+                    if rank_i < rank_j:
+                        temp[j] = 1
+                    elif rank_j < rank_i:
+                        temp[j] = -1
+                    else:
+                        temp[j] = 0
+                pref_graph[i] = temp
+
+            pref_list.append(Preference(pref_graph))
+
+    if not pref_list:
+        return None
+    return Profile(unified_cand_map, pref_list)
+
 
 #calculate the results of the vote using different algorithms
 # List<MockElectionResponse> latest_responses

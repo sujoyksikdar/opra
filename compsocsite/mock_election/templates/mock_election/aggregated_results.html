@@ -40,16 +40,6 @@
       <p style="font-size:13px; color:var(--text-muted);">{{ total_polls }} poll{{ total_polls|pluralize }} · {{ total_responses }} total response{{ total_responses|pluralize }}</p>
     </div>
 
-    <!-- Algorithm selector -->
-    <form method="get" style="display:flex; align-items:center; gap:8px;">
-      <label style="font-size:12px; font-weight:600; color:var(--text-sub);">Algorithm</label>
-      <select name="alg" onchange="this.form.submit()"
-        style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
-        {% for alg in algorithms %}
-        <option value="{{ forloop.counter0 }}" {% if forloop.counter0 == selected_alg_index %}selected{% endif %}>{{ alg }}</option>
-        {% endfor %}
-      </select>
-    </form>
   </div>
 
   {% if no_results %}
@@ -65,7 +55,7 @@
   <div class="opra-card" style="padding:0; margin-bottom:16px; border-radius:12px; overflow:hidden;">
     <div style="padding:14px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
       District Map – {{ state }}
-      <span style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;">colored by leading candidate ({{ selected_alg_name }})</span>
+      <span style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;">colored by leading candidate (Plurality)</span>
     </div>
     <div style="display:flex; height:440px;">
 
@@ -99,6 +89,7 @@
   <div class="opra-card" style="padding:0; overflow:hidden; margin-bottom:16px;">
     <div style="padding:16px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
       Statewide Algorithm Comparison
+      <span style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;">combined votes from all polls across all districts</span>
     </div>
     <div style="overflow-x:auto;">
       <table class="results-table">
@@ -110,14 +101,13 @@
         </thead>
         <tbody>
           {% for row in statewide_vote_results %}
-          <tr {% if row.selected %}class="selected-alg"{% endif %}>
+          <tr>
             <td>
               {% if row.link %}<a href="{{ row.link }}" target="_blank">{{ row.algorithm }}</a>
               {% else %}{{ row.algorithm }}{% endif %}
-              {% if row.selected %}<span style="font-size:10px; background:var(--green); color:#fff; border-radius:4px; padding:1px 6px; margin-left:6px; font-weight:600;">Selected</span>{% endif %}
             </td>
             {% for name in candidate_names %}
-            <td style="font-weight:600;">{{ row.scores|get_item:name|default:"—" }}</td>
+            <td style="font-weight:600;">{% with val=row.scores|get_item:name %}{% if val is not None %}{{ val }}{% else %}—{% endif %}{% endwith %}</td>
             {% endfor %}
           </tr>
           {% endfor %}
@@ -252,7 +242,7 @@
   {% if district_winners_json != '{}' %}
   <div class="opra-card" style="padding:0; overflow:hidden;">
     <div style="padding:16px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
-      District Winners ({{ selected_alg_name }})
+      District Winners (Plurality)
     </div>
     <div style="overflow-x:auto;">
       <table class="results-table">
