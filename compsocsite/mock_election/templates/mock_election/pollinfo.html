@@ -352,8 +352,14 @@ function updateTiesStyle() {
       {% endif %}
 
       {% if request.user == question.question_owner and question.status != 1 %}
-      <div style="margin-top:12px;">
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
         <a href="{% url 'mock_election:recalcResult' question.id %}" class="opra-btn opra-btn-ghost opra-btn-sm">Recalculate Result</a>
+        {% if question.state %}
+        <a href="{% url 'mock_election:aggregated_results' question.state %}" class="opra-btn opra-btn-ghost opra-btn-sm" style="display:flex; align-items:center; gap:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Aggregated Results
+        </a>
+        {% endif %}
       </div>
       {% endif %}
     </div>

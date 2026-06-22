@@ -1,0 +1,298 @@
+{% extends 'mock_election/base_new.html' %}
+{% load static %}
+{% load mock_election_extra %}
+
+{% block title %}Aggregated Results – {{ state }} – OPRA{% endblock %}
+{% block nav_mock %}active{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/leaflet.css' %}"/>
+<script src="{% static 'js/leaflet.js' %}"></script>
+<script src="{% static 'js/chart.umd.min.js' %}"></script>
+<style>
+  .agg-shell { max-width: 1100px; margin: 0 auto; padding: 0 28px 48px; }
+  .results-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .results-table th { padding:10px 14px; text-align:left; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);
+    border-bottom:2px solid var(--border); white-space:nowrap; }
+  .results-table td { padding:10px 14px; border-bottom:1px solid var(--border);
+    color:var(--text); vertical-align:middle; }
+  .results-table tr:last-child td { border-bottom:none; }
+  .results-table tr:hover td { background:var(--bg); }
+  .results-table tr.selected-alg td { background:var(--green-light); }
+  .results-table tr.selected-alg td:first-child { border-left:3px solid var(--green); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="agg-shell">
+
+  <!-- ── Top bar ── -->
+  <div class="opra-topbar">
+    <div>
+      <div style="margin-bottom:2px;">
+        <a href="{% url 'mock_election:regular_polls' %}" style="color:var(--text-muted); font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          My Polls
+        </a>
+      </div>
+      <h1>Aggregated Results – {{ state }}</h1>
+      <p style="font-size:13px; color:var(--text-muted);">{{ total_polls }} poll{{ total_polls|pluralize }} · {{ total_responses }} total response{{ total_responses|pluralize }}</p>
+    </div>
+
+    <!-- Algorithm selector -->
+    <form method="get" style="display:flex; align-items:center; gap:8px;">
+      <label style="font-size:12px; font-weight:600; color:var(--text-sub);">Algorithm</label>
+      <select name="alg" onchange="this.form.submit()"
+        style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none;">
+        {% for alg in algorithms %}
+        <option value="{{ forloop.counter0 }}" {% if forloop.counter0 == selected_alg_index %}selected{% endif %}>{{ alg }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if no_results %}
+  <div class="opra-card" style="text-align:center; padding:48px 24px;">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:14px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+    <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px;">No results yet</div>
+    <div style="font-size:13px; color:var(--text-muted);">No votes have been cast in any poll for {{ state }}.</div>
+  </div>
+
+  {% else %}
+
+  <!-- ── Map dashboard ── -->
+  <div class="opra-card" style="padding:0; margin-bottom:16px; border-radius:12px; overflow:hidden;">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
+      District Map – {{ state }}
+      <span style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;">colored by leading candidate ({{ selected_alg_name }})</span>
+    </div>
+    <div style="display:flex; height:440px;">
+
+      <!-- Districts sidebar -->
+      <div id="districts-sidebar" style="width:170px; flex-shrink:0; border-right:1px solid var(--border); padding:12px; overflow-y:auto; background:var(--surface);">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Districts</div>
+        <div id="district-checkboxes"></div>
+      </div>
+
+      <!-- Map -->
+      <div id="results-map" style="flex:1; height:440px;"></div>
+
+      <!-- Vote distribution -->
+      <div style="width:260px; flex-shrink:0; border-left:1px solid var(--border); padding:14px; display:flex; flex-direction:column; gap:12px; background:var(--surface); overflow-y:auto;">
+        <div>
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Statewide Vote Distribution</div>
+          <div style="position:relative; height:150px;">
+            <canvas id="vote-pie-chart"></canvas>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Candidate Breakdown</div>
+          <div id="candidate-breakdown"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Statewide algorithm results ── -->
+  <div class="opra-card" style="padding:0; overflow:hidden; margin-bottom:16px;">
+    <div style="padding:16px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
+      Statewide Algorithm Comparison
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            {% for name in candidate_names %}<th>{{ name }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in statewide_vote_results %}
+          <tr {% if row.selected %}class="selected-alg"{% endif %}>
+            <td>
+              {% if row.link %}<a href="{{ row.link }}" target="_blank">{{ row.algorithm }}</a>
+              {% else %}{{ row.algorithm }}{% endif %}
+              {% if row.selected %}<span style="font-size:10px; background:var(--green); color:#fff; border-radius:4px; padding:1px 6px; margin-left:6px; font-weight:600;">Selected</span>{% endif %}
+            </td>
+            {% for name in candidate_names %}
+            <td style="font-weight:600;">{{ row.scores|get_item:name|default:"—" }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    var districtWinners  = {{ district_winners_json|safe }};
+    var districtVoteCounts = {{ district_vote_counts_json|safe }};
+    var candidateColors  = {{ candidate_colors_json|safe }};
+    var candidateNames   = {{ candidates_json|safe }};
+    var stateName        = "{{ state|escapejs }}";
+    var firstChoiceCounts = {{ statewide_first_choice_json|safe }};
+    var totalVotes = candidateNames.reduce(function(s,c){ return s + (firstChoiceCounts[c]||0); }, 0);
+
+    // ── Pie chart & breakdown ──────────────────────────────────────────────
+    var breakdownEl = document.getElementById('candidate-breakdown');
+    candidateNames.forEach(function(name) {
+      var color = candidateColors[name] || '#999';
+      var count = firstChoiceCounts[name] || 0;
+      var pct = totalVotes > 0 ? Math.round(100 * count / totalVotes) : 0;
+      breakdownEl.innerHTML +=
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+        + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+        + '<div style="font-size:11px;color:var(--text-muted);">' + count + ' vote' + (count!==1?'s':'') + ' · ' + pct + '%</div>'
+        + '</div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + pct + '%</div>'
+        + '</div>';
+    });
+
+    if (candidateNames.length > 0 && totalVotes > 0) {
+      new Chart(document.getElementById('vote-pie-chart'), {
+        type: 'pie',
+        data: {
+          labels: candidateNames,
+          datasets: [{ data: candidateNames.map(function(c){ return firstChoiceCounts[c]||0; }),
+            backgroundColor: candidateNames.map(function(c){ return candidateColors[c]||'#999'; }),
+            borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+      });
+    }
+
+    // ── Map ────────────────────────────────────────────────────────────────
+    var map = L.map('results-map', { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(map);
+
+    var districtLayers = {};
+    var sidebarEl = document.getElementById('district-checkboxes');
+    var DEFAULT_COLOR = '#aab8c8';
+
+    var geoJsonUrl = "{% static 'js/districts/' %}" + stateName.replace(/ /g, '_') + '.json';
+
+    fetch(geoJsonUrl)
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        data.features.sort(function(a, b){
+          return parseInt(a.properties.CD116FP) - parseInt(b.properties.CD116FP);
+        });
+
+        var geoLayer = L.geoJSON(data, {
+          style: function(feature) {
+            var name = feature.properties.NAMELSAD.replace('Congressional ', '');
+            var winner = districtWinners[name];
+            var fillColor = winner ? (candidateColors[winner] || DEFAULT_COLOR) : DEFAULT_COLOR;
+            return { color:'#fff', weight:1.5, fillColor: fillColor, fillOpacity: winner ? 0.75 : 0.2 };
+          },
+          onEachFeature: function(feature, layer) {
+            var name = feature.properties.NAMELSAD.replace('Congressional ', '');
+            var winner = districtWinners[name];
+            var counts = districtVoteCounts[name] || {};
+            districtLayers[name] = layer;
+
+            // Tooltip
+            var tip = '<b>' + name + '</b>';
+            if (winner) {
+              tip += '<br><span style="color:' + (candidateColors[winner]||'#333') + '">&#9632;</span> Winner: <b>' + winner + '</b>';
+              var distTotal = Object.values(counts).reduce(function(a,b){ return a+b; }, 0);
+              if (distTotal > 0) {
+                tip += '<br>';
+                candidateNames.forEach(function(c) {
+                  var pct = Math.round(100 * (counts[c]||0) / distTotal);
+                  tip += '<span style="color:' + (candidateColors[c]||'#333') + '">&#9632;</span> ' + c + ': ' + pct + '%<br>';
+                });
+              }
+            } else {
+              tip += '<br><span style="color:var(--text-muted)">No votes yet</span>';
+            }
+            layer.bindTooltip(tip, { sticky: true });
+
+            layer.on('mouseover', function() { layer.setStyle({ fillOpacity: 0.9, weight: 2.5 }); });
+            layer.on('mouseout', function() { geoLayer.resetStyle(layer); });
+
+            // Sidebar checkbox
+            var label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer;';
+            if (winner) {
+              label.style.color = candidateColors[winner] || 'var(--text)';
+              label.style.fontWeight = '600';
+            } else {
+              label.style.color = 'var(--text-muted)';
+            }
+            var cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.checked = true;
+            cb.style.accentColor = 'var(--green)';
+            cb.addEventListener('change', function() {
+              if (this.checked) { layer.addTo(map); } else { map.removeLayer(layer); }
+            });
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(name));
+            sidebarEl.appendChild(label);
+          }
+        }).addTo(map);
+
+        map.fitBounds(geoLayer.getBounds());
+        setTimeout(function(){ map.invalidateSize(); }, 100);
+      })
+      .catch(function(e){ console.error('Map load error:', e); });
+
+  })();
+  </script>
+
+  <!-- ── District-by-district breakdown ── -->
+  {% if district_winners_json != '{}' %}
+  <div class="opra-card" style="padding:0; overflow:hidden;">
+    <div style="padding:16px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
+      District Winners ({{ selected_alg_name }})
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>District</th>
+            <th>Winner</th>
+            <th>First-Choice Votes</th>
+          </tr>
+        </thead>
+        <tbody id="district-winners-table"></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var districtWinners = {{ district_winners_json|safe }};
+    var districtVoteCounts = {{ district_vote_counts_json|safe }};
+    var candidateColors = {{ candidate_colors_json|safe }};
+    var tbody = document.getElementById('district-winners-table');
+    Object.keys(districtWinners).sort().forEach(function(district) {
+      var winner = districtWinners[district];
+      var counts = districtVoteCounts[district] || {};
+      var total = Object.values(counts).reduce(function(a,b){ return a+b; }, 0);
+      var voteSummary = Object.keys(counts).map(function(c) {
+        return '<span style="color:' + (candidateColors[c]||'#333') + '">&#9632;</span> ' + c + ': ' + counts[c];
+      }).join('  ');
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td style="font-weight:600;">' + district + '</td>'
+        + '<td><span style="display:inline-flex;align-items:center;gap:6px;">'
+        + '<span style="width:10px;height:10px;border-radius:50%;background:' + (candidateColors[winner]||'#999') + ';display:inline-block;"></span>'
+        + winner + '</span></td>'
+        + '<td style="font-size:12px;color:var(--text-muted);">' + voteSummary + ' <span style="color:var(--text);">(total: ' + total + ')</span></td>';
+      tbody.appendChild(tr);
+    });
+  })();
+  </script>
+  {% endif %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

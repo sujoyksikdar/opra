@@ -528,6 +528,7 @@ def AddStep1View(request):
         questionType = request.POST.get('questiontype', '1')
         imageURL = request.POST['imageURL']
         state = request.POST.get('state', '').strip()
+        district = request.POST.get('district', '').strip()
 
         tie=False
         t = request.POST.getlist('allowties')
@@ -545,7 +546,7 @@ def AddStep1View(request):
                             emailDelete=request.user.userprofile.emailDelete,
                             emailStart=request.user.userprofile.emailStart,
                             emailStop=request.user.userprofile.emailStop, creator_pref=1,allowties=tie,
-                            state=state)
+                            state=state, district=district)
         if request.FILES.get('docfile') != None:
             question.image = request.FILES.get('docfile')
         elif imageURL != '':
@@ -1527,6 +1528,153 @@ class VoteResultsView(views.generic.DetailView):
                 
         print("[VoteResultsView] get_context_data FINISHED successfully.")
         return ctx
+
+# ── Aggregated Results View ─────────────────────────────────────────────────
+class AggregatedResultsView(views.generic.TemplateView):
+    template_name = 'mock_election/aggregated_results.html'
+
+    def get(self, request, *args, **kwargs):
+        state = self.kwargs['state']
+        # Only allow admins of at least one poll in this state
+        polls = MockElectionQuestion.objects.filter(
+            state=state,
+            question_owner=request.user
+        )
+        if not polls.exists():
+            from django.http import Http404
+            raise Http404("No polls found for this state.")
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        state = self.kwargs['state']
+        algorithms = getListPollAlgorithms()
+
+        # Selected algorithm index (0-based), default Plurality=0
+        alg_index = int(self.request.GET.get('alg', 0))
+        if alg_index < 0 or alg_index >= len(algorithms):
+            alg_index = 0
+
+        # All polls in this state owned by this user
+        all_polls = MockElectionQuestion.objects.filter(
+            state=state,
+            question_owner=self.request.user
+        )
+
+        # Build unified candidate map from all polls (assume same candidates)
+        # Use first poll's candidates as reference
+        first_poll = all_polls.first()
+        if not first_poll:
+            ctx['state'] = state
+            ctx['no_results'] = True
+            return ctx
+
+        items = list(first_poll.mockelectionitem_set.all())
+        cand_map = getCandidateMapFromList(items)
+        candidate_names = [item.item_text for item in items]
+
+        # ── Per-district results ────────────────────────────────────────────
+        # Group polls by district, aggregate all responses per district
+        from collections import defaultdict
+        district_responses = defaultdict(list)  # district -> [responses]
+        for poll in all_polls:
+            district = poll.district or 'Unknown'
+            responses = list(poll.mockelectionresponse_set.filter(active=1))
+            district_responses[district].extend(responses)
+
+        # For each district, find winner using first-choice counts per poll
+        # (avoids cross-poll cand_map mismatch errors and is much faster)
+        district_winners = {}
+        district_vote_counts = {}
+
+        COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
+                  '#1abc9c', '#e67e22', '#34495e', '#e91e63', '#00bcd4']
+        candidate_colors = {name: COLORS[i % len(COLORS)] for i, name in enumerate(candidate_names)}
+
+        for poll in all_polls:
+            district = poll.district or 'Unknown'
+            poll_item_names = [item.item_text for item in poll.mockelectionitem_set.all()]
+            for resp in poll.mockelectionresponse_set.filter(active=1):
+                pref_order = getPrefOrder(resp.resp_str, poll)
+                if not pref_order or len(pref_order) == 0 or len(pref_order[0]) == 0:
+                    continue
+                first = pref_order[0][0]
+                if isinstance(first, dict):
+                    raw_name = first.get('name', '')
+                    name = raw_name[4:] if raw_name.startswith('item') else raw_name
+                else:
+                    name = str(first)
+                if name in poll_item_names:
+                    if district not in district_vote_counts:
+                        district_vote_counts[district] = {}
+                    district_vote_counts[district][name] = district_vote_counts[district].get(name, 0) + 1
+
+        for district, counts in district_vote_counts.items():
+            if counts:
+                district_winners[district] = max(counts, key=counts.get)
+
+        # ── Statewide aggregated results ────────────────────────────────────
+        # Collect responses per poll (keep each poll's own cand_map to avoid mismatch)
+        statewide_vote_results = []
+        statewide_first_choice = {}
+
+        # Statewide first-choice counts (all polls)
+        for poll in all_polls:
+            poll_item_names = [item.item_text for item in poll.mockelectionitem_set.all()]
+            for resp in poll.mockelectionresponse_set.filter(active=1):
+                pref_order = getPrefOrder(resp.resp_str, poll)
+                if not pref_order or len(pref_order) == 0 or len(pref_order[0]) == 0:
+                    continue
+                first = pref_order[0][0]
+                # resp_str format: [{"name": "itemCandidateName", ...}, ...]
+                if isinstance(first, dict):
+                    raw_name = first.get('name', '')
+                    # strip "item" prefix to get candidate name
+                    name = raw_name[4:] if raw_name.startswith('item') else raw_name
+                else:
+                    name = str(first)
+                if name in poll_item_names:
+                    statewide_first_choice[name] = statewide_first_choice.get(name, 0) + 1
+
+        # Statewide algorithm table — use first poll's responses + cand_map
+        all_responses = list(first_poll.mockelectionresponse_set.filter(active=1))
+        if all_responses:
+            results = getVoteResults(all_responses, cand_map)
+            if results:
+                vote_results_list, _, _, _ = results
+                start_alg_links = getListAlgorithmLinks()
+                for i, alg_name in enumerate(algorithms):
+                    if i < len(vote_results_list):
+                        scores = vote_results_list[i]
+                        statewide_vote_results.append({
+                            'algorithm': alg_name,
+                            'link': start_alg_links[i] if i < len(start_alg_links) else '',
+                            'scores': {cand_map[k].item_text: v for k, v in scores.items()},
+                            'selected': i == alg_index,
+                        })
+
+        total_responses = sum(
+            poll.mockelectionresponse_set.filter(active=1).count() for poll in all_polls
+        )
+
+        ctx['state'] = state
+        ctx['algorithms'] = algorithms
+        ctx['selected_alg_index'] = alg_index
+        ctx['selected_alg_name'] = algorithms[alg_index]
+        ctx['candidate_names'] = candidate_names
+        ctx['candidate_colors'] = candidate_colors
+        ctx['district_winners_json'] = json.dumps(district_winners)
+        ctx['district_vote_counts_json'] = json.dumps(district_vote_counts)
+        ctx['candidate_colors_json'] = json.dumps(candidate_colors)
+        ctx['candidates_json'] = json.dumps(candidate_names)
+        ctx['statewide_first_choice_json'] = json.dumps(statewide_first_choice)
+        ctx['statewide_vote_results'] = statewide_vote_results
+        ctx['total_responses'] = total_responses
+        ctx['total_polls'] = all_polls.count()
+        if not all_responses:
+            ctx['no_results'] = True
+        return ctx
+
 
 # get a list of algorithms supported by the system
 # return List<String>
