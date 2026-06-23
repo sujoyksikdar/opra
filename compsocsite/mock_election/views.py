@@ -1804,41 +1804,35 @@ class DistrictWinnersAPIView(views.generic.View):
         statewide_scores = {}
         is_score_based = True
 
+        # Group polls by district (a district may have multiple polls)
+        from collections import defaultdict
+        polls_by_district = defaultdict(list)
+        for poll in polls:
+            district = poll.district or 'Unknown'
+            polls_by_district[district].append(poll)
+
         if unified_profile and unified_profile.getElecType() in ("soc", "toc"):
             try:
                 is_score_based, raw_scores = runSingleAlgorithm(unified_profile, cand_map, alg_index)
-                # Convert index keys to candidate names
                 named_scores = {cand_map[k].item_text: v for k, v in raw_scores.items()}
                 statewide_scores = named_scores
 
-                if is_score_based:
-                    # For each district, build a per-district profile and run the algorithm
-                    for poll in polls:
-                        district = poll.district or 'Unknown'
-                        poll_items = list(poll.mockelectionitem_set.all())
-                        poll_cand_map = getCandidateMapFromList(poll_items)
-                        responses = list(poll.mockelectionresponse_set.filter(active=1))
-                        if not responses:
-                            continue
-                        try:
-                            dist_profile = buildUnifiedProfile([poll], cand_map)
-                            if dist_profile and dist_profile.getElecType() in ("soc", "toc"):
-                                _, dist_raw = runSingleAlgorithm(dist_profile, cand_map, alg_index)
-                                dist_named = {cand_map[k].item_text: v for k, v in dist_raw.items()}
-                                district_scores[district] = dist_named
-                                if dist_named:
-                                    district_winners[district] = max(dist_named, key=dist_named.get)
-                        except Exception:
-                            pass
-                    # Fill in districts that only have first-choice data (fallback)
-                    for district, counts in district_vote_counts.items():
-                        if district not in district_winners and counts:
-                            district_winners[district] = max(counts, key=counts.get)
-                else:
-                    # Winner-only: use first-choice counts per district for coloring
-                    for district, counts in district_vote_counts.items():
-                        if counts:
-                            district_winners[district] = max(counts, key=counts.get)
+                # Run algorithm per district using ALL polls in that district
+                for district, district_polls in polls_by_district.items():
+                    try:
+                        dist_profile = buildUnifiedProfile(district_polls, cand_map)
+                        if dist_profile and dist_profile.getElecType() in ("soc", "toc"):
+                            _, dist_raw = runSingleAlgorithm(dist_profile, cand_map, alg_index)
+                            dist_named = {cand_map[k].item_text: v for k, v in dist_raw.items()}
+                            district_scores[district] = dist_named
+                            if dist_named:
+                                district_winners[district] = max(dist_named, key=dist_named.get)
+                    except Exception:
+                        pass
+                # Fallback for districts where algorithm gave no result
+                for district, counts in district_vote_counts.items():
+                    if district not in district_winners and counts:
+                        district_winners[district] = max(counts, key=counts.get)
 
             except Exception as e:
                 print(f"[DistrictWinnersAPIView] algorithm error: {e}")
