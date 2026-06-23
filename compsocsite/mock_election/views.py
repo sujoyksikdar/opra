@@ -1694,6 +1694,175 @@ class AggregatedResultsView(views.generic.TemplateView):
         return ctx
 
 
+# Indices 0-7 return scores; indices 8-15 return winners only
+SCORE_BASED_ALG_INDICES = set(range(8))
+SLOW_ALG_INDICES = set(range(8, 16))
+
+
+def runSingleAlgorithm(profile, cand_map, alg_index):
+    """
+    Run one algorithm on the given profile.
+    Returns (is_score_based: bool, scores: dict {cand_index: value}).
+    For score-based algorithms, values are numeric scores.
+    For winner-only algorithms, values are 1 (winner) or 0 (not winner).
+    """
+    if alg_index == 0:
+        return True, MechanismPlurality().getCandScoresMap(profile)
+    elif alg_index == 1:
+        return True, MechanismBorda().getCandScoresMap(profile)
+    elif alg_index == 2:
+        return True, MechanismVeto().getCandScoresMap(profile)
+    elif alg_index == 3:
+        return True, MechanismKApproval(3).getCandScoresMap(profile)
+    elif alg_index == 4:
+        return True, MechanismSimplifiedBucklin().getCandScoresMap(profile)
+    elif alg_index == 5:
+        return True, MechanismCopeland(1).getCandScoresMap(profile)
+    elif alg_index == 6:
+        return True, MechanismMaximin().getCandScoresMap(profile)
+    elif alg_index == 7:
+        return True, MechanismMaximin().getCandScoresMap(profile)
+    elif alg_index == 8:
+        winners = MechanismSTV().STVwinners(profile)
+        return False, translateWinnerList(winners, cand_map)
+    elif alg_index == 9:
+        winners = MechanismBaldwin().baldwin_winners(profile)
+        return False, translateWinnerList(winners, cand_map)
+    elif alg_index == 10:
+        winners = MechanismCoombs().coombs_winners(profile)
+        return False, translateWinnerList(winners, cand_map)
+    elif alg_index == 11:
+        winners = MechanismBlack().black_winner(profile)
+        return False, translateWinnerList(winners, cand_map)
+    elif alg_index == 12:
+        winners = MechanismRankedPairs().ranked_pairs_cowinners(profile)
+        return False, translateWinnerList(winners, cand_map)
+    elif alg_index == 13:
+        winners = MechanismPluralityRunOff().PluRunOff_cowinners(profile)
+        return False, translateWinnerList(winners, cand_map)
+    elif alg_index == 14:
+        winners = MechanismBordaMean().Borda_mean_winners(profile)
+        return False, translateBinaryWinnerList(winners, cand_map)
+    elif alg_index == 15:
+        winners, _ = MechanismBordaMean().simulated_approval(profile)
+        return False, translateBinaryWinnerList(winners, cand_map)
+    else:
+        raise ValueError(f"Unknown algorithm index: {alg_index}")
+
+
+class DistrictWinnersAPIView(views.generic.View):
+    """
+    AJAX endpoint: GET /mock_election/aggregated/<state>/district_winners/?alg=<index>
+    Returns district winners and statewide scores for the given algorithm.
+    """
+
+    def get(self, request, state):
+        from django.http import JsonResponse, Http404
+
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Login required'}, status=401)
+
+        try:
+            alg_index = int(request.GET.get('alg', 0))
+        except (ValueError, TypeError):
+            alg_index = 0
+
+        polls = MockElectionQuestion.objects.filter(state=state, question_owner=request.user)
+        if not polls.exists():
+            raise Http404("No polls found for this state.")
+
+        first_poll = polls.first()
+        items = list(first_poll.mockelectionitem_set.all())
+        cand_map = getCandidateMapFromList(items)
+        candidate_names = [item.item_text for item in items]
+
+        # Per-district vote counts (first-choice)
+        district_vote_counts = {}
+        for poll in polls:
+            district = poll.district or 'Unknown'
+            poll_item_names = [item.item_text for item in poll.mockelectionitem_set.all()]
+            for resp in poll.mockelectionresponse_set.filter(active=1):
+                pref_order = getPrefOrder(resp.resp_str, poll)
+                if not pref_order or len(pref_order) == 0 or len(pref_order[0]) == 0:
+                    continue
+                first = pref_order[0][0]
+                if isinstance(first, dict):
+                    raw_name = first.get('name', '')
+                    name = raw_name[4:] if raw_name.startswith('item') else raw_name
+                else:
+                    name = str(first)
+                if name in poll_item_names:
+                    if district not in district_vote_counts:
+                        district_vote_counts[district] = {}
+                    district_vote_counts[district][name] = district_vote_counts[district].get(name, 0) + 1
+
+        # Build unified profile for statewide algorithm
+        unified_profile = buildUnifiedProfile(polls, cand_map)
+
+        district_winners = {}
+        district_scores = {}
+        statewide_scores = {}
+        is_score_based = True
+
+        if unified_profile and unified_profile.getElecType() in ("soc", "toc"):
+            try:
+                is_score_based, raw_scores = runSingleAlgorithm(unified_profile, cand_map, alg_index)
+                # Convert index keys to candidate names
+                named_scores = {cand_map[k].item_text: v for k, v in raw_scores.items()}
+                statewide_scores = named_scores
+
+                if is_score_based:
+                    # For each district, build a per-district profile and run the algorithm
+                    for poll in polls:
+                        district = poll.district or 'Unknown'
+                        poll_items = list(poll.mockelectionitem_set.all())
+                        poll_cand_map = getCandidateMapFromList(poll_items)
+                        responses = list(poll.mockelectionresponse_set.filter(active=1))
+                        if not responses:
+                            continue
+                        try:
+                            dist_profile = buildUnifiedProfile([poll], cand_map)
+                            if dist_profile and dist_profile.getElecType() in ("soc", "toc"):
+                                _, dist_raw = runSingleAlgorithm(dist_profile, cand_map, alg_index)
+                                dist_named = {cand_map[k].item_text: v for k, v in dist_raw.items()}
+                                district_scores[district] = dist_named
+                                if dist_named:
+                                    district_winners[district] = max(dist_named, key=dist_named.get)
+                        except Exception:
+                            pass
+                    # Fill in districts that only have first-choice data (fallback)
+                    for district, counts in district_vote_counts.items():
+                        if district not in district_winners and counts:
+                            district_winners[district] = max(counts, key=counts.get)
+                else:
+                    # Winner-only: use first-choice counts per district for coloring
+                    for district, counts in district_vote_counts.items():
+                        if counts:
+                            district_winners[district] = max(counts, key=counts.get)
+
+            except Exception as e:
+                print(f"[DistrictWinnersAPIView] algorithm error: {e}")
+                # Fallback to plurality
+                for district, counts in district_vote_counts.items():
+                    if counts:
+                        district_winners[district] = max(counts, key=counts.get)
+                is_score_based = True
+        else:
+            # No valid profile — use first-choice plurality
+            for district, counts in district_vote_counts.items():
+                if counts:
+                    district_winners[district] = max(counts, key=counts.get)
+
+        return JsonResponse({
+            'district_winners': district_winners,
+            'district_scores': district_scores,
+            'district_vote_counts': district_vote_counts,
+            'statewide_scores': statewide_scores,
+            'is_score_based': is_score_based,
+            'candidate_names': candidate_names,
+        })
+
+
 # get a list of algorithms supported by the system
 # return List<String>
 def getListPollAlgorithms():

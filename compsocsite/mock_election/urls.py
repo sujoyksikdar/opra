@@ -133,4 +133,5 @@ urlpatterns = [
 
     # aggregated results
     re_path(r'^aggregated/(?P<state>[^/]+)/$', login_required(views.AggregatedResultsView.as_view()), name='aggregated_results'),
+    re_path(r'^aggregated/(?P<state>[^/]+)/district_winners/$', login_required(views.DistrictWinnersAPIView.as_view()), name='district_winners_api'),
 ]

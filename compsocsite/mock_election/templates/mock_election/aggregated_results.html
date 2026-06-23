@@ -21,6 +21,17 @@
   .results-table tr:hover td { background:var(--bg); }
   .results-table tr.selected-alg td { background:var(--green-light); }
   .results-table tr.selected-alg td:first-child { border-left:3px solid var(--green); }
+  .alg-select { font-size:13px; padding:6px 10px; border:1px solid var(--border);
+    border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer; }
+  .map-spinner { display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    z-index:9999; background:rgba(255,255,255,0.85); border-radius:8px;
+    padding:14px 20px; font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; }
+  .podium-card { padding:14px 18px; }
+  .podium-winner { display:flex; align-items:center; gap:10px; padding:12px 14px;
+    border-radius:8px; background:var(--green-light); border:1px solid var(--green);
+    margin-bottom:10px; }
+  .podium-runner { display:flex; align-items:center; gap:8px; padding:8px 10px;
+    border-radius:6px; background:var(--bg); margin-bottom:6px; font-size:13px; color:var(--text); }
 </style>
 {% endblock %}
 
@@ -53,37 +64,67 @@
 
   <!-- ── Map dashboard ── -->
   <div class="opra-card" style="padding:0; margin-bottom:16px; border-radius:12px; overflow:hidden;">
-    <div style="padding:14px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
-      District Map – {{ state }}
-      <span style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;">colored by leading candidate (Plurality)</span>
+    <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <div>
+        <span style="font-size:14px; font-weight:700; color:var(--text);">District Map – {{ state }}</span>
+        <span id="map-alg-label" style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;">colored by leading candidate</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label style="font-size:12px; color:var(--text-muted);">Algorithm:</label>
+        <select id="alg-select" class="alg-select">
+          {% for alg in algorithms %}
+          <option value="{{ forloop.counter0 }}"{% if forloop.first %} selected{% endif %}>
+            {{ alg }}{% if forloop.counter0 >= 8 %} (may be slow){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
-    <div style="display:flex; height:440px;">
+    <div style="display:flex; height:440px; position:relative;">
+
+      <!-- Spinner overlay -->
+      <div id="map-spinner" class="map-spinner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.8s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        Running algorithm…
+      </div>
 
       <!-- Districts sidebar -->
-      <div id="districts-sidebar" style="width:170px; flex-shrink:0; border-right:1px solid var(--border); padding:12px; overflow-y:auto; background:var(--surface);">
+      <div id="districts-sidebar" style="width:170px; flex-shrink:0; border-right:1px solid var(--border); padding:12px; overflow-y:auto; background:var(--surface); z-index:1;">
         <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Districts</div>
         <div id="district-checkboxes"></div>
       </div>
 
       <!-- Map -->
-      <div id="results-map" style="flex:1; height:440px;"></div>
+      <div id="results-map" style="flex:1; height:440px; z-index:1;"></div>
 
-      <!-- Vote distribution -->
-      <div style="width:260px; flex-shrink:0; border-left:1px solid var(--border); padding:14px; display:flex; flex-direction:column; gap:12px; background:var(--surface); overflow-y:auto;">
-        <div>
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Statewide Vote Distribution</div>
-          <div style="position:relative; height:150px;">
-            <canvas id="vote-pie-chart"></canvas>
+      <!-- Right panel -->
+      <div id="right-panel" style="width:260px; flex-shrink:0; border-left:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); overflow-y:auto; z-index:1;">
+        <!-- Score-based: pie chart + breakdown -->
+        <div id="score-panel" style="padding:14px; display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Statewide Vote Distribution</div>
+            <div style="position:relative; height:150px;">
+              <canvas id="vote-pie-chart"></canvas>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Candidate Breakdown</div>
+            <div id="candidate-breakdown"></div>
           </div>
         </div>
-        <div>
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Candidate Breakdown</div>
-          <div id="candidate-breakdown"></div>
+        <!-- Winner-only: podium card -->
+        <div id="podium-panel" style="display:none; padding:14px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:10px;">Statewide Winner</div>
+          <div id="podium-content"></div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:12px;">Winner-only algorithm — no score distribution available.</div>
         </div>
       </div>
 
     </div>
   </div>
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 
   <!-- ── Statewide algorithm results ── -->
   <div class="opra-card" style="padding:0; overflow:hidden; margin-bottom:16px;">
@@ -118,45 +159,23 @@
 
   <script>
   (function() {
-    var districtWinners  = {{ district_winners_json|safe }};
-    var districtVoteCounts = {{ district_vote_counts_json|safe }};
     var candidateColors  = {{ candidate_colors_json|safe }};
     var candidateNames   = {{ candidates_json|safe }};
     var stateName        = "{{ state|escapejs }}";
     var firstChoiceCounts = {{ statewide_first_choice_json|safe }};
-    var totalVotes = candidateNames.reduce(function(s,c){ return s + (firstChoiceCounts[c]||0); }, 0);
+    var apiBase = "{% url 'mock_election:district_winners_api' state=state %}";
+    var algNames = {{ candidates_json|safe }};  // placeholder — overwritten per alg
 
-    // ── Pie chart & breakdown ──────────────────────────────────────────────
-    var breakdownEl = document.getElementById('candidate-breakdown');
-    candidateNames.forEach(function(name) {
-      var color = candidateColors[name] || '#999';
-      var count = firstChoiceCounts[name] || 0;
-      var pct = totalVotes > 0 ? Math.round(100 * count / totalVotes) : 0;
-      breakdownEl.innerHTML +=
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
-        + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>'
-        + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
-        + '<div style="font-size:11px;color:var(--text-muted);">' + count + ' vote' + (count!==1?'s':'') + ' · ' + pct + '%</div>'
-        + '</div>'
-        + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + pct + '%</div>'
-        + '</div>';
-    });
+    var DEFAULT_COLOR = '#aab8c8';
+    var SCORE_BASED_MAX_IDX = 7;  // indices 0-7 are score-based
 
-    if (candidateNames.length > 0 && totalVotes > 0) {
-      new Chart(document.getElementById('vote-pie-chart'), {
-        type: 'pie',
-        data: {
-          labels: candidateNames,
-          datasets: [{ data: candidateNames.map(function(c){ return firstChoiceCounts[c]||0; }),
-            backgroundColor: candidateNames.map(function(c){ return candidateColors[c]||'#999'; }),
-            borderWidth: 2, borderColor: '#fff' }]
-        },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
-      });
-    }
+    // Current state
+    var currentDistrictWinners = {{ district_winners_json|safe }};
+    var currentDistrictVoteCounts = {{ district_vote_counts_json|safe }};
+    var currentStatewideScores = firstChoiceCounts;
+    var currentIsScoreBased = true;
 
-    // ── Map ────────────────────────────────────────────────────────────────
+    // ── Map setup ─────────────────────────────────────────────────────────
     var map = L.map('results-map', { scrollWheelZoom: false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -164,11 +183,178 @@
     }).addTo(map);
 
     var districtLayers = {};
+    var geoLayerRef = null;
     var sidebarEl = document.getElementById('district-checkboxes');
-    var DEFAULT_COLOR = '#aab8c8';
-
     var geoJsonUrl = "{% static 'js/districts/' %}" + stateName.replace(/ /g, '_') + '.json';
+    var pieChartInst = null;
 
+    // ── Right panel helpers ───────────────────────────────────────────────
+    function renderScorePanel(scores, isScoreBased) {
+      var scorePanel = document.getElementById('score-panel');
+      var podiumPanel = document.getElementById('podium-panel');
+
+      if (!isScoreBased) {
+        scorePanel.style.display = 'none';
+        podiumPanel.style.display = 'block';
+        renderPodium(scores);
+        return;
+      }
+
+      scorePanel.style.display = 'flex';
+      podiumPanel.style.display = 'none';
+
+      // Compute total for percentages
+      var total = Object.values(scores).reduce(function(a,b){ return a + (b||0); }, 0);
+      var breakdownEl = document.getElementById('candidate-breakdown');
+      breakdownEl.innerHTML = '';
+      candidateNames.forEach(function(name) {
+        var color = candidateColors[name] || '#999';
+        var val = scores[name] || 0;
+        var pct = total > 0 ? Math.round(100 * val / total) : 0;
+        breakdownEl.innerHTML +=
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+          + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+          + '<div style="font-size:11px;color:var(--text-muted);">' + val + ' · ' + pct + '%</div>'
+          + '</div>'
+          + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + pct + '%</div>'
+          + '</div>';
+      });
+
+      // Update pie chart
+      if (pieChartInst) { pieChartInst.destroy(); pieChartInst = null; }
+      if (candidateNames.length > 0 && total > 0) {
+        pieChartInst = new Chart(document.getElementById('vote-pie-chart'), {
+          type: 'pie',
+          data: {
+            labels: candidateNames,
+            datasets: [{ data: candidateNames.map(function(c){ return scores[c]||0; }),
+              backgroundColor: candidateNames.map(function(c){ return candidateColors[c]||'#999'; }),
+              borderWidth: 2, borderColor: '#fff' }]
+          },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+        });
+      }
+    }
+
+    function renderPodium(scores) {
+      var podiumContent = document.getElementById('podium-content');
+      podiumContent.innerHTML = '';
+      // Sort candidates by score (1 = winner, 0 = not winner)
+      var winners = candidateNames.filter(function(c){ return scores[c] === 1; });
+      var runners = candidateNames.filter(function(c){ return !scores[c] || scores[c] === 0; });
+      if (winners.length === 0 && candidateNames.length > 0) {
+        // Fallback: highlight all as "winner" if scores are empty
+        winners = candidateNames.slice(0, 1);
+        runners = candidateNames.slice(1);
+      }
+      winners.forEach(function(name) {
+        var color = candidateColors[name] || '#999';
+        podiumContent.innerHTML +=
+          '<div class="podium-winner">'
+          + '<span style="font-size:20px;">🏆</span>'
+          + '<div>'
+          + '<div style="font-size:14px;font-weight:700;color:var(--text);">' + name + '</div>'
+          + '<div style="font-size:11px;color:var(--green);font-weight:600;">Winner</div>'
+          + '</div>'
+          + '</div>';
+      });
+      runners.forEach(function(name, i) {
+        podiumContent.innerHTML +=
+          '<div class="podium-runner">'
+          + '<span style="font-size:12px;color:var(--text-muted);">#' + (winners.length + i + 1) + '</span>'
+          + '<span style="width:8px;height:8px;border-radius:50%;background:' + (candidateColors[name]||'#999') + ';display:inline-block;flex-shrink:0;"></span>'
+          + '<span style="font-size:13px;color:var(--text);">' + name + '</span>'
+          + '</div>';
+      });
+    }
+
+    // ── Map update helpers ────────────────────────────────────────────────
+    function getTooltipHtml(districtName, winner, counts, districtScores, isScoreBased) {
+      var tip = '<b>' + districtName + '</b>';
+      if (winner) {
+        tip += '<br><span style="color:' + (candidateColors[winner]||'#333') + '">&#9632;</span> Winner: <b>' + winner + '</b>';
+        if (isScoreBased && districtScores && Object.keys(districtScores).length > 0) {
+          var scoreTotal = Object.values(districtScores).reduce(function(a,b){ return a+(b||0); }, 0);
+          if (scoreTotal > 0) {
+            tip += '<br>';
+            candidateNames.forEach(function(c) {
+              var pct = Math.round(100 * (districtScores[c]||0) / scoreTotal);
+              tip += '<span style="color:' + (candidateColors[c]||'#333') + '">&#9632;</span> ' + c + ': ' + pct + '%<br>';
+            });
+          }
+        } else if (counts && Object.keys(counts).length > 0) {
+          var distTotal = Object.values(counts).reduce(function(a,b){ return a+b; }, 0);
+          if (distTotal > 0) {
+            tip += '<br>';
+            candidateNames.forEach(function(c) {
+              var pct = Math.round(100 * (counts[c]||0) / distTotal);
+              tip += '<span style="color:' + (candidateColors[c]||'#333') + '">&#9632;</span> ' + c + ': ' + pct + '%<br>';
+            });
+          }
+        }
+      } else {
+        tip += '<br><span style="color:var(--text-muted)">No votes yet</span>';
+      }
+      return tip;
+    }
+
+    function refreshMapColors(districtWinners, districtVoteCounts, districtScores, isScoreBased) {
+      if (!geoLayerRef) return;
+      geoLayerRef.eachLayer(function(layer) {
+        var name = layer.feature.properties.NAMELSAD.replace('Congressional ', '');
+        var winner = districtWinners[name];
+        var fillColor = winner ? (candidateColors[winner] || DEFAULT_COLOR) : DEFAULT_COLOR;
+        layer.setStyle({ fillColor: fillColor, fillOpacity: winner ? 0.75 : 0.2 });
+        var tip = getTooltipHtml(name, winner, districtVoteCounts[name]||{}, (districtScores||{})[name]||{}, isScoreBased);
+        layer.unbindTooltip();
+        layer.bindTooltip(tip, { sticky: true });
+      });
+      // Refresh sidebar labels
+      refreshSidebar(districtWinners);
+    }
+
+    function refreshSidebar(districtWinners) {
+      sidebarEl.querySelectorAll('label').forEach(function(label) {
+        var nameNode = label.childNodes[label.childNodes.length - 1];
+        var name = nameNode.textContent.trim();
+        var winner = districtWinners[name];
+        if (winner) {
+          label.style.color = candidateColors[winner] || 'var(--text)';
+          label.style.fontWeight = '600';
+        } else {
+          label.style.color = 'var(--text-muted)';
+          label.style.fontWeight = '';
+        }
+      });
+    }
+
+    function refreshDistrictTable(districtWinners, districtVoteCounts, algName) {
+      var tableCard = document.getElementById('district-table-card');
+      if (!tableCard) return;
+      var titleEl = document.getElementById('district-table-title');
+      if (titleEl) titleEl.textContent = 'District Winners (' + algName + ')';
+      var tbody = document.getElementById('district-winners-table');
+      tbody.innerHTML = '';
+      Object.keys(districtWinners).sort().forEach(function(district) {
+        var winner = districtWinners[district];
+        var counts = districtVoteCounts[district] || {};
+        var total = Object.values(counts).reduce(function(a,b){ return a+b; }, 0);
+        var voteSummary = Object.keys(counts).map(function(c) {
+          return '<span style="color:' + (candidateColors[c]||'#333') + '">&#9632;</span> ' + c + ': ' + counts[c];
+        }).join('  ');
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td style="font-weight:600;">' + district + '</td>'
+          + '<td><span style="display:inline-flex;align-items:center;gap:6px;">'
+          + '<span style="width:10px;height:10px;border-radius:50%;background:' + (candidateColors[winner]||'#999') + ';display:inline-block;"></span>'
+          + winner + '</span></td>'
+          + '<td style="font-size:12px;color:var(--text-muted);">' + voteSummary + ' <span style="color:var(--text);">(total: ' + total + ')</span></td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ── Initial map load ──────────────────────────────────────────────────
     fetch(geoJsonUrl)
       .then(function(r){ return r.json(); })
       .then(function(data) {
@@ -176,42 +362,27 @@
           return parseInt(a.properties.CD116FP) - parseInt(b.properties.CD116FP);
         });
 
-        var geoLayer = L.geoJSON(data, {
+        geoLayerRef = L.geoJSON(data, {
           style: function(feature) {
             var name = feature.properties.NAMELSAD.replace('Congressional ', '');
-            var winner = districtWinners[name];
+            var winner = currentDistrictWinners[name];
             var fillColor = winner ? (candidateColors[winner] || DEFAULT_COLOR) : DEFAULT_COLOR;
             return { color:'#fff', weight:1.5, fillColor: fillColor, fillOpacity: winner ? 0.75 : 0.2 };
           },
           onEachFeature: function(feature, layer) {
             var name = feature.properties.NAMELSAD.replace('Congressional ', '');
-            var winner = districtWinners[name];
-            var counts = districtVoteCounts[name] || {};
             districtLayers[name] = layer;
 
-            // Tooltip
-            var tip = '<b>' + name + '</b>';
-            if (winner) {
-              tip += '<br><span style="color:' + (candidateColors[winner]||'#333') + '">&#9632;</span> Winner: <b>' + winner + '</b>';
-              var distTotal = Object.values(counts).reduce(function(a,b){ return a+b; }, 0);
-              if (distTotal > 0) {
-                tip += '<br>';
-                candidateNames.forEach(function(c) {
-                  var pct = Math.round(100 * (counts[c]||0) / distTotal);
-                  tip += '<span style="color:' + (candidateColors[c]||'#333') + '">&#9632;</span> ' + c + ': ' + pct + '%<br>';
-                });
-              }
-            } else {
-              tip += '<br><span style="color:var(--text-muted)">No votes yet</span>';
-            }
+            var tip = getTooltipHtml(name, currentDistrictWinners[name], currentDistrictVoteCounts[name]||{}, {}, true);
             layer.bindTooltip(tip, { sticky: true });
 
             layer.on('mouseover', function() { layer.setStyle({ fillOpacity: 0.9, weight: 2.5 }); });
-            layer.on('mouseout', function() { geoLayer.resetStyle(layer); });
+            layer.on('mouseout', function() { geoLayerRef.resetStyle(layer); });
 
             // Sidebar checkbox
             var label = document.createElement('label');
             label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;cursor:pointer;';
+            var winner = currentDistrictWinners[name];
             if (winner) {
               label.style.color = candidateColors[winner] || 'var(--text)';
               label.style.fontWeight = '600';
@@ -230,19 +401,55 @@
           }
         }).addTo(map);
 
-        map.fitBounds(geoLayer.getBounds());
+        map.fitBounds(geoLayerRef.getBounds());
         setTimeout(function(){ map.invalidateSize(); }, 100);
       })
       .catch(function(e){ console.error('Map load error:', e); });
+
+    // ── Initial right panel (plurality) ──────────────────────────────────
+    renderScorePanel(firstChoiceCounts, true);
+
+    // ── Algorithm dropdown AJAX ──────────────────────────────────────────
+    var algSelect = document.getElementById('alg-select');
+    var algSelectEl = document.getElementById('alg-select');
+    var mapAlgLabel = document.getElementById('map-alg-label');
+    var spinner = document.getElementById('map-spinner');
+
+    algSelect.addEventListener('change', function() {
+      var algIdx = parseInt(this.value);
+      var algName = this.options[this.selectedIndex].text.replace(' (may be slow)', '').trim();
+      spinner.style.display = 'block';
+      algSelect.disabled = true;
+
+      fetch(apiBase + '?alg=' + algIdx)
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+          currentDistrictWinners = data.district_winners || {};
+          currentDistrictVoteCounts = data.district_vote_counts || {};
+          currentStatewideScores = data.statewide_scores || {};
+          currentIsScoreBased = data.is_score_based !== false;
+
+          mapAlgLabel.textContent = 'colored by leading candidate (' + algName + ')';
+
+          refreshMapColors(currentDistrictWinners, currentDistrictVoteCounts, data.district_scores || {}, currentIsScoreBased);
+          renderScorePanel(currentStatewideScores, currentIsScoreBased);
+          refreshDistrictTable(currentDistrictWinners, currentDistrictVoteCounts, algName);
+        })
+        .catch(function(e){ console.error('Algorithm fetch error:', e); })
+        .finally(function() {
+          spinner.style.display = 'none';
+          algSelect.disabled = false;
+        });
+    });
 
   })();
   </script>
 
   <!-- ── District-by-district breakdown ── -->
   {% if district_winners_json != '{}' %}
-  <div class="opra-card" style="padding:0; overflow:hidden;">
+  <div id="district-table-card" class="opra-card" style="padding:0; overflow:hidden;">
     <div style="padding:16px 20px; border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text);">
-      District Winners (Plurality)
+      <span id="district-table-title">District Winners (Plurality)</span>
     </div>
     <div style="overflow-x:auto;">
       <table class="results-table">
