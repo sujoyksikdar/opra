@@ -26,12 +26,19 @@
   .map-spinner { display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     z-index:9999; background:rgba(255,255,255,0.85); border-radius:8px;
     padding:14px 20px; font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; }
-  .podium-card { padding:14px 18px; }
   .podium-winner { display:flex; align-items:center; gap:10px; padding:12px 14px;
     border-radius:8px; background:var(--green-light); border:1px solid var(--green);
     margin-bottom:10px; }
   .podium-runner { display:flex; align-items:center; gap:8px; padding:8px 10px;
     border-radius:6px; background:var(--bg); margin-bottom:6px; font-size:13px; color:var(--text); }
+  .lb-row { display:flex; align-items:center; gap:8px; padding:8px 10px;
+    border-radius:6px; margin-bottom:6px; }
+  .lb-row.lb-first { background:var(--green-light); border:1px solid var(--green); }
+  .lb-row.lb-other { background:var(--bg); }
+  .lb-rank { font-size:12px; font-weight:700; color:var(--text-muted); width:18px; flex-shrink:0; text-align:center; }
+  .lb-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .lb-name { flex:1; font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lb-score { font-size:12px; font-weight:700; color:var(--text-muted); flex-shrink:0; }
 </style>
 {% endblock %}
 
@@ -99,7 +106,7 @@
 
       <!-- Right panel -->
       <div id="right-panel" style="width:260px; flex-shrink:0; border-left:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); overflow-y:auto; z-index:1;">
-        <!-- Score-based: pie chart + breakdown -->
+        <!-- Plurality only: pie chart + breakdown -->
         <div id="score-panel" style="padding:14px; display:flex; flex-direction:column; gap:12px;">
           <div>
             <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Statewide Vote Distribution</div>
@@ -111,6 +118,12 @@
             <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Candidate Breakdown</div>
             <div id="candidate-breakdown"></div>
           </div>
+        </div>
+        <!-- Other score-based: ranked leaderboard -->
+        <div id="leaderboard-panel" style="display:none; padding:14px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:10px;">Candidate Ranking</div>
+          <div id="leaderboard-content"></div>
+          <div id="leaderboard-note" style="font-size:11px; color:var(--text-muted); margin-top:12px;"></div>
         </div>
         <!-- Winner-only: podium card -->
         <div id="podium-panel" style="display:none; padding:14px;">
@@ -189,52 +202,90 @@
     var pieChartInst = null;
 
     // ── Right panel helpers ───────────────────────────────────────────────
-    function renderScorePanel(scores, isScoreBased) {
-      var scorePanel = document.getElementById('score-panel');
-      var podiumPanel = document.getElementById('podium-panel');
+    var ALG_NOTES = {
+      1: 'Borda scores reflect positional points (1st = n-1 pts, 2nd = n-2 pts…), not vote counts.',
+      2: 'Veto scores reflect points from all voters except last-place rankings.',
+      3: 'K-Approval scores count how many voters placed each candidate in their top 3.',
+      4: 'Bucklin scores reflect the round in which each candidate reached majority.',
+      5: 'Copeland scores reflect number of head-to-head matchups won against other candidates.',
+      6: 'Maximin scores reflect each candidate\'s best worst-case pairwise result.',
+      7: 'Maximin scores reflect each candidate\'s best worst-case pairwise result.',
+    };
+
+    function renderScorePanel(scores, isScoreBased, algIndex) {
+      var scorePanel     = document.getElementById('score-panel');
+      var leaderboardPanel = document.getElementById('leaderboard-panel');
+      var podiumPanel    = document.getElementById('podium-panel');
+
+      // Hide all panels first
+      scorePanel.style.display = 'none';
+      leaderboardPanel.style.display = 'none';
+      podiumPanel.style.display = 'none';
 
       if (!isScoreBased) {
-        scorePanel.style.display = 'none';
         podiumPanel.style.display = 'block';
         renderPodium(scores);
         return;
       }
 
-      scorePanel.style.display = 'flex';
-      podiumPanel.style.display = 'none';
-
-      // Compute total for percentages
-      var total = Object.values(scores).reduce(function(a,b){ return a + (b||0); }, 0);
-      var breakdownEl = document.getElementById('candidate-breakdown');
-      breakdownEl.innerHTML = '';
-      candidateNames.forEach(function(name) {
-        var color = candidateColors[name] || '#999';
-        var val = scores[name] || 0;
-        var pct = total > 0 ? Math.round(100 * val / total) : 0;
-        breakdownEl.innerHTML +=
-          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
-          + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>'
-          + '<div style="flex:1;min-width:0;">'
-          + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
-          + '<div style="font-size:11px;color:var(--text-muted);">' + val + ' · ' + pct + '%</div>'
-          + '</div>'
-          + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + pct + '%</div>'
-          + '</div>';
-      });
-
-      // Update pie chart
-      if (pieChartInst) { pieChartInst.destroy(); pieChartInst = null; }
-      if (candidateNames.length > 0 && total > 0) {
-        pieChartInst = new Chart(document.getElementById('vote-pie-chart'), {
-          type: 'pie',
-          data: {
-            labels: candidateNames,
-            datasets: [{ data: candidateNames.map(function(c){ return scores[c]||0; }),
-              backgroundColor: candidateNames.map(function(c){ return candidateColors[c]||'#999'; }),
-              borderWidth: 2, borderColor: '#fff' }]
-          },
-          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+      if (algIndex === 0) {
+        // Plurality — pie chart with vote percentages
+        scorePanel.style.display = 'flex';
+        var total = Object.values(scores).reduce(function(a,b){ return a + (b||0); }, 0);
+        var breakdownEl = document.getElementById('candidate-breakdown');
+        breakdownEl.innerHTML = '';
+        candidateNames.forEach(function(name) {
+          var color = candidateColors[name] || '#999';
+          var count = scores[name] || 0;
+          var pct = total > 0 ? Math.round(100 * count / total) : 0;
+          breakdownEl.innerHTML +=
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+            + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>'
+            + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+            + '<div style="font-size:11px;color:var(--text-muted);">' + count + ' vote' + (count!==1?'s':'') + ' · ' + pct + '%</div>'
+            + '</div>'
+            + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + pct + '%</div>'
+            + '</div>';
         });
+        if (pieChartInst) { pieChartInst.destroy(); pieChartInst = null; }
+        if (candidateNames.length > 0 && total > 0) {
+          pieChartInst = new Chart(document.getElementById('vote-pie-chart'), {
+            type: 'pie',
+            data: {
+              labels: candidateNames,
+              datasets: [{ data: candidateNames.map(function(c){ return scores[c]||0; }),
+                backgroundColor: candidateNames.map(function(c){ return candidateColors[c]||'#999'; }),
+                borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+          });
+        }
+      } else {
+        // Other score-based — ranked leaderboard
+        leaderboardPanel.style.display = 'block';
+        var sorted = candidateNames.slice().sort(function(a, b) {
+          return (scores[b] || 0) - (scores[a] || 0);
+        });
+        var topScore = scores[sorted[0]] || 0;
+        var content = document.getElementById('leaderboard-content');
+        content.innerHTML = '';
+        sorted.forEach(function(name, i) {
+          var score = scores[name] !== undefined ? scores[name] : '—';
+          var isFirst = (score === topScore);
+          var color = candidateColors[name] || '#999';
+          var medals = ['🥇','🥈','🥉'];
+          var rankLabel = i < 3 ? medals[i] : '#' + (i+1);
+          content.innerHTML +=
+            '<div class="lb-row ' + (isFirst ? 'lb-first' : 'lb-other') + '">'
+            + '<span class="lb-rank">' + rankLabel + '</span>'
+            + '<span class="lb-dot" style="background:' + color + ';"></span>'
+            + '<span class="lb-name">' + name + '</span>'
+            + '<span class="lb-score">' + score + '</span>'
+            + '</div>';
+        });
+        var note = document.getElementById('leaderboard-note');
+        note.textContent = ALG_NOTES[algIndex] || '';
       }
     }
 
@@ -407,7 +458,7 @@
       .catch(function(e){ console.error('Map load error:', e); });
 
     // ── Initial right panel (plurality) ──────────────────────────────────
-    renderScorePanel(firstChoiceCounts, true);
+    renderScorePanel(firstChoiceCounts, true, 0);
 
     // ── Algorithm dropdown AJAX ──────────────────────────────────────────
     var algSelect = document.getElementById('alg-select');
@@ -432,7 +483,7 @@
           mapAlgLabel.textContent = 'colored by leading candidate (' + algName + ')';
 
           refreshMapColors(currentDistrictWinners, currentDistrictVoteCounts, data.district_scores || {}, currentIsScoreBased);
-          renderScorePanel(currentStatewideScores, currentIsScoreBased);
+          renderScorePanel(currentStatewideScores, currentIsScoreBased, algIdx);
           refreshDistrictTable(currentDistrictWinners, currentDistrictVoteCounts, algName);
         })
         .catch(function(e){ console.error('Algorithm fetch error:', e); })
