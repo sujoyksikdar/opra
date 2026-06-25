@@ -51,8 +51,8 @@
           style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; resize:vertical; box-sizing:border-box;"></textarea>
       </div>
 
-      <!-- State & District -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+      <!-- State, District & Year -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 140px; gap:16px; margin-bottom:18px;">
         <div>
           <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;" for="state">
             State <span style="color:var(--red);">*</span>
@@ -70,6 +70,14 @@
             style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
             <option value="">Select a state first…</option>
           </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:6px;" for="year">
+            Year <span style="color:var(--red);">*</span>
+          </label>
+          <input type="number" id="year" name="year" min="2000" max="2100"
+            placeholder="e.g. 2026"
+            style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; color:var(--text); background:var(--surface); font-family:'DM Sans',sans-serif; outline:none; box-sizing:border-box;">
         </div>
       </div>
 
@@ -152,6 +160,10 @@
     }
     if (!document.getElementById('district').value) {
       alert("Please select a district.");
+      return false;
+    }
+    if (!document.getElementById('year').value) {
+      alert("Please enter a year.");
       return false;
     }
   }

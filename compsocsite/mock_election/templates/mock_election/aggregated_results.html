@@ -2,7 +2,7 @@
 {% load static %}
 {% load mock_election_extra %}
 
-{% block title %}Aggregated Results – {{ state }} – OPRA{% endblock %}
+{% block title %}Aggregated Results – {{ state }} {{ year }} – OPRA{% endblock %}
 {% block nav_mock %}active{% endblock %}
 
 {% block extra_head %}
@@ -47,7 +47,7 @@
           My Polls
         </a>
       </div>
-      <h1>Aggregated Results – {{ state }}</h1>
+      <h1>Aggregated Results – {{ state }} {{ year }}</h1>
       <p style="font-size:13px; color:var(--text-muted);">{{ total_polls }} poll{{ total_polls|pluralize }} · {{ total_responses }} total response{{ total_responses|pluralize }}</p>
     </div>
 
@@ -163,7 +163,7 @@
     var candidateNames   = {{ candidates_json|safe }};
     var stateName        = "{{ state|escapejs }}";
     var firstChoiceCounts = {{ statewide_first_choice_json|safe }};
-    var apiBase = "{% url 'mock_election:district_winners_api' state=state %}";
+    var apiBase = "{% url 'mock_election:district_winners_api' state=state year=year %}";
     var algNames = {{ candidates_json|safe }};  // placeholder — overwritten per alg
 
     var DEFAULT_COLOR = '#aab8c8';

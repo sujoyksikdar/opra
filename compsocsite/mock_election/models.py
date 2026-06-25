@@ -73,6 +73,7 @@ class MockElectionQuestion(models.Model):
     allow_self_sign_up = models.IntegerField(default=0)
     state = models.CharField(max_length=100, blank=True, default="")
     district = models.CharField(max_length=100, blank=True, default="")
+    year = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.question_text

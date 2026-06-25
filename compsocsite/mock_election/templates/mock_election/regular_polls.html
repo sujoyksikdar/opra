@@ -115,6 +115,39 @@
     <button class="opra-pill" onclick="setFilter('paused', this)">Paused</button>
   </div>
 
+  <!-- Year filter -->
+  {% if filter_years %}
+  <div style="display:flex; align-items:center; gap:6px;">
+    <label style="font-size:12px; color:var(--text-muted);">Year:</label>
+    <select id="year-filter" onchange="filterCards()" style="font-size:12px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer;">
+      <option value="">All</option>
+      {% for y in filter_years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <!-- State filter -->
+  {% if filter_states %}
+  <div style="display:flex; align-items:center; gap:6px;">
+    <label style="font-size:12px; color:var(--text-muted);">State:</label>
+    <select id="state-filter" onchange="filterCards()" style="font-size:12px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer;">
+      <option value="">All</option>
+      {% for s in filter_states %}<option value="{{ s|lower }}">{{ s }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <!-- Sort -->
+  <div style="display:flex; align-items:center; gap:6px;">
+    <label style="font-size:12px; color:var(--text-muted);">Sort:</label>
+    <select id="sort-select" onchange="sortCards()" style="font-size:12px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); cursor:pointer;">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+      <option value="year-desc">Year (newest)</option>
+      <option value="year-asc">Year (oldest)</option>
+    </select>
+  </div>
+
 </div>
 
 <!-- ── Poll grid – Created ───────────────────────────────────────────────────── -->
@@ -123,7 +156,10 @@
   {% for question in polls_created %}
   <div class="opra-card opra-poll-card poll-card-item"
        data-title="{{ question.question_text|lower }}"
-       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
+       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}"
+       data-year="{{ question.year|default:'' }}"
+       data-state="{{ question.state|lower }}"
+       data-pubdate="{{ question.pub_date|date:'U' }}">
 
     <!-- Header: voter count + status badge -->
     <div class="opra-poll-card-header">
@@ -152,7 +188,7 @@
         {% if question.state %}
         <div style="font-size:11px; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:4px;">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-          {% if question.district %}{{ question.district }}, {% endif %}{{ question.state }}
+          {% if question.district %}{{ question.district }}, {% endif %}{{ question.state }}{% if question.year %} · {{ question.year }}{% endif %}
         </div>
         {% endif %}
       </div>
@@ -307,7 +343,10 @@
   {% for question in polls_participated %}
   <div class="opra-card opra-poll-card poll-card-item-p"
        data-title="{{ question.question_text|lower }}"
-       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}">
+       data-status="{% if question.status == 1 %}draft{% elif question.status == 2 %}active{% elif question.status == 3 %}ended{% elif question.status == 4 %}paused{% endif %}"
+       data-year="{{ question.year|default:'' }}"
+       data-state="{{ question.state|lower }}"
+       data-pubdate="{{ question.pub_date|date:'U' }}">
 
     <div class="opra-poll-card-header">
       <div>
@@ -419,21 +458,49 @@
   }
 
   function filterCards() {
-    var query   = document.getElementById('poll-filter-input').value.toLowerCase();
-    var sel     = currentTab === 'created' ? '.poll-card-item' : '.poll-card-item-p';
-    var noResId = currentTab === 'created' ? 'no-results-msg' : 'no-results-msg-p';
-    var cards   = document.querySelectorAll(sel);
-    var visible = 0;
+    var query       = document.getElementById('poll-filter-input').value.toLowerCase();
+    var yearEl      = document.getElementById('year-filter');
+    var stateEl     = document.getElementById('state-filter');
+    var yearFilter  = yearEl  ? yearEl.value  : '';
+    var stateFilter = stateEl ? stateEl.value : '';
+    var sel         = currentTab === 'created' ? '.poll-card-item' : '.poll-card-item-p';
+    var noResId     = currentTab === 'created' ? 'no-results-msg' : 'no-results-msg-p';
+    var cards       = document.querySelectorAll(sel);
+    var visible     = 0;
 
     cards.forEach(function(card) {
       var titleMatch  = card.dataset.title.includes(query);
       var statusMatch = (currentFilter === 'all') || (card.dataset.status === currentFilter);
-      var show = titleMatch && statusMatch;
+      var yearMatch   = !yearFilter  || (card.dataset.year  === yearFilter);
+      var stateMatch  = !stateFilter || (card.dataset.state === stateFilter);
+      var show = titleMatch && statusMatch && yearMatch && stateMatch;
       card.style.display = show ? '' : 'none';
       if (show) visible++;
     });
 
     document.getElementById(noResId).style.display = (visible === 0 && cards.length > 0) ? 'block' : 'none';
+  }
+
+  function sortCards() {
+    var sortVal = document.getElementById('sort-select').value;
+    var gridId  = currentTab === 'created' ? 'grid-created' : 'grid-participated';
+    var sel     = currentTab === 'created' ? '.poll-card-item' : '.poll-card-item-p';
+    var grid    = document.getElementById(gridId);
+    var cards   = Array.from(document.querySelectorAll(sel));
+
+    cards.sort(function(a, b) {
+      if (sortVal === 'year-asc') {
+        return (parseInt(a.dataset.year) || 0) - (parseInt(b.dataset.year) || 0);
+      } else if (sortVal === 'year-desc') {
+        return (parseInt(b.dataset.year) || 0) - (parseInt(a.dataset.year) || 0);
+      } else if (sortVal === 'oldest') {
+        return (parseInt(a.dataset.pubdate) || 0) - (parseInt(b.dataset.pubdate) || 0);
+      } else {
+        return (parseInt(b.dataset.pubdate) || 0) - (parseInt(a.dataset.pubdate) || 0);
+      }
+    });
+
+    cards.forEach(function(card) { grid.appendChild(card); });
   }
 </script>
 {% endblock %}

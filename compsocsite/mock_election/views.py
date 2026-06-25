@@ -132,6 +132,11 @@ class RegularPollsView(views.generic.ListView):
             q.display_title = truncate(q.question_text, 30)
             q.display_desc  = truncate(q.question_desc, 40) if q.question_desc else ''
 
+        # Unique years and states for filter dropdowns (from created polls only)
+        all_polls = ctx['polls_created'] + ctx['polls_participated']
+        ctx['filter_years'] = sorted(set(q.year for q in all_polls if q.year), reverse=True)
+        ctx['filter_states'] = sorted(set(q.state for q in all_polls if q.state))
+
         self.request.session['questionType'] = 1
         return ctx
 
@@ -529,6 +534,8 @@ def AddStep1View(request):
         imageURL = request.POST['imageURL']
         state = request.POST.get('state', '').strip()
         district = request.POST.get('district', '').strip()
+        year_str = request.POST.get('year', '').strip()
+        year = int(year_str) if year_str.isdigit() else None
 
         tie=False
         t = request.POST.getlist('allowties')
@@ -546,7 +553,7 @@ def AddStep1View(request):
                             emailDelete=request.user.userprofile.emailDelete,
                             emailStart=request.user.userprofile.emailStart,
                             emailStop=request.user.userprofile.emailStop, creator_pref=1,allowties=tie,
-                            state=state, district=district)
+                            state=state, district=district, year=year)
         if request.FILES.get('docfile') != None:
             question.image = request.FILES.get('docfile')
         elif imageURL != '':
@@ -1535,38 +1542,40 @@ class AggregatedResultsView(views.generic.TemplateView):
 
     def get(self, request, *args, **kwargs):
         state = self.kwargs['state']
-        # Only allow admins of at least one poll in this state
+        year = int(self.kwargs['year'])
         polls = MockElectionQuestion.objects.filter(
             state=state,
+            year=year,
             question_owner=request.user
         )
         if not polls.exists():
             from django.http import Http404
-            raise Http404("No polls found for this state.")
+            raise Http404("No polls found for this state and year.")
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         state = self.kwargs['state']
+        year = int(self.kwargs['year'])
         algorithms = getListPollAlgorithms()
 
-        # All polls in this state owned by this user
+        # All polls in this state and year owned by this user
         all_polls = MockElectionQuestion.objects.filter(
             state=state,
+            year=year,
             question_owner=self.request.user
         )
 
-        # Build unified candidate map from all polls (assume same candidates)
-        # Use first poll's candidates as reference
-        first_poll = all_polls.first()
-        if not first_poll:
+        if not all_polls.exists():
             ctx['state'] = state
+            ctx['year'] = year
             ctx['no_results'] = True
             return ctx
 
-        items = list(first_poll.mockelectionitem_set.all())
-        cand_map = getCandidateMapFromList(items)
-        candidate_names = [item.item_text for item in items]
+        # Build unified candidate map from ALL polls — captures extra candidates
+        # in polls that don't match the first poll's candidate set
+        cand_map = buildUnifiedCandMap(all_polls)
+        candidate_names = [item.item_text for item in cand_map.values()]
 
         # ── Per-district results ────────────────────────────────────────────
         # Group polls by district, aggregate all responses per district
@@ -1678,6 +1687,7 @@ class AggregatedResultsView(views.generic.TemplateView):
         )
 
         ctx['state'] = state
+        ctx['year'] = year
         ctx['algorithms'] = algorithms
         ctx['candidate_names'] = candidate_names
         ctx['candidate_colors'] = candidate_colors
@@ -1752,11 +1762,11 @@ def runSingleAlgorithm(profile, cand_map, alg_index):
 
 class DistrictWinnersAPIView(views.generic.View):
     """
-    AJAX endpoint: GET /mock_election/aggregated/<state>/district_winners/?alg=<index>
+    AJAX endpoint: GET /mock_election/aggregated/<state>/<year>/district_winners/?alg=<index>
     Returns district winners and statewide scores for the given algorithm.
     """
 
-    def get(self, request, state):
+    def get(self, request, state, year):
         from django.http import JsonResponse, Http404
 
         if not request.user.is_authenticated:
@@ -1767,14 +1777,13 @@ class DistrictWinnersAPIView(views.generic.View):
         except (ValueError, TypeError):
             alg_index = 0
 
-        polls = MockElectionQuestion.objects.filter(state=state, question_owner=request.user)
+        polls = MockElectionQuestion.objects.filter(state=state, year=int(year), question_owner=request.user)
         if not polls.exists():
             raise Http404("No polls found for this state.")
 
-        first_poll = polls.first()
-        items = list(first_poll.mockelectionitem_set.all())
-        cand_map = getCandidateMapFromList(items)
-        candidate_names = [item.item_text for item in items]
+        # Build unified candidate map from ALL polls — captures extra candidates
+        cand_map = buildUnifiedCandMap(polls)
+        candidate_names = [item.item_text for item in cand_map.values()]
 
         # Per-district vote counts (first-choice)
         district_vote_counts = {}
@@ -2112,6 +2121,23 @@ def translateBinaryWinnerList(winners, cand_map):
         else:
             result[cand] = 0
     return result
+
+def buildUnifiedCandMap(all_polls):
+    """
+    Builds a unified candidate map from ALL polls, not just the first one.
+    Collects every unique candidate name across all polls and assigns a stable index.
+    Candidates from the first poll come first (preserving original order), then any
+    extra candidates from subsequent polls are appended in the order they are found.
+    Returns {0: item, 1: item, ...} using item objects from whichever poll first
+    introduced that candidate.
+    """
+    seen = {}   # candidate name -> item object
+    for poll in all_polls:
+        for item in poll.mockelectionitem_set.all():
+            if item.item_text not in seen:
+                seen[item.item_text] = item
+    return {idx: item for idx, item in enumerate(seen.values())}
+
 
 def buildUnifiedProfile(all_polls, unified_cand_map):
     """

@@ -132,6 +132,6 @@ urlpatterns = [
     re_path(r'^(?P<question_id>[0-9]+)/upload_single_image/$', views.upload_single_image, name='upload_single_image'),
 
     # aggregated results
-    re_path(r'^aggregated/(?P<state>[^/]+)/$', login_required(views.AggregatedResultsView.as_view()), name='aggregated_results'),
-    re_path(r'^aggregated/(?P<state>[^/]+)/district_winners/$', login_required(views.DistrictWinnersAPIView.as_view()), name='district_winners_api'),
+    re_path(r'^aggregated/(?P<state>[^/]+)/(?P<year>[0-9]+)/$', login_required(views.AggregatedResultsView.as_view()), name='aggregated_results'),
+    re_path(r'^aggregated/(?P<state>[^/]+)/(?P<year>[0-9]+)/district_winners/$', login_required(views.DistrictWinnersAPIView.as_view()), name='district_winners_api'),
 ]
