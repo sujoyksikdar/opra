@@ -1,0 +1,128 @@
+{% extends "user_guide_base.html" %}
+{% block title %}Mock Election — OPRA User Guide{% endblock %}
+{% block nav_mock %}active{% endblock %}
+
+{% block ug_content %}
+<div class="ug-page-title">Mock Election</div>
+<p class="ug-page-intro">
+  The Mock Election tab lets you run ranked-choice voting simulations across congressional districts. You can create polls for specific districts, collect ranked preferences from voters, and view results both per-poll and aggregated across an entire state and year.
+</p>
+
+<!-- Creating a Poll -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Creating a Mock Election Poll</div>
+  <p style="font-size:13.5px; color:#4b5563; margin-bottom:14px;">Click <strong>"Mock Election"</strong> in the sidebar, then click <strong>"Create New"</strong>.</p>
+
+  <div class="ug-h3">Step 1 — Basic Info</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span><strong>Question Title</strong> — A unique name (e.g. "Texas District 5 – 2026 Election").</span></li>
+    <li><span class="ug-step-num">2</span><span><strong>Description</strong> — Optional context for voters.</span></li>
+    <li><span class="ug-step-num">3</span><span><strong>State</strong> — Select the US state this poll belongs to.</span></li>
+    <li><span class="ug-step-num">4</span><span><strong>District</strong> — Select the congressional district. The dropdown is populated automatically based on the selected state.</span></li>
+    <li><span class="ug-step-num">5</span><span><strong>Year</strong> — Enter the election year (e.g. 2026). This groups polls together for aggregated results.</span></li>
+    <li><span class="ug-step-num">6</span><span><strong>Allow Ties</strong> — Whether voters can rank two candidates equally.</span></li>
+  </ul>
+
+  <div class="ug-h3">Step 2 — Add Candidates</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span>Enter a candidate name and click <strong>"+"</strong> to add them. Optionally add a photo.</span></li>
+    <li><span class="ug-step-num">2</span><span>Repeat until all candidates are added.</span></li>
+    <li><span class="ug-step-num">3</span><span>Click <strong>"×"</strong> to remove a candidate.</span></li>
+  </ul>
+
+  <div class="ug-note">
+    <span class="ug-note-icon">&#9432;</span>
+    <span>All polls in the same <strong>state</strong> and <strong>year</strong> should use identical candidate names. Spelling differences (e.g. "Alice Smith" vs "Alice") will be treated as separate candidates in the aggregated results.</span>
+  </div>
+
+  <div class="ug-h3">Step 3 — Invite Voters</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span>Search for registered OPRA users by username and add them.</span></li>
+    <li><span class="ug-step-num">2</span><span>Add or remove entire groups of users at once.</span></li>
+    <li><span class="ug-step-num">3</span><span>Check <strong>"Email announcement"</strong> to notify users when added.</span></li>
+    <li><span class="ug-step-num">4</span><span>Bulk-invite via comma-separated email addresses in the CSV field.</span></li>
+  </ul>
+
+  <div class="ug-h3">Step 4 — Settings</div>
+  <p style="font-size:13.5px; color:#4b5563;">Configure algorithms, visibility, and UI preferences the same way as regular polls.</p>
+</div>
+
+<!-- Voting -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Voting in a Mock Election</div>
+  <p style="font-size:13.5px; color:#4b5563;">
+    Voters rank the candidates in order of preference using any available UI (two-column drag, one-column, sliders, stars, etc.). Rank 1 is the most preferred candidate.
+  </p>
+</div>
+
+<!-- Poll Settings -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Poll Settings</div>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span><strong>Start / Pause / Stop</strong> the poll using the status buttons.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Recalculate Result</strong> — Re-run the voting algorithms after the poll ends.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Location</strong> — Shows the district, state, and year assigned to this poll.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Aggregated Results</strong> — Visible once the poll has a state and year set and has been started or ended. Takes you to the statewide aggregated view.</span></li>
+  </ul>
+</div>
+
+<!-- Aggregated Results -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Aggregated Results</div>
+  <p style="font-size:13.5px; color:#4b5563; margin-bottom:14px;">
+    The Aggregated Results page combines votes from <strong>all polls in the same state and year</strong> to show a unified statewide picture. Navigate here from Poll Settings → <strong>"Aggregated Results"</strong>.
+  </p>
+
+  <div class="ug-h3">District Map</div>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span>An interactive map of the selected state with congressional districts colored by the leading candidate.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Algorithm dropdown</strong> (top right) — Select any of the 16 supported voting algorithms. The map recolors automatically without a page reload.</span></li>
+    <li><span class="ug-bullet-dot"></span><span>Algorithms marked <em>(may be slow)</em> are elimination-round algorithms (STV, Baldwin, Coombs, etc.) that take longer to compute.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Sidebar (left)</strong> — Lists all districts with checkboxes. Uncheck a district to hide it from the map.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Hover over a district</strong> — Shows the winner and vote breakdown for that district.</span></li>
+    <li><span class="ug-bullet-dot"></span><span>Grey districts have no votes yet.</span></li>
+  </ul>
+
+  <div class="ug-h3">Right Panel</div>
+  <table class="ug-table">
+    <thead><tr><th>Algorithm</th><th>What is shown</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Plurality</strong></td>
+        <td>Pie chart with first-choice vote counts and percentages.</td>
+      </tr>
+      <tr>
+        <td><strong>Other score-based</strong> <span class="badge-pill badge-gray">Borda, Veto, Copeland…</span></td>
+        <td>Ranked leaderboard — candidates ordered by score with medals and a note explaining what the scores mean.</td>
+      </tr>
+      <tr>
+        <td><strong>Winner-only</strong> <span class="badge-pill badge-gray">STV, Baldwin, Coombs…</span></td>
+        <td>Winner Podium card — winner highlighted with a trophy, runners-up listed below.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="ug-h3">Statewide Algorithm Comparison Table</div>
+  <p style="font-size:13.5px; color:#4b5563;">Shows results for all 16 algorithms side by side from combined votes across all polls in the state and year. Useful for comparing how different voting methods affect the outcome.</p>
+
+  <div class="ug-h3">District Winners Table</div>
+  <p style="font-size:13.5px; color:#4b5563;">Lists each district, its winning candidate, and the first-choice vote breakdown per candidate. Updates when you change the algorithm dropdown.</p>
+</div>
+
+<!-- Filtering -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Filtering and Sorting Polls</div>
+  <p style="font-size:13.5px; color:#4b5563; margin-bottom:10px;">On the Mock Election polls list page you can:</p>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span><strong>Search</strong> polls by name using the search box.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Filter by status</strong> using the status pills (All / Active / Draft / Ended / Paused).</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Filter by Year</strong> — Select a year from the Year dropdown to show only polls from that year.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Filter by State</strong> — Select a state from the State dropdown to show only polls in that state.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Sort</strong> — Sort polls by newest, oldest, or by election year (ascending or descending).</span></li>
+  </ul>
+  <div class="ug-note">
+    <span class="ug-note-icon">&#9432;</span>
+    <span>The Year and State dropdowns only appear if you have polls with those fields set.</span>
+  </div>
+</div>
+{% endblock %}

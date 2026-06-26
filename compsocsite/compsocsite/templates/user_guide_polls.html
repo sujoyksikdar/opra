@@ -1,0 +1,81 @@
+{% extends "user_guide_base.html" %}
+{% block title %}Polls — OPRA User Guide{% endblock %}
+{% block nav_polls %}active{% endblock %}
+
+{% block ug_content %}
+<div class="ug-page-title">Polls</div>
+<p class="ug-page-intro">
+  Use Polls to collect ranked preferences from a group of users. Click the <strong>Polls</strong> tab in the left sidebar after logging in. You can create new polls, view polls you created, and see polls you've been invited to participate in. Use the search box to filter polls by name.
+</p>
+
+<!-- Poll Creation -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Creating a Poll</div>
+  <p style="font-size:13.5px; color:#4b5563; margin-bottom:14px;">Click <strong>"Create New"</strong> and complete the four configuration steps.</p>
+
+  <div class="ug-h3">Step 1 — Basic Info</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span><strong>Title</strong> — Give a unique name to your poll.</span></li>
+    <li><span class="ug-step-num">2</span><span><strong>Description</strong> — Add meaningful context for voters.</span></li>
+    <li><span class="ug-step-num">3</span><span><strong>Question type</strong> — Select <em>Poll</em> (pre-selected) for voting, or <em>Allocation</em> for resource allocation.</span></li>
+    <li><span class="ug-step-num">4</span><span><strong>Allow Ties</strong> — Let voters assign equal preference to multiple options.</span></li>
+  </ul>
+
+  <div class="ug-h3">Step 2 — Alternatives</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span>Enter an option name and optionally attach a photo.</span></li>
+    <li><span class="ug-step-num">2</span><span>Click <strong>"+"</strong> to add it. Repeat until all options are added.</span></li>
+    <li><span class="ug-step-num">3</span><span>Click <strong>"×"</strong> to remove an option.</span></li>
+  </ul>
+
+  <div class="ug-h3">Step 3 — Invite Users</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span>Search for registered OPRA users by username and add them.</span></li>
+    <li><span class="ug-step-num">2</span><span>Add or remove entire groups of users at once.</span></li>
+    <li><span class="ug-step-num">3</span><span>Check <strong>"Email announcement"</strong> to notify users when added/removed. The email text is pre-populated but editable.</span></li>
+    <li><span class="ug-step-num">4</span><span>Under <em>Add Users with CSV</em>, enter comma-separated email addresses to bulk-invite. Users not registered with OPRA will receive an invite email and are automatically added once they register.</span></li>
+  </ul>
+
+  <div class="ug-h3">Step 4 — Algorithms, Visibility &amp; UI</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span><strong>Algorithms</strong> — Select which algorithms compute and display results.</span></li>
+    <li><span class="ug-step-num">2</span><span><strong>Visibility</strong> — Control whether voters can see other responses and whether they remain anonymous.</span></li>
+    <li><span class="ug-step-num">3</span><span><strong>Accessibility</strong> — Set who can participate and whether self sign-up is allowed.</span></li>
+    <li><span class="ug-step-num">4</span><span><strong>UI for preferences</strong> — Choose which voting UI(s) voters can use.</span></li>
+  </ul>
+</div>
+
+<!-- Poll Settings -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Poll Settings</div>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span>Access from the poll detail page to modify selected configurations after creation.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Preference Management</strong> — View and delete submitted preferences (based on visibility settings).</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Email</strong> — Opt-in to notify voters when the poll starts and stops. Email text is pre-populated but editable.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>Duplicate / Delete</strong> — Duplicate the poll at its current state, or permanently delete it.</span></li>
+  </ul>
+</div>
+
+<!-- Voting UIs -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Voting UIs</div>
+  <table class="ug-table">
+    <thead><tr><th>UI</th><th>How it works</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Two Columns</strong></td><td>Drag options from the right column to the left to set your preference order.</td></tr>
+      <tr><td><strong>One Column</strong></td><td>Rank all options in a single sortable list.</td></tr>
+      <tr><td><strong>Sliders</strong></td><td>Use sliders to assign numeric preference scores.</td></tr>
+      <tr><td><strong>Stars</strong></td><td>Rate each option with a star rating.</td></tr>
+      <tr><td><strong>Yes / No</strong></td><td>Approve or reject each option.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Results -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Poll Results</div>
+  <p style="font-size:13.5px; color:#4b5563;">
+    Results are calculated based on the algorithms selected during poll creation and displayed on the Results page once the poll ends or is stopped.
+  </p>
+</div>
+{% endblock %}

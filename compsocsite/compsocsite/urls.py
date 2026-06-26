@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.views.generic.base import RedirectView
 from django.conf import settings
 from django.views.static import serve
+from django.views.generic import TemplateView
 from appauth import views
 from polls.views import sendMessage
 from polls.views import CourseMatchListView
@@ -38,11 +39,12 @@ urlpatterns = [
     re_path(r'^socialSignup/$', views.socialSignup, name='socialSignup'),
     re_path('accounts/', include('allauth.urls')),  
     
-    # user_guide 
-    # re_path(r'^docs/$', serve, {'path': 'index.html', 'document_root': 'static/user_guide_vitepress/docs/.vitepress/dist'}),
-    re_path(r'^user_docs/$', serve, {'path': 'index.html', 'document_root': 'static/user_guide_vitepress/docs/.vitepress/dist'}),
-    re_path(r'^user_docs/assets/(?P<path>.*)$', serve, {'document_root':'static/user_guide_vitepress/docs/.vitepress/dist/assets'}),
-    re_path('hashmap.json', serve, {'path': 'hashmap.json', 'document_root': 'static/user_guide_vitepress/docs/.vitepress/dist'}),      
+    # user_guide (Django templates — replaces VitePress static files)
+    re_path(r'^user_docs/$', RedirectView.as_view(url='/user_docs/polls/'), name='user_guide'),
+    re_path(r'^user_docs/polls/$', TemplateView.as_view(template_name='user_guide_polls.html'), name='user_guide_polls'),
+    re_path(r'^user_docs/allocations/$', TemplateView.as_view(template_name='user_guide_allocations.html'), name='user_guide_allocations'),
+    re_path(r'^user_docs/groups/$', TemplateView.as_view(template_name='user_guide_groups.html'), name='user_guide_groups'),
+    re_path(r'^user_docs/mock-election/$', TemplateView.as_view(template_name='user_guide_mock_election.html'), name='user_guide_mock_election'),
     
     # custom
     re_path(r'^soccoursematch$', CourseMatchListView.as_view(), name='soccoursematch'),

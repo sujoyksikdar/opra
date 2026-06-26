@@ -1446,12 +1446,13 @@ class VoteResultsView(views.generic.DetailView):
         vote_results = []
         margin_victory = []
         shade_values = []
+        algorithm_indices = []
 
         start_poll_algorithms = getListPollAlgorithms()
         start_algorithm_links = getListAlgorithmLinks()
         to_show = self.object.vote_rule
         print(f"  - vote_rule bitmask: {to_show}")
-        
+
         itr = 0
         poll_alg_num = self.object.poll_algorithm
         while to_show > 0:
@@ -1462,14 +1463,15 @@ class VoteResultsView(views.generic.DetailView):
                 shade_values.append(l[2][itr])
                 if itr < len(l[1]):
                     margin_victory.append(l[1][itr])
+                algorithm_indices.append(itr)
                 to_show = to_show - 1
             elif itr < self.object.poll_algorithm - 1:
                 poll_alg_num -= 1
             to_show = int(to_show / 2)
             itr += 1
-            
+
         print(f"  - Algorithms to display: {poll_algorithms}")
-        
+
         ctx['poll_algorithms'] = poll_algorithms
         ctx['poll_alg_num'] = poll_alg_num
         ctx['algorithm_links'] = algorithm_links
@@ -1480,15 +1482,18 @@ class VoteResultsView(views.generic.DetailView):
         ctx['wmg_edges'] = l[4]
         ctx['time'] = final_result.timestamp
         ctx['margin_len'] = len(margin_victory)
+        ctx['algorithm_indices'] = algorithm_indices
+        ctx['algorithm_indices_json'] = json.dumps(algorithm_indices)
 
         m = len(mixtures_pl1) - 1
         ctx['mixtures_pl1'] = mixtures_pl1
         ctx['mixtures_pl2'] = mixtures_pl2
         ctx['mixtures_pl3'] = mixtures_pl3
 
-        # First-choice vote counts for pie chart
+        # First-choice vote counts + per-algorithm score dicts for right panel
         items = list(self.object.mockelectionitem_set.all())
         item_id_map = {str(item.id): item.item_text for item in items}
+        item_names = [item.item_text for item in items]
         first_choice_counts = {}
         for response in self.object.mockelectionresponse_set.filter(active=1):
             pref_order = getPrefOrder(response.resp_str, self.object)
@@ -1497,7 +1502,16 @@ class VoteResultsView(views.generic.DetailView):
                 name = item_id_map.get(first_item, first_item)
                 first_choice_counts[name] = first_choice_counts.get(name, 0) + 1
         ctx['first_choice_counts_json'] = json.dumps(first_choice_counts)
-        ctx['candidates_json'] = json.dumps([item.item_text for item in items])
+        ctx['candidates_json'] = json.dumps(item_names)
+
+        # Build vote_results as list of {name: score} dicts for JS right panel
+        vote_results_dicts = []
+        for scores_list in vote_results:
+            d = {}
+            for i, name in enumerate(item_names):
+                d[name] = scores_list[i] if i < len(scores_list) else 0
+            vote_results_dicts.append(d)
+        ctx['vote_results_json'] = json.dumps(vote_results_dicts)
 
         # Get previous winners for the history table
         previous_results = self.object.mockelectionvoteresult_set.all()

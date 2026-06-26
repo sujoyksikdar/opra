@@ -1,0 +1,42 @@
+{% extends "user_guide_base.html" %}
+{% block title %}Groups — OPRA User Guide{% endblock %}
+{% block nav_groups %}active{% endblock %}
+
+{% block ug_content %}
+<div class="ug-page-title">Groups</div>
+<p class="ug-page-intro">
+  Groups let you bundle users together so you can add them to polls and allocations all at once. Click the <strong>Groups</strong> tab in the sidebar to see and manage your groups.
+  If a group is <em>open</em>, any OPRA user can join it. If it's <em>closed</em>, only the creator can add members.
+</p>
+
+<!-- Creating a Group -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Creating a Group</div>
+  <ul class="ug-steps">
+    <li><span class="ug-step-num">1</span><span>Click the <strong>"+"</strong> icon on the Groups page.</span></li>
+    <li><span class="ug-step-num">2</span><span>Give the group a name and set whether it is open or closed.</span></li>
+    <li><span class="ug-step-num">3</span><span>Search for and add members to the group.</span></li>
+  </ul>
+</div>
+
+<!-- Managing Members -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Managing Members</div>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span>After creation, open the group detail page to add or remove members at any time.</span></li>
+    <li><span class="ug-bullet-dot"></span><span>Only the creator of the group can add or remove members from a closed group.</span></li>
+  </ul>
+</div>
+
+<!-- Using Groups in Polls -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Using Groups in Polls &amp; Allocations</div>
+  <p style="font-size:13.5px; color:#4b5563; margin-bottom:10px;">
+    When creating or editing a poll or allocation, go to the <strong>Invite Users</strong> step and use the <em>"Add/Remove groups of users"</em> section to add or remove an entire group in one click.
+  </p>
+  <div class="ug-note">
+    <span class="ug-note-icon">&#9432;</span>
+    <span>Adding a group adds all current members of that group to the poll at that moment. Future changes to the group's membership are not automatically reflected in existing polls.</span>
+  </div>
+</div>
+{% endblock %}

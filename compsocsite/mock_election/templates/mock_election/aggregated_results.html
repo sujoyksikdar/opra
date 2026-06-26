@@ -118,6 +118,7 @@
             <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:8px;">Candidate Breakdown</div>
             <div id="candidate-breakdown"></div>
           </div>
+          <div id="plurality-note" style="font-size:11px; color:var(--text-muted);"></div>
         </div>
         <!-- Other score-based: ranked leaderboard -->
         <div id="leaderboard-panel" style="display:none; padding:14px;">
@@ -203,13 +204,22 @@
 
     // ── Right panel helpers ───────────────────────────────────────────────
     var ALG_NOTES = {
-      1: 'Borda scores reflect positional points (1st = n-1 pts, 2nd = n-2 pts…), not vote counts.',
-      2: 'Veto scores reflect points from all voters except last-place rankings.',
-      3: 'K-Approval scores count how many voters placed each candidate in their top 3.',
-      4: 'Bucklin scores reflect the round in which each candidate reached majority.',
-      5: 'Copeland scores reflect number of head-to-head matchups won against other candidates.',
-      6: 'Maximin scores reflect each candidate\'s best worst-case pairwise result.',
-      7: 'Maximin scores reflect each candidate\'s best worst-case pairwise result.',
+      0: 'Plurality counts only each voter\'s top-ranked candidate.',
+      1: 'Borda awards positional points (1st = n−1 pts, 2nd = n−2 pts…) and sums them.',
+      2: 'Veto gives every candidate one point per voter except from those who ranked them last.',
+      3: 'K-Approval counts how many voters placed each candidate in their top 3.',
+      4: 'Bucklin scores reflect the round in which each candidate first reached a majority.',
+      5: 'Copeland scores count head-to-head matchups won minus matchups lost against all others.',
+      6: 'Maximin scores reflect each candidate\'s best worst-case result in pairwise matchups.',
+      7: 'MaxiMin-Duplicate uses the same pairwise logic as Maximin with an alternative tiebreak.',
+      8: 'STV (Single Transferable Vote) eliminates the last-place candidate each round and reallocates their votes.',
+      9: 'Baldwin eliminates the candidate with the lowest Borda score each round until one remains.',
+      10: 'Coombs eliminates the candidate with the most last-place rankings each round.',
+      11: 'Black picks the Condorcet winner if one exists; otherwise falls back to Borda.',
+      12: 'Ranked Pairs locks in pairwise victories from strongest to weakest to determine the winner.',
+      13: 'Plurality With Runoff holds a second round between the top two first-choice vote-getters.',
+      14: 'Borda Mean computes each candidate\'s average Borda score across all voters.',
+      15: 'Simulated Approval approves all candidates ranked above average by each voter.',
     };
 
     function renderScorePanel(scores, isScoreBased, algIndex) {
@@ -222,15 +232,17 @@
       leaderboardPanel.style.display = 'none';
       podiumPanel.style.display = 'none';
 
-      if (!isScoreBased) {
+      if (!isScoreBased || algIndex === 5) {
         podiumPanel.style.display = 'block';
-        renderPodium(scores);
+        renderPodium(scores, algIndex === 5);
         return;
       }
 
       if (algIndex === 0) {
         // Plurality — pie chart with vote percentages
         scorePanel.style.display = 'flex';
+        var pluralityNote = document.getElementById('plurality-note');
+        if (pluralityNote) pluralityNote.textContent = ALG_NOTES[0] || '';
         var total = Object.values(scores).reduce(function(a,b){ return a + (b||0); }, 0);
         var breakdownEl = document.getElementById('candidate-breakdown');
         breakdownEl.innerHTML = '';
@@ -289,16 +301,24 @@
       }
     }
 
-    function renderPodium(scores) {
+    function renderPodium(scores, findByMax) {
       var podiumContent = document.getElementById('podium-content');
       podiumContent.innerHTML = '';
-      // Sort candidates by score (1 = winner, 0 = not winner)
-      var winners = candidateNames.filter(function(c){ return scores[c] === 1; });
-      var runners = candidateNames.filter(function(c){ return !scores[c] || scores[c] === 0; });
-      if (winners.length === 0 && candidateNames.length > 0) {
-        // Fallback: highlight all as "winner" if scores are empty
-        winners = candidateNames.slice(0, 1);
-        runners = candidateNames.slice(1);
+      var winners, runners;
+      if (findByMax) {
+        var sorted = candidateNames.slice().sort(function(a, b) {
+          return (scores[b] || 0) - (scores[a] || 0);
+        });
+        var topScore = scores[sorted[0]] || 0;
+        winners = sorted.filter(function(c){ return scores[c] === topScore; });
+        runners = sorted.filter(function(c){ return scores[c] !== topScore; });
+      } else {
+        winners = candidateNames.filter(function(c){ return scores[c] === 1; });
+        runners = candidateNames.filter(function(c){ return !scores[c] || scores[c] === 0; });
+        if (winners.length === 0 && candidateNames.length > 0) {
+          winners = candidateNames.slice(0, 1);
+          runners = candidateNames.slice(1);
+        }
       }
       winners.forEach(function(name) {
         var color = candidateColors[name] || '#999';

@@ -1,0 +1,65 @@
+{% extends "user_guide_base.html" %}
+{% block title %}Allocations — OPRA User Guide{% endblock %}
+{% block nav_allocations %}active{% endblock %}
+
+{% block ug_content %}
+<div class="ug-page-title">Allocations</div>
+<p class="ug-page-intro">
+  Allocations let you distribute resources among participants based on their preferences. Click the <strong>Allocation</strong> tab in the sidebar. You can create instances, view ones you've created, and see ones you've been invited to participate in. Use the search box to filter by name.
+</p>
+
+<!-- Creating an Allocation -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Creating an Allocation</div>
+  <p style="font-size:13.5px; color:#4b5563; margin-bottom:12px;">
+    Allocation creation follows the same four steps as Poll creation. The key differences are in Step 1 and Step 4.
+  </p>
+
+  <div class="ug-h3">Step 1 — Basic Info</div>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span>Set <strong>Question type</strong> to <em>Allocation</em> instead of Poll.</span></li>
+  </ul>
+
+  <div class="ug-h3">Step 2 — Alternatives &amp; Step 3 — Invite Users</div>
+  <p style="font-size:13.5px; color:#4b5563;">Same as regular poll creation. See the <a href="/user_docs/polls/" style="color:#005D40; font-weight:500;">Polls guide</a> for details.</p>
+
+  <div class="ug-h3">Step 4 — Algorithms &amp; UI</div>
+  <ul class="ug-bullets">
+    <li><span class="ug-bullet-dot"></span><span><strong>Algorithms</strong> — Only one allocation algorithm is currently implemented.</span></li>
+    <li><span class="ug-bullet-dot"></span><span><strong>UI for preferences</strong> — Choose one preference UI. The three UIs cannot co-exist in the same instance (radio buttons, not checkboxes).</span></li>
+  </ul>
+</div>
+
+<!-- Allocation Settings -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Allocation Settings</div>
+  <p style="font-size:13.5px; color:#4b5563;">The Allocation settings pages are similar to Poll Settings — you can manage preferences, configure emails, and duplicate or delete the instance.</p>
+</div>
+
+<!-- Preference UIs -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Preference UIs</div>
+  <table class="ug-table">
+    <thead><tr><th>UI</th><th>How it works</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Budget UI</strong></td><td>Sliders to distribute preferences. Cumulative score cannot exceed 100.</td></tr>
+      <tr><td><strong>List UI</strong></td><td>Enter numbers for each option. Cumulative score cannot exceed 100.</td></tr>
+      <tr><td><strong>Infinite Budget UI</strong></td><td>Enter numbers for each option with no upper limit on the total.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Results -->
+<div class="ug-subsection">
+  <div class="ug-subsection-title">Allocation Results</div>
+  <table class="ug-table">
+    <thead><tr><th>Section</th><th>What is shown</th></tr></thead>
+    <tbody>
+      <tr><td><strong>My Preferences</strong></td><td>Your submitted preference scores for this allocation instance.</td></tr>
+      <tr><td><strong>Allocated Item Bundle</strong></td><td>The items assigned to you by the algorithm.</td></tr>
+      <tr><td><strong>Allocation Results</strong></td><td>Full results across all participants.</td></tr>
+      <tr><td><strong>EF1 Matrix</strong></td><td>Envy-Freeness up to One Item matrix showing fairness of the allocation.</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
