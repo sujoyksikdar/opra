@@ -370,13 +370,81 @@ The polls list page (`regular_polls.html`) has Year and State filter dropdowns i
 
 - `static/js/leaflet.js` + `static/css/leaflet.css` — Leaflet map rendering (local, no CDN)
 - `static/js/chart.umd.min.js` — Chart.js for pie chart
-- `static/js/districts/<StateName>.json` — GeoJSON boundary files for all 50 states (116th Congress, US Census Bureau). File name uses underscores for spaces, e.g., `New_Jersey.json`.
+- `static/js/districts/<StateName>.json` — GeoJSON boundary files for all 50 states. File name uses underscores for spaces, e.g., `New_Jersey.json`.
 - `static/js/congressional_districts_by_state.json` — Maps each state name to its list of district names; used to populate the State and District dropdowns on poll creation.
 
 After any change to static files, run `collectstatic` on the server:
 ```bash
 docker compose exec web python3 manage.py collectstatic --noinput
 ```
+
+---
+
+## Updating District Boundaries
+
+Congressional district boundaries change after each decennial census redistricting cycle (most recently in 2022 for the 118th Congress, and in 2025 for the 119th Congress). We should run the update script to pull the latest boundary files from the US Census Bureau.
+
+### Script location
+
+```
+compsocsite/scripts/update_district_boundaries.py
+```
+
+### How to run
+
+Run from the `compsocsite/` directory:
+
+```bash
+# Auto-detect the latest available Census release (recommended)
+python3 scripts/update_district_boundaries.py
+
+# Specify a Congress and Census release year explicitly
+python3 scripts/update_district_boundaries.py --congress 119 --year 2024
+
+# Preview what would change without writing any files
+python3 scripts/update_district_boundaries.py --dry-run
+```
+
+### What the script does
+
+1. Downloads the national congressional district boundary file from the [US Census Bureau Cartographic Boundary Files](https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html).
+2. Splits the features by state into 50 individual GeoJSON files.
+3. Normalizes the district field name (e.g. `CD119FP` → `CD116FP`) so the map JavaScript works without any code changes.
+4. Overwrites the existing files in `static/js/districts/`.
+
+No dependencies beyond the Python standard library are required (`urllib`, `json`, `os`).
+
+### After running the script
+
+**Development:** The map will use the new boundaries immediately on the next page load — no restart needed.
+
+**Production (Docker):** Run collectstatic to push the updated files to WhiteNoise:
+
+```bash
+docker compose exec web python3 manage.py collectstatic --noinput
+```
+
+### When to run it
+
+Run this script when:
+- A redistricting cycle has taken effect (e.g., after the 2030 census).
+- The Census Bureau publishes updated boundaries for the current Congress.
+- Districts visible on the map look wrong or are missing.
+
+### Command-line options
+
+| Flag | Description |
+|---|---|
+| `--congress N` | Congressional session number (e.g. `119`). Auto-detected if omitted. |
+| `--year YYYY` | Census release year (e.g. `2024`). Auto-detected if omitted. |
+| `--output-dir PATH` | Override the output directory. Defaults to `static/js/districts/`. |
+| `--dry-run` | Print what would be updated without writing any files. |
+
+### Troubleshooting
+
+- **"Could not auto-detect a Census release"** — The Census Bureau may not have published the latest Congress yet, or your internet connection is blocked. Run with explicit `--congress` and `--year` flags.
+- **Missing states** — The Census file may not include territories (Puerto Rico, Guam, etc.) — this is expected. All 50 states should always be present.
+- **Map still shows old boundaries after update** — Make sure you ran `collectstatic` in production. In development, try a hard refresh (`Cmd+Shift+R` / `Ctrl+Shift+R`) to bypass the browser cache.
 
 ---
 
